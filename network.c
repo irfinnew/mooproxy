@@ -368,13 +368,13 @@ static void handle_auth_fd( World *wld, int wauth )
 	for( i = wld->auth_read[wauth]; i < NET_MAXAUTHLEN; i++ )
 	{
 		n = read( wld->auth_fd[wauth], &val, 1 );
-		if( n == 0 || val == '\n' )
+		if( n < 1 || val == '\n' )
 			break;
 		wld->auth_buf[wauth][i] = val;
 	}
 
 	/* Was the connection closed? */
-	if( n == 0 && i == wld->auth_read[wauth] )
+	if( ( n < 0 ) || ( n == 1 && i == wld->auth_read[wauth] ) )
 	{
 		close( wld->auth_fd[wauth] );
 		wld->auth_fd[wauth] = -1;
@@ -517,6 +517,7 @@ static void handle_server_fd( World *wld )
 		asprintf( &str, "Connection to server lost (%s).",
 				n ? strerror_n( err ) : "connection closed" );
 		world_message_to_client( wld, str );
+		world_message_to_client_buf( wld, str );
 		free( str );
 
 		wld->server_rbfull = 0;
@@ -615,13 +616,16 @@ extern void world_flush_client_sbuf( World *wld )
 	char *buffer = wld->client_sbuffer;
 	long offset = wld->client_sbfull, loff, todo;
 	
-	/* If we're not connected, do nothing */
-	if( wld->client_fd == -1 )
-		return;
-
 	/* If there is nothing to send, do nothing */
 	if( wld->client_slines->length == 0 && wld->client_sbfull == 0 )
 		return;
+
+	/* If we're not connected, discard lines and exit */
+	if( wld->client_fd == -1 )
+	{
+		linequeue_clear( wld->client_slines );
+		return;
+	}
 
 	/* FIXME: error checking */
 	while( ( line = linequeue_pop( wld->client_slines ) ) )

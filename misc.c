@@ -271,13 +271,13 @@ extern char *strerror_n( int err )
 
 
 /* Create a line */
-extern Line *line_create( char *str, ulong len )
+extern Line *line_create( char *str, long len )
 {
 	Line *line;
 
 	line = malloc( sizeof( Line ) );
 	line->str = str;
-	line->len = len;
+	line->len = len == -1 ? strlen( str ) : len;
 
 	return line;
 }

@@ -80,6 +80,10 @@ struct _World
 	char *client_sbuffer;
 	long client_sbfull;
 
+	/* MCP stuff */
+	int mcp_negotiated;
+	char *mcp_key;
+	
 	/* Options */
 	char *commandstring;
 	char *infostring;
@@ -103,6 +107,10 @@ extern void world_configfile_from_name( World * );
  * the infostring, to indicate it's a message from mooproxy.
  * The line will not be free()d. */
 extern void world_message_to_client( World *, char * );
+
+/* Exactly like world_message_to_client, but pass it through the buffer
+ * regular server->client lines go through. */
+extern void world_message_to_client_buf( World *, char * );
 
 /* Handle all the queued lines from the client.
  * Handling includes commands, MCP, logging, requeueing, etc. */

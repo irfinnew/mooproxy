@@ -1,14 +1,31 @@
-01-04-2004
-----------
-Version 0.0.1 released.
+15-04-2004  -  0.0.2
+--------------------
+Prelimary MCP support. Mooproxy understands enough MCP to inject messages
+to the server stating it can do MCP resets.
+
+New command: /mcpreset. Attempts to reset the MCP session. Use directly
+after your client connected to mooproxy (if mooproxy is connected to the
+server).
+
+"disconnected" now goes in buffer and direct, meaning you will get the
+message twice (eventually).
+
+
+
+01-04-2004  -  0.0.1
+--------------------
 First release; Basic functionality is there, but many features are lacking.
 You can connect to mooproxy, connect to the server, disconnect, reconnect,
 etc.
 
-29-01-2004
-----------
+
+
+29-01-2004  -  None
+-------------------
 Resumed coding :)
 
-27-03-2001
-----------
+
+
+27-03-2001  -  None
+-------------------
 started coding

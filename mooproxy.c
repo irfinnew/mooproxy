@@ -84,6 +84,7 @@ int main( int argc, char **argv )
 	}
 
 	printf( "opened world %s\n", world->name );
+	printf( "Ready for connections\n" );
 
 	world_mainloop( world );
 	

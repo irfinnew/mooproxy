@@ -31,6 +31,7 @@
 #include "misc.h"
 #include "network.h"
 #include "command.h"
+#include "mcp.h"
 
 
 
@@ -85,6 +86,10 @@ World* world_create( char *wldname )
 	wld->client_sbuffer = malloc( NET_BBUFFER_LEN );
 	wld->client_sbfull = 0;
 
+	/* MCP stuff */
+	wld->mcp_negotiated = 0;
+	wld->mcp_key = NULL;
+
 	/* Options */
 	wld->commandstring = strdup( DEFAULT_CMDSTRING );
 	wld->infostring = strdup( DEFAULT_INFOSTRING );
@@ -128,6 +133,9 @@ void world_destroy( World *wld )
 	free( wld->commandstring );
 	free( wld->infostring );
 
+	/* MCP stuff */
+	free( wld->mcp_key );
+
 	/* The world itself */
 	free( wld );
 }
@@ -152,8 +160,9 @@ void world_configfile_from_name( World *wld )
 
 
 
-/* Just like world_send_to_client(), but prefix the line with the
- * infostring, to indicate it's a message from mooproxy. */
+/* Queue a line for transmission to the client, and prefix the line with
+ * the infostring, to indicate it's a message from mooproxy.
+ * The line will not be free()d. */
 extern void world_message_to_client( World *wld, char *str )
 {
 	Line *line;
@@ -175,6 +184,29 @@ extern void world_message_to_client( World *wld, char *str )
 
 
 
+/* Exactly like world_message_to_client, but pass it through the buffer
+ * regular server->client lines go through. */
+extern void world_message_to_client_buf( World *wld, char *str )
+{
+	Line *line;
+	int len;
+
+	line = malloc( sizeof( Line ) );
+
+	len = strlen( str ) + strlen( wld->infostring )
+		+ sizeof( MESSAGE_TERMINATOR );
+	line->str = malloc( len );
+	line->len = len - 1;
+
+	strcpy( line->str, wld->infostring );
+	strcat( line->str, str );
+	strcat( line->str, MESSAGE_TERMINATOR );
+
+	linequeue_append( wld->buffered_text, line );
+}
+
+
+
 /* Handle all the queued lines from the client.
  * Handling includes commands, MCP, logging, requeueing, etc. */
 extern void world_handle_client_queue( World *wld )
@@ -187,6 +219,10 @@ extern void world_handle_client_queue( World *wld )
 			world_do_command( wld, line->str );
 			free( line );
 		}
+		else if( world_is_mcp( line->str ) )
+		{
+			world_do_mcp_client( wld, line );
+		}				
 		else if( wld->flags & WLD_BLOCKSRV )
 		{
 			world_message_to_client( wld, "World is blocked." );
@@ -208,7 +244,10 @@ extern void world_handle_server_queue( World *wld )
 	Line *line;
 
 	while( ( line = linequeue_pop( wld->server_rlines ) ) )
-		linequeue_append( wld->buffered_text, line );
+		if( world_is_mcp( line->str ) )
+			world_do_mcp_server( wld, line );
+		else
+			linequeue_append( wld->buffered_text, line );
 }
 
 

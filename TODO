@@ -1,27 +1,32 @@
-* client connect/disconnect hook? Server connect hook?
 * "Authentication succesful" prependen in client_slines?
+* MCP support
+* Notify client if there are new lines and pass is off
+* Print context-lines on connect
+* Logging
+* Make resolve and connect() non-blocking
+* IPv6 support
+* Don't SEGV if empty authstring (but what to do? Always accept or reject?)
 * Limit number of certain messages per <time>
 * /version
 * /stats: running time, servconn time, clientconn time, totallines, lines since
 * Errorchecking and -handling on write()
-* Don't SEGV if empty authstring
 * Timeout on authenticating connections
-* Make resolve and connect() non-blocking
-* Logging
-* IPv6 support
+* When connection is taken over, print the address of overtaking client ?
+* At connect, print "last connected from <addr> at <time> ?
+
+
+* client connect/disconnect hook? Server connect hook?
 * SSL support
-* MCP support
+* MCP userlist in mooproxy
 * Multiple connections to one daemon ?
 * Multiple worlds with one daemon ?
 * MD5 hash support for password
-* When connection is taken over, print the address of overtaking client ?
 * Connection logging (also to stdout if not daemon)
-* Print context-lines on connect
 * Global 'master' config ?
 * Autoreconnect
 * Idle-protection
 * Option: strict-cmd
 * Day rollover
 * Timestamping
-
-
+* Daemonize (with option to stay on foreground)
+* Better help, /help <cmd> etc

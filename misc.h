@@ -34,7 +34,7 @@ typedef struct _Line Line;
 struct _Line
 {
 	char *str;
-	ulong len;
+	long len;
 	Line *next;
 };
 
@@ -89,7 +89,7 @@ extern int true_or_false( char * );
 extern char *strerror_n( int );
 
 /* Create a line */
-extern Line *line_create( char *, ulong );
+extern Line *line_create( char *, long );
 
 /* Allocate and initialize a line queue */
 extern Linequeue *linequeue_create( void );

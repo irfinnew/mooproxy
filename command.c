@@ -45,6 +45,7 @@ static void command_options( World *, char * );
 static void command_showopts( World *, char * );
 static void command_pass( World *, char * );
 static void command_block( World *, char * );
+static void command_mcpreset( World *, char * );
 
 
 
@@ -62,6 +63,7 @@ static const struct
 	{ "showopts",		command_showopts },
 	{ "pass",		command_pass },
 	{ "block",		command_block },
+	{ "mcpreset",		command_mcpreset },
 
 	{ NULL,			NULL }
 };
@@ -472,4 +474,46 @@ static void command_block( World *wld, char *args )
 		free( str );
 		break;
 	}
+}
+
+
+
+static void command_mcpreset( World *wld, char *args )
+{
+	char *str;
+
+	/* Refuse if there are trailing characters */
+	if( args[0] != '\0' )
+	{
+		world_message_to_client( wld, "Trailing characters." );
+		return;
+	}
+
+	/* If the MCP negotiation has not taken place, do it now. */
+	if( !wld->mcp_negotiated )
+	{
+		world_message_to_client( wld, "No MCP session, negotiating "
+				"now." );
+		str = strdup( "#$#mcp authentication-key: mehkey version: "
+				"1.0 to: 2.1\n" );
+		linequeue_append( wld->server_slines, line_create( str, -1 ) );
+		str = strdup( "#$#mcp-negotiate-can mehkey package: "
+				"dns-nl-icecrew-mcpreset min-version: 1.0 "
+				"max-version: 1.0\n" );
+		linequeue_append( wld->server_slines, line_create( str, -1 ) );
+		str = strdup( "#$#mcp-negotiate-end mehkey\n" );
+		linequeue_append( wld->server_slines, line_create( str, -1 ) );
+
+		free( wld->mcp_key );
+		wld->mcp_key = strdup( "mehkey" );
+	}
+
+	/* Send the MCP reset */
+	world_message_to_client( wld, "Sending MCP reset." );
+	asprintf( &str, "#$#dns-nl-icecrew-mcpreset-reset %s\n",wld->mcp_key );
+	linequeue_append( wld->server_slines, line_create( str, -1 ) );
+
+	free( wld->mcp_key );
+	wld->mcp_key = NULL;
+	wld->mcp_negotiated = 0;
 }
