@@ -75,6 +75,7 @@ struct _World
 	Linequeue *client_rlines;
 	Linequeue *client_slines;
 	Linequeue *buffered_text;
+	Linequeue *history_text;
 	char *client_rbuffer;
 	long client_rbfull;
 	char *client_sbuffer;
@@ -123,6 +124,10 @@ extern void world_handle_server_queue( World * );
 /* Pass the lines from buffered_text to the client send buffer.
  * The long is the number of lines to pass, -1 for all. */
 extern void world_pass_buffered_text( World *, long );
+
+/* Store the line in the history buffer, pushing out lines on the
+ * other end if space runs tight. */
+extern void world_store_history_line( World *, Line * );
 
 
 

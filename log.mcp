@@ -1,0 +1,56 @@
+S->C: #$#mcp version: 2.1 to: 2.1
+ -!- Got MCP key!
+ -!- Caught mcp-negotiate-can! Meddling...
+C->S: #$#mcp authentication-key: OWL1,V version: 2.1 to: 2.1
+S->C: #$#mcp-negotiate-can OWL1,V package: mcp-negotiate min-version: 1.0 max-version: 2.0
+S->C: #$#mcp-negotiate-can OWL1,V package: mcp-cord min-version: 1.0 max-version: 1.0
+S->C: #$#mcp-negotiate-can OWL1,V package: dns-com-vmoo-mmedia min-version: 2.0 max-version: 2.0
+S->C: #$#mcp-negotiate-can OWL1,V package: dns-com-awns-status min-version: 1.0 max-version: 1.0
+S->C: #$#mcp-negotiate-can OWL1,V package: dns-net-beryllium-status min-version: 1.0 max-version: 1.1
+S->C: #$#mcp-negotiate-can OWL1,V package: dns-org-mud-moo-simpleedit min-version: 1.0 max-version: 1.0
+S->C: #$#mcp-negotiate-can OWL1,V package: dns-com-vmoo-userlist min-version: 1.0 max-version: 1.2
+S->C: #$#mcp-negotiate-can OWL1,V package: dns-com-vmoo-pages min-version: 1.0 max-version: 1.0
+S->C: #$#mcp-negotiate-can OWL1,V package: dns-com-vmoo-client min-version: 1.0 max-version: 1.0
+S->C: #$#mcp-negotiate-can OWL1,V package: dns-nl-icecrew-mcpreset min-version: 1.0 max-version: 1.0
+S->C: #$#mcp-negotiate-end OWL1,V
+C->S: #$#mcp-negotiate-can OWL1,V package: mcp-negotiate min-version: 1.0 max-version: 2.0
+C->S: #$#mcp-negotiate-can OWL1,V package: dns-nl-icecrew-mcpreset min-version: 1.0 max-version: 1.0
+C->S: #$#mcp-negotiate-can OWL1,V package: dns-com-vmoo-userlist min-version: 1.0 max-version: 1.0
+S->C: #$#dns-com-vmoo-userlist-you OWL1,V nr: #5107
+S->C: #$#dns-com-vmoo-userlist OWL1,V icons*: "" fields*: "" d*: "" _data-tag: 921357929121905
+S->C: #$#dns-com-vmoo-userlist-menu OWL1,V menu: "{{\"Kijk naar $(2)\", \"look $(1)\"}, 0, {\"Informatie over $(2)\", \"info $(1)\"}, 0, {\"Zwaai naar $(2)\", \"zwaai $(1)\"}, {\"Nodig $(2) uit\", \"@invite $(2)\"}, {\"Klop aan bij $(2)\", \"klop $(2)\"}}"
+S->C: #$#dns-com-vmoo-userlist-friends OWL1,V friends: "{}"
+S->C: #$#* 921357929121905 fields: {"Object", "Name", "Icon", "FirstConnectTime", "LastConnectTime"}
+S->C: #$#* 921357929121905 icons: {"Newbie", "Inhabitant", "Inhabitant+", "Schooled", "Key", "Star", "Wizard"}
+S->C: #$#* 921357929121905 d: ={{#2415, "Primus", 6, 931513427, 1082302006}, {#5850, "Xitizja", 2, 1010339786, 1082295387}, {#409, "Teal'k", 2, 908372741, 1082291700}, {#5849, "Tempestas", 2, 1010339088, 1082288845}, {#6274, "Dromera", 2, 1038857993, 1082283782}, {#6303, "Meimei", 2, 1062140605, 1082280629}, {#4952, "Eutheryon", 2, 966509033, 1082280479}, {#667, "Mavic'A", 2, 914161459, 1082277490}, {#668, "Michiel", 2, 914193104, 1082255887}, {#2329, "Joris", 2, 930767419, 1082230844}, {#2, "Se'Agextorim", 7, 900322964, 1082227529}, {#6271, "Triclimar", 2, 1037125883, 1082219361}, {#4514, "Haplo", 6, 954265716, 1082212602}, {#2671, "Nietroooh", 2, 935151382, 1082209650}, {#5449, "Fantaghiro", 2, 995103536, 1082183391}, {#5107, "Nobody", 2, 969059478, 1082053651}, {#1, "Magmemion", 7, 900144202, 1082052014}, {#507, "Azrael", 2, 912782406, 1081848809}, {#6, "Crusader", 7, 907794526, 1081798478}, {#6263, "Lise", 2, 1032293797, 1081777808}, {#2349, "Simkin", 2, 930941916, 1080130887}}
+S->C: #$#* 921357929121905 d: [{#2349, #507, #5449, #2671, #4514, #2, #668, #6271, #6274, #409, #2329, #5850, #2415, #6303, #4952, #1, #6263}
+S->C: #$#* 921357929121905 d: <{#2671, #668, #4514, #2349, #6271, #2329, #409, #6303, #4952, #6274, #2415, #5850, #1, #667, #5449, #6263, #2, #6, #5849}
+C->S: #$#mcp-negotiate-can OWL1,V package: dns-nl-vgmoo-userlist min-version: 1.0 max-version: 1.0
+C->S: #$#mcp-negotiate-can OWL1,V package: dns-org-mud-moo-simpleedit min-version: 1.0 max-version: 1.0
+C->S: #$#mcp-negotiate-can OWL1,V package: dns-com-vmoo-client min-version: 1.0 max-version: 1.0
+C->S: #$#mcp-negotiate-can OWL1,V package: dns-nl-vgmoo-client min-version: 1.0 max-version: 1.0
+C->S: #$#mcp-negotiate-can OWL1,V package: dns-com-ben-tfstatus min-version: 1.0 max-version: 1.0
+C->S: #$#mcp-negotiate-can OWL1,V package: dns-com-awns-status min-version: 1.0 max-version: 1.0
+C->S: #$#mcp-negotiate-end OWL1,V 
+C->S: #$#dns-com-vmoo-client-screensize OWL1,V cols: 155 rows: 49
+C->S: #$#dns-com-vmoo-client-info OWL1,V name: "gmoo" text-version: "0.5.6" internal-version: "056" reg-id: "" flags: ""
+C->S: #$#dns-com-vmoo-client-screensize OWL1,V cols: 134 rows: 49
+S->C: #$#dns-org-mud-moo-simpleedit-content OWL1,V reference: "str:#5107.todo" name: Nobody.todo type: string-list content*: "" _data-tag: 650714821121906
+S->C: #$#* 650714821121906 content: - #5107:.2 en #5107:@pagecolor2 doorvoeren
+S->C: #$#* 650714821121906 content: - Van wie/who ook frontend fixen
+S->C: #$#* 650714821121906 content: - #5107:who verplaatsen naar $code_utils:show_who_listing
+S->C: #$#* 650714821121906 content: 
+S->C: #$#* 650714821121906 content: - @emotes herschrijven / renoveren
+S->C: #$#* 650714821121906 content: - linesplit() herschrijven?
+S->C: #$#* 650714821121906 content: - duw-verb van #4805 af zien te krijgen (en hug ook wel eigenlijk)
+S->C: #$#* 650714821121906 content: - suspend-bla vervangen door suspend_if_needed ?
+S->C: #$#* 650714821121906 content: - word-wrapping van tabelize_auto_ansi fixen als er ansi in zit.
+S->C: #$#* 650714821121906 content: 
+S->C: #$#* 650714821121906 content: - Verbs aanpassen voor betere tabelizing: @d, fverb
+S->C: #$#* 650714821121906 content: - #457:{notify,tell}[_lines][_ansi] verplaatsen naar #101 (?)
+S->C: #$#* 650714821121906 content: - idcolors gedoe uitzoeken (@colors omzetten naar $ansi_utils:* )
+S->C: #$#* 650714821121906 content: - vexits fixen (verbs omzetten naar $table_utils:* )
+S->C: #$#: 650714821121906
+C->S: #$#: RcWX#n
+Set todo property of Nobody (#5107).
+S->C: #$#dns-com-awns-status OWL1,V text: "[Utopia] Kijk ook eens op de homepage, http://www.utopiamoo.net"

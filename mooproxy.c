@@ -24,13 +24,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
-
 #include "daemon.h"
 #include "global.h"
 #include "config.h"
 #include "world.h"
 #include "network.h"
+
+
+
+static void die( int, char * );
 
 
 
@@ -46,42 +48,32 @@ int main( int argc, char **argv )
 
 	i = parse_command_line_options( argc, argv, &worldname, &err );
 	if( i != EXIT_OK )
-	{
-		fprintf( stderr, "%s\n", err );
-		exit( i );
-	}
+		die( i, err );
 	
 	if( worldname == NULL || worldname[0] == '\0' )
-	{
-		fprintf( stderr, "You must supply a world name.\n" );
-		exit( EXIT_NOWORLD );
-	}
+		die( EXIT_NOWORLD, "You must supply a world name." );
 
 	world = world_create( worldname );
 
 	world_configfile_from_name( world );
 
 	if( create_configdirs( &err ) )
-	{
-		fprintf( stderr, "%s\n", err );
-		exit( EXIT_CONFIGDIRS );
-	}
+		die( EXIT_CONFIGDIRS, err );
 
 	printf( "Loading config...\n" );
 	i = world_load_config( world, &err );
 	if( i != EXIT_OK )
-	{
-		fprintf( stderr, "%s\n", err );
-		exit( i );
-	}
+		die( i, err );
 	
+	/* Refuse if nonexistent / empty authstring */
+	if( !world->authstring || !world->authstring[0] )
+		die( EXIT_NOAUTH, "Authstring must be non-empty."
+				"Refusing to start." );
+
 	printf( "Binding port...\n" );
 	i = world_bind_port( world, &err );
 	if( i != EXIT_OK )
-	{
-		fprintf( stderr, "%s\n", err );
-		exit( i );
-	}
+		die( i, err );
 
 	printf( "opened world %s\n", world->name );
 	printf( "Ready for connections\n" );
@@ -91,4 +83,12 @@ int main( int argc, char **argv )
 	world_destroy( world );
 	
 	exit( EXIT_OK );
+}
+
+
+
+static void die( int ret, char *err )
+{
+	fprintf( stderr, "%s\n", err );
+	exit( ret );
 }

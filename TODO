@@ -1,18 +1,16 @@
-* Seriously improve MCP code
-* "Authentication succesful" prependen in client_slines?
+* Merge multiple lines in one write()
 * Notify client if there are new lines and pass is off
-* Print context-lines on connect
+* Print context-lines on connect?
 * Logging
 * Make resolve and connect() non-blocking
 * IPv6 support
-* Don't SEGV if empty authstring (but what to do? Always accept or reject?)
 * Limit number of certain messages per <time>
-* /version
 * /stats: running time, servconn time, clientconn time, totallines, lines since
-* Errorchecking and -handling on write()
 * Timeout on authenticating connections
+* If new auth connection is established and all slots are full, kick oldest
 * When connection is taken over, print the address of overtaking client ?
 * At connect, print "last connected from <addr> at <time> ?
+* Rewrite auth-connection-handler to be more efficient.
 
 
 * client connect/disconnect hook? Server connect hook?
@@ -30,3 +28,7 @@
 * Timestamping
 * Daemonize (with option to stay on foreground)
 * Better help, /help <cmd> etc
+* Perhaps it's possible to set socket options to make proxy-client connections
+  time out more quickly. The quicker the proxy knows the connection is dead,
+  the less lines will be sent into the void.
+* Prefix information from mooproxy with date/time?

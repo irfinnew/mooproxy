@@ -1,0 +1,27 @@
+Planned for 0.0.5:
+
+- Preliminary logging
+- Setting of options instead of just querying them
+- Options for automatic recall + pass?
+- Improve auth code
+- Day rollover notification
+
+
+Planned for 0.0.6
+
+- limit certain messages / sec
+- print IP + time + numlines on connect / overtake
+- /uptime /stats
+- Make buffer and history size configurable
+
+
+Planned for 0.0.7:
+
+- Better help + documentation?
+- Daemonize
+
+
+Planned for 0.1.0:
+
+- Misc minor fixing, cleanups, and polishing
+- Release as .deb as well

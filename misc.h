@@ -36,6 +36,7 @@ struct _Line
 	char *str;
 	long len;
 	Line *next;
+	char store;
 };
 
 typedef struct _Linequeue Linequeue;

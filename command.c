@@ -24,6 +24,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "world.h"
 #include "command.h"
@@ -45,7 +46,9 @@ static void command_options( World *, char * );
 static void command_showopts( World *, char * );
 static void command_pass( World *, char * );
 static void command_block( World *, char * );
-static void command_mcpreset( World *, char * );
+static void command_recall( World *, char * );
+static void command_version( World *, char * );
+static void command_date( World *, char * );
 
 
 
@@ -63,7 +66,10 @@ static const struct
 	{ "showopts",		command_showopts },
 	{ "pass",		command_pass },
 	{ "block",		command_block },
-	{ "mcpreset",		command_mcpreset },
+	{ "recall",		command_recall },
+	{ "version",		command_version },
+	{ "date",		command_date },
+	{ "time",		command_date },
 
 	{ NULL,			NULL }
 };
@@ -478,42 +484,65 @@ static void command_block( World *wld, char *args )
 
 
 
-static void command_mcpreset( World *wld, char *args )
+static void command_recall( World *wld, char *args )
 {
+	int c = atoi( args ), i;
 	char *str;
+	Line *line, *nl;
 
-	/* Refuse if there are trailing characters */
-	if( args[0] != '\0' )
+	if( c == 0 )
 	{
-		world_message_to_client( wld, "Trailing characters." );
+		asprintf( &str, "%li lines in history, using %li bytes.",
+			wld->history_text->count, wld->history_text->length );
+		world_message_to_client( wld, str );
+		free( str );
 		return;
 	}
 
-	/* If the MCP negotiation has not taken place, do it now. */
-	if( !wld->mcp_negotiated )
-	{
-		world_message_to_client( wld, "No MCP session, negotiating "
-				"now." );
-		str = strdup( "#$#mcp authentication-key: mehkey version: "
-				"1.0 to: 2.1\n" );
-		linequeue_append( wld->server_slines, line_create( str, -1 ) );
-		str = strdup( "#$#mcp-negotiate-can mehkey package: "
-				"dns-nl-icecrew-mcpreset min-version: 1.0 "
-				"max-version: 1.0\n" );
-		linequeue_append( wld->server_slines, line_create( str, -1 ) );
-		str = strdup( "#$#mcp-negotiate-end mehkey\n" );
-		linequeue_append( wld->server_slines, line_create( str, -1 ) );
+	asprintf( &str, "Recall start (%i lines).", c );
+	world_message_to_client( wld, str );
+	free( str );
 
-		free( wld->mcp_key );
-		wld->mcp_key = strdup( "mehkey" );
+	/* FIXME: Inefficient as hell */
+	line = wld->history_text->lines;
+	for( i = wld->history_text->count; i > c; i-- )
+		line = line->next;
+
+	for( ; line; line = line->next )
+	{
+		nl = line_create( strdup( line->str ), line->len );
+		nl->store = 0;
+		linequeue_append( wld->client_slines, nl );
 	}
 
-	/* Send the MCP reset */
-	world_message_to_client( wld, "Sending MCP reset." );
-	asprintf( &str, "#$#dns-nl-icecrew-mcpreset-reset %s\n",wld->mcp_key );
-	linequeue_append( wld->server_slines, line_create( str, -1 ) );
+	world_message_to_client( wld, "Recall end." );
+}
 
-	free( wld->mcp_key );
-	wld->mcp_key = NULL;
-	wld->mcp_negotiated = 0;
+
+
+static void command_version( World *wld, char *args )
+{
+	world_message_to_client( wld, "Mooproxy version " VERSIONSTR "." );
+}
+
+
+
+static void command_date( World *wld, char *args )
+{
+	char *str, *tme;
+	time_t t;
+	size_t len;
+
+	t = time( NULL );
+	tme = strdup( ctime( &t ) );
+	len = strlen( tme );
+
+	if( len > 0 && tme[len - 1] == '\n' )
+		tme[len - 1] = '\0';
+
+	asprintf( &str, "The current date is %s.", tme );
+	world_message_to_client( wld, str );
+
+	free( str );
+	free( tme );
 }

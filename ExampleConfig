@@ -8,7 +8,7 @@ host = localhost
 # The port to connect to on the above host
 port = 1111
 
-# Lines starting with this command are interpreted as commands
+# Lines starting with this string are interpreted as commands
 commandstring = /
 # Messages from mooproxy are prefixed by this (ANSI sequences allowed)
 # If you want the % to be red, try:  infostring = [0m[31m % [0m[37m

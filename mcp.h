@@ -40,6 +40,9 @@ extern void world_do_mcp_client( World *, Line * );
 /* Handle MCP from the server. The line will be reused or freed. */
 extern void world_do_mcp_server( World *, Line * );
 
+/* Send MCP reset to the server. */
+extern void world_send_mcp_reset( World * );
+
 
 
 #endif  /* ifndef MOOPROXY__HEADER_MCP */

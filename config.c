@@ -172,7 +172,7 @@ char *print_help_text( void )
 
 static char *print_version_text( void )
 {
-	return strdup( "mooproxy version -unreleased- Copyright (C) 2002 "
+	return strdup( "mooproxy version " VERSIONSTR " Copyright (C) 2004 "
 			"Marcel L Moreaux" );
 }
 

@@ -39,6 +39,7 @@
 #include "network.h"
 #include "global.h"
 #include "misc.h"
+#include "mcp.h"
 
 
 
@@ -137,9 +138,8 @@ int world_resolve_server( World *wld, char **err )
 	host = gethostbyname( wld->host );
 	if( host == NULL )
 	{
-		asprintf( err, "Could not resolve ``%s'': %s", wld->host,
+		asprintf( err, "Could not resolve ``%s'': %s.", wld->host,
 				hstrerror( h_errno ) );
-		*err[strlen( *err ) - 1] = '.';
 		return EXIT_RESOLV;
 	}
 
@@ -231,17 +231,18 @@ extern void world_disconnect_client( World *wld )
  * actual data over the connections. */
 void world_mainloop( World *wld )
 {
-	fd_set readset, rset;
+	fd_set readset, rset, eset;
 	int high, i;
 
 	high = create_fdset( &readset, wld );
 
 	for(;;)
 	{
+		high = create_fdset( &eset, wld );
 		memcpy( &rset, &readset, sizeof( fd_set ) );
 
 		/* FIXME: should check for errors */
-		select( high, &rset, NULL, NULL, NULL );
+		select( high, &rset, NULL, &eset, NULL );
 
 		if( wld->server_fd != -1 && FD_ISSET( wld->server_fd, &rset ) )
 			handle_server_fd( wld );
@@ -374,7 +375,7 @@ static void handle_auth_fd( World *wld, int wauth )
 	}
 
 	/* Was the connection closed? */
-	if( ( n < 0 ) || ( n == 1 && i == wld->auth_read[wauth] ) )
+	if( n <= 0 )
 	{
 		close( wld->auth_fd[wauth] );
 		wld->auth_fd[wauth] = -1;
@@ -425,18 +426,29 @@ static void handle_client_fd( World *wld )
 		offset = 0;
 	}
 
-	/* FIXME: more detailed error checking */
 	n = read( wld->client_fd, buffer + offset, NET_BBUFFER_LEN - offset );
 
-	if( n == -1 && errno == EINTR )
+	if( n == -1 && ( errno == EINTR || errno == EAGAIN ) )
 		return;
 
 	if( n == 0 || n == -1 )
 	{
-		/* FIXME: any data left in the bbuffer is now discarded */
+		/* Ok, the connection dropped dead */
 		close( wld->client_fd );
 		wld->client_fd = -1;
 		wld->flags |= WLD_FDCHANGE;
+
+		/* If there's something left in the buffer, process it */
+		if( offset > 0 )
+		{
+			s = malloc( offset + 2 );
+			memcpy( s, buffer, offset );
+			s[offset] = '\n';
+			s[offset + 1] = '\0';
+			linequeue_append( wld->client_rlines,
+					line_create( s, offset + 1 ) );
+		}
+
 		return;
 	}
 
@@ -489,7 +501,7 @@ static void handle_server_fd( World *wld )
 
 	n = read( wld->server_fd, buffer + offset, NET_BBUFFER_LEN - offset );
 
-	if( n == -1 && errno == EINTR )
+	if( n == -1 && ( errno == EINTR || errno == EAGAIN ) )
 		return;
 
 	if( n < 1 )
@@ -500,7 +512,7 @@ static void handle_server_fd( World *wld )
 		wld->server_fd = -1;
 		wld->flags |= WLD_FDCHANGE;
 
-		/* If there's something left in the rbuffer, process it */
+		/* If there's something left in the buffer, process it */
 		if( offset > 0 )
 		{
 			s = malloc( offset + 2 );
@@ -561,6 +573,16 @@ static void verify_authentication( World *wld, int wauth )
 	char *str;
 	int alen, slen;
 
+	/* If the authstring is nonexistent / empty, reject everything */
+	if( !wld->authstring || !wld->authstring[0] )
+	{
+		write( wld->auth_fd[wauth], NET_AUTHFAIL "\n",
+				strlen( NET_AUTHFAIL "\n" ) );
+		close( wld->auth_fd[wauth] );
+		wld->auth_fd[wauth] = -1;
+		return;
+	}
+
 	alen = strlen( wld->authstring );
 	slen = wld->auth_read[wauth];
 
@@ -603,6 +625,10 @@ static void verify_authentication( World *wld, int wauth )
 			wld->buffered_text->count );
 	world_message_to_client( wld, str );
 	free( str );
+
+	/* Do the MCP reset, so MCP is set up correctly */
+	if( wld->server_fd != -1 )
+		world_send_mcp_reset( wld );
 }
 
 
@@ -612,10 +638,11 @@ static void verify_authentication( World *wld, int wauth )
  * queued lines, mark the fd as write-blocked, and signal an FD change. */
 extern void world_flush_client_sbuf( World *wld )
 {
-	Line *line;
-	char *buffer = wld->client_sbuffer;
-	long offset = wld->client_sbfull, loff, todo;
-	
+	Line *line = NULL;
+	char *buffer = wld->client_sbuffer, *s;
+	long offset = wld->client_sbfull, len;
+	int r;
+
 	/* If there is nothing to send, do nothing */
 	if( wld->client_slines->length == 0 && wld->client_sbfull == 0 )
 		return;
@@ -627,34 +654,39 @@ extern void world_flush_client_sbuf( World *wld )
 		return;
 	}
 
-	/* FIXME: error checking */
-	while( ( line = linequeue_pop( wld->client_slines ) ) )
+	/* FIXME: It's scary how double free's are avoided. */
+	/* FIXME: 1 write() per line. Subpar... */
+	while( offset > 0 || ( line = linequeue_pop( wld->client_slines ) ) )
 	{
-		loff = 0;
-		while( loff < line->len )
-		{
-			/* Copy the line (or as much as will fit) in the buf */
-			todo = line->len - loff;
-			if( todo > NET_BBUFFER_LEN - offset )
-				todo = NET_BBUFFER_LEN - offset;
-			memcpy( buffer + offset, line->str + loff, todo );
-			loff += todo;
-			offset += todo;
+		/* Get pointer/length of to-be-written data */
+		s = line ? line->str : buffer;
+		len = line ? line->len : offset;
 
-			/* If the buffer is full, send it */
-			if( offset == NET_BBUFFER_LEN )
-			{
-				write( wld->client_fd, buffer, offset );
-				offset = 0;
-			}
+		/* Write it */
+		r = write( wld->client_fd, s, len );
+
+		/* Abort on serious error. The read() will catch it */
+		if( r == -1 && errno != EAGAIN && errno != EINTR )
+			break;
+
+		/* Not all was written. Save in buffer. */
+		if( r < len )
+		{
+			len -= r == -1 ? 0 : r;
+			/* Don't move if not needed */
+			if( buffer != s )
+				memmove( buffer, s, len );
+			offset = len;
+			break;
 		}
-		free( line->str );
-		free( line );
+
+		if( line )
+			world_store_history_line( wld, line );
+		offset = 0;
 	}
 
-	/* Send what's left in the buffer */
-	write( wld->client_fd, buffer, offset );
-	offset = 0;
+	if( line )
+		world_store_history_line( wld, line );
 
 	wld->client_sbfull = offset;
 }
@@ -668,9 +700,10 @@ extern void world_flush_client_sbuf( World *wld )
  * disconnectedness. */
 extern void world_flush_server_sbuf( World *wld )
 {
-	Line *line;
-	char *buffer = wld->server_sbuffer;
-	long offset = wld->server_sbfull, loff, todo;
+	Line *line = NULL;
+	char *buffer = wld->server_sbuffer, *s;
+	long offset = wld->server_sbfull, len;
+	int r;
 
 	/* If there is nothing to send, do nothing */
 	if( wld->server_slines->length == 0 && wld->server_sbfull == 0 )
@@ -684,7 +717,52 @@ extern void world_flush_server_sbuf( World *wld )
 		return;
 	}
 
-	/* FIXME: error checking */
+	/* FIXME: It's scary how double free's are avoided. */
+	/* FIXME: 1 write() per line. Subpar... */
+	while( offset > 0 || ( line = linequeue_pop( wld->server_slines ) ) )
+	{
+		/* Get pointer/length of to-be-written data */
+		s = line ? line->str : buffer;
+		len = line ? line->len : offset;
+
+		/* Write it */
+		r = write( wld->server_fd, s, len );
+
+		/* Abort on serious error. The read() will catch it */
+		if( r == -1 && errno != EAGAIN && errno != EINTR )
+			break;
+
+		/* Not all was written. Save in buffer. */
+		if( r < len )
+		{
+			len -= r == -1 ? 0 : r;
+			/* Don't move if not needed */
+			if( buffer != s )
+				memmove( buffer, s, len );
+			offset = len;
+			break;
+		}
+
+		/* Free the line, if it exists */
+		if( line )
+			free( line->str );
+		free( line );
+		offset = 0;
+	}
+
+	/* Free the line, if it exists */
+	if( line )
+		free( line->str );
+	free( line );
+
+	wld->server_sbfull = offset;
+}
+
+
+
+#if 0
+/* Doesn't handle partial writes... But I'm not happy with the current
+ * either, so let's keep this around, just in case */
 	while( ( line = linequeue_pop( wld->server_slines ) ) )
 	{
 		loff = 0;
@@ -698,20 +776,15 @@ extern void world_flush_server_sbuf( World *wld )
 			loff += todo;
 			offset += todo;
 
-			/* If the buffer is full, send it */
-			if( offset == NET_BBUFFER_LEN )
+			/* If the buffer is full or last line, send it */
+			if( offset == NET_BBUFFER_LEN || !line->next )
 			{
-				write( wld->server_fd, buffer, offset );
-				offset = 0;
+				r = write( wld->server_fd, buffer, offset );
+				if( r > 0 )
+					offset -= r;
 			}
 		}
 		free( line->str );
 		free( line );
 	}
-
-	/* Send what's left in the buffer */
-	write( wld->server_fd, buffer, offset );
-	offset = 0;
-
-	wld->server_sbfull = offset;
-}
+#endif

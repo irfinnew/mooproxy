@@ -278,6 +278,7 @@ extern Line *line_create( char *str, long len )
 	line = malloc( sizeof( Line ) );
 	line->str = str;
 	line->len = len == -1 ? strlen( str ) : len;
+	line->store = 0;
 
 	return line;
 }

@@ -1,21 +1,37 @@
+19-04-2004  -  0.0.4
+--------------------
+* Improved both read() and write() code. Much more robust now.
+  The tradeoff is that simultaneously received lines are no longer
+  merged into one write().
+* Fixed SEGV on resolve failure.
+* Fixed SEGV on authentication if no authstring is given in config.
+* Mooproxy now refuses to start if authstring is "" or absent.
+* MCP reset is now sent automatically on client connect.
+  The /mcpreset command is removed.
+* History implemented. Use /recall <num> to recall num lines of history.
+  Currently, mooproxy always keeps 1024 lines of history.
+* Added /version, which prints the mooproxy version.
+* Added /date, which prints the date/time. /time is an alias for /date.
+* Improved MCP parsing code. Much cleaner, and more robust.
+
+
+
 15-04-2004  -  0.0.3
 --------------------
-Oops, 0.0.2 SEGVs if the client sends multilines to the server. That's
-fixed (well, workarounded... Improve the MCP code is on the Todo) now.
+* Oops, 0.0.2 SEGVs if the client sends multilines to the server. That's
+  fixed (well, workarounded... Improve the MCP code is on the Todo) now.
 
 
 
 15-04-2004  -  0.0.2
 --------------------
-Prelimary MCP support. Mooproxy understands enough MCP to inject messages
-to the server stating it can do MCP resets.
-
-New command: /mcpreset. Attempts to reset the MCP session. Use directly
-after your client connected to mooproxy (if mooproxy is connected to the
-server).
-
-"disconnected" now goes in buffer and direct, meaning you will get the
-message twice (eventually).
+* Prelimary MCP support. Mooproxy understands enough MCP to inject messages
+  to the server stating it can do MCP resets.
+* New command: /mcpreset. Attempts to reset the MCP session. Use directly
+  after your client connected to mooproxy (if mooproxy is connected to the
+  server).
+* "disconnected" now goes in buffer and direct, meaning you will get the
+  message twice (eventually).
 
 
 

@@ -27,7 +27,7 @@
 
 
 /* Mooproxy version */
-#define VERSIONSTR "0.0.3"
+#define VERSIONSTR "0.0.4"
 
 /* Configuration paths */
 #define CONFIGDIR ".mooproxy/"
@@ -41,15 +41,16 @@
 #define EXIT_UNKNOWNOPT 2
 #define EXIT_NOWORLD 3
 #define EXIT_CONFIGDIRS 4
-#define EXIT_HOMEDIR 5
-#define EXIT_NOSUCHWORLD 6
-#define EXIT_CONFIGERR 7
-#define EXIT_SOCKET 8
-#define EXIT_BIND 9
-#define EXIT_LISTEN 10
-#define EXIT_NOHOST 11
-#define EXIT_RESOLV 12
-#define EXIT_CONNECT 13
+#define EXIT_NOAUTH 5
+#define EXIT_HOMEDIR 6
+#define EXIT_NOSUCHWORLD 7
+#define EXIT_CONFIGERR 8
+#define EXIT_SOCKET 9
+#define EXIT_BIND 10
+#define EXIT_LISTEN 11
+#define EXIT_NOHOST 12
+#define EXIT_RESOLV 13
+#define EXIT_CONNECT 15
 
 /* Some default values */
 #define DEFAULT_CMDSTRING "/"

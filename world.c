@@ -81,6 +81,7 @@ World* world_create( char *wldname )
 	wld->client_rlines = linequeue_create();
 	wld->client_slines = linequeue_create();
 	wld->buffered_text = linequeue_create();
+	wld->history_text = linequeue_create();
 	wld->client_rbuffer = malloc( NET_BBUFFER_LEN );
 	wld->client_rbfull = 0;
 	wld->client_sbuffer = malloc( NET_BBUFFER_LEN );
@@ -126,6 +127,7 @@ void world_destroy( World *wld )
 	linequeue_destroy( wld->client_rlines );
 	linequeue_destroy( wld->client_slines );
 	linequeue_destroy( wld->buffered_text );
+	linequeue_destroy( wld->history_text );
 	free( wld->client_rbuffer );
 	free( wld->client_sbuffer );
 
@@ -168,12 +170,14 @@ extern void world_message_to_client( World *wld, char *str )
 	Line *line;
 	int len;
 
+	/* FIXME: Use line_create() */
 	line = malloc( sizeof( Line ) );
 
 	len = strlen( str ) + strlen( wld->infostring )
 		+ sizeof( MESSAGE_TERMINATOR );
 	line->str = malloc( len );
 	line->len = len - 1;
+	line->store = 0;
 
 	strcpy( line->str, wld->infostring );
 	strcat( line->str, str );
@@ -191,12 +195,14 @@ extern void world_message_to_client_buf( World *wld, char *str )
 	Line *line;
 	int len;
 
+	/* FIXME: Use line_create() */
 	line = malloc( sizeof( Line ) );
 
 	len = strlen( str ) + strlen( wld->infostring )
 		+ sizeof( MESSAGE_TERMINATOR );
 	line->str = malloc( len );
 	line->len = len - 1;
+	line->store = 1;
 
 	strcpy( line->str, wld->infostring );
 	strcat( line->str, str );
@@ -247,7 +253,10 @@ extern void world_handle_server_queue( World *wld )
 		if( world_is_mcp( line->str ) )
 			world_do_mcp_server( wld, line );
 		else
+		{
+			line->store = 1;
 			linequeue_append( wld->buffered_text, line );
+		}
 }
 
 
@@ -263,4 +272,31 @@ extern void world_pass_buffered_text( World *wld, long num )
 
 	while( num-- > 0 && ( line = linequeue_pop( wld->buffered_text ) ) )
 		linequeue_append( wld->client_slines, line );
+}
+
+
+
+/* Store the line in the history buffer, pushing out lines on the
+ * other end if space runs tight. */
+extern void world_store_history_line( World *wld, Line *line )
+{
+	Line *l;
+
+	/* If the line shouldn't be stored, discard it */
+	if( !line->store )
+	{
+		free( line->str );
+		free( line );
+		return;
+	}
+
+	linequeue_append( wld->history_text, line );
+
+	/* FIXME: dynamic limit */
+	while( wld->history_text->count > 1024 )
+	{
+		l = linequeue_pop( wld->history_text );
+		free( l->str );
+		free( l );
+	}	
 }
