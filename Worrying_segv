@@ -1,0 +1,35 @@
+==12742== Memcheck, a memory error detector for x86-linux.
+==12742== Copyright (C) 2002-2004, and GNU GPL'd, by Julian Seward.
+==12742== Using valgrind-2.1.1, a program supervision framework for x86-linux.
+==12742== Copyright (C) 2000-2004, and GNU GPL'd, by Julian Seward.
+==12742== For more details, rerun with: -v
+==12742==
+Loading config...
+Binding port...
+opened world utopia
+==12742== Invalid write of size 1
+==12742==    at 0x804B82C: handle_server_fd (network.c:497)
+==12742==    by 0x804B011: world_mainloop (network.c:246)
+==12742==    by 0x8049002: main (mooproxy.c:87)
+==12742==  Address 0x0 is not stack'd, malloc'd or free'd
+==12742==
+==12742== Process terminating with default action of signal 11 (SIGSEGV): dumping core
+==12742==  Access not within mapped region at address 0x0
+==12742==    at 0x804B82C: handle_server_fd (network.c:497)
+==12742==    by 0x804B011: world_mainloop (network.c:246)
+==12742==    by 0x8049002: main (mooproxy.c:87)
+==12742==
+==12742== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 17 from 1)
+==12742== malloc/free: in use at exit: 418366 bytes in 71 blocks.
+==12742== malloc/free: 1123 allocs, 1052 frees, 570201 bytes allocated.
+==12742== For a detailed leak analysis,  rerun with: --leak-check=yes
+==12742== For counts of detected errors, rerun with: -v
+Segmentation fault
+
+
+494     if( n < 1 )
+495     {
+496             /* Ok, the connection dropped dead */
+497             close( wld->server_fd );
+498             wld->server_fd = -1;
+499             wld->flags |= WLD_FDCHANGE;

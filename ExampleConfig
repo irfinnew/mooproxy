@@ -1,0 +1,15 @@
+# The port to accept connections from clients on
+listenport = 2222
+# The authentication string clients must give after connecting
+authstring = blah
+
+# The address of the MOO server to connect to
+host = localhost
+# The port to connect to on the above host
+port = 1111
+
+# Lines starting with this command are interpreted as commands
+commandstring = /
+# Messages from mooproxy are prefixed by this (ANSI sequences allowed)
+# If you want the % to be red, try:  infostring = [0m[31m % [0m[37m
+infostring = ' % '
