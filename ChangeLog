@@ -1,3 +1,20 @@
+29-04-2004  -  0.0.5
+--------------------
+* Forget MCP session on connect-to-server, so that MCP reset works properly
+  if you disconnect and reconnect to the server.
+* Authentication code cleanup/rewrite. More efficient now.
+* If all authentication connections are full and there's a new connection,
+  the oldest authentication connection gets kicked.
+* Removed commands: /time, /block, /options, /showopts
+* New commands for option management: /listopts, /getopt, /setopt
+* /connect now takes optional hostname and port
+* Improved /help
+* Day rollover notification (not generic, should be improved)
+* Logging (always on, output only, always without ansi, only 1 logfile/day.
+  Functional, but generally hackish, rewrite)
+
+
+
 19-04-2004  -  0.0.4
 --------------------
 * Improved both read() and write() code. Much more robust now.

@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "daemon.h"
 #include "global.h"
@@ -41,8 +42,9 @@ int main( int argc, char **argv )
 	World *world = NULL;
 	int i;
 	char *err, *worldname = NULL;
+	time_t now = time( NULL );
 	
-	printf( "Starting mooproxy " VERSIONSTR "\n" );
+	printf( "Starting mooproxy " VERSIONSTR " at %s", ctime( &now ) );
 
 	set_up_signal_handlers();
 

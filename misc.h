@@ -56,14 +56,23 @@ struct _Linequeue
 extern int asprintf( char **, char *, ... );
 
 /* This function gets the users homedir from the environment and returns it.
- * The string is strdup()ped, so it should be free()d. */
+ * The string is strdup()ped, so it should be free()d.
+ * The string will either be empty, or /-terminated */
 extern char *get_homedir( void );
 
 /* Returns the given string, up to but excluding the first newline.
  * The given pointer is set to point to the first character after the
  * newline.
- * When there is nothing left, it returns NULL */
+ * When there is nothing left, it returns NULL
+ * The returned lines are separately allocated. */
 extern char *read_one_line( char ** );
+
+/* Returns the given string, up to but excluding the first whitespace char.
+ * The given pointer is set to point to the first character after the
+ * whitespace character.
+ * When there is nothing left, it returns NULL
+ * The string pointed to is mangled, returned words are still inside. */
+extern char *get_one_word( char ** );
 
 /* Strips all whitespace (determined by isspace()) from a line and returns
  * the modified string */
@@ -83,11 +92,16 @@ extern char *lowercase( char * );
 /* Determines if a string says true or false (case insensitive).
  * If the string is "true", "yes", "on" or "1", it returns 1.
  * If the string is "false", "no", "off" or "0", it returns 0.
- * If te string is unknown, return -1 */
+ * If the string is unknown, return -1 */
 extern int true_or_false( char * );
 
 /* Exactly like strerror(), except for the fucking irritating trailing \n */
 extern char *strerror_n( int );
+
+/* Convert the given time to a formatted string in local time.
+ * For the format, see strftime(3) .
+ * It returns a pointer to a statically allocated buffer. */
+extern char *time_string( time_t, char * );
 
 /* Create a line */
 extern Line *line_create( char *, long );

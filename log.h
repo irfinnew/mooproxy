@@ -21,19 +21,23 @@
 
 
 
-#ifndef MOOPROXY__HEADER__COMMAND
-#define MOOPROXY__HEADER__COMMAND
+#ifndef MOOPROXY__HEADER__LOG
+#define MOOPROXY__HEADER__LOG
 
 
 
-/* Returns 1 if the string begins with the command character(s) */
-extern int world_is_command( World *, char * );
-
-/* Checks if the given string is a valid command for the given world.
- * If it's a valid command, it's executed (and output is sent to the client).
- * The return value is 1 for a succesful command, 0 for an invalid one. */
-extern int world_do_command( World *, char * );
+#include "world.h"
 
 
 
-#endif  /* ifndef MOOPROXY__HEADER_COMMAND */
+enum logmodes { LOG_NONE, LOG_ONE_FILE, LOG_MONTHLY, LOG_DAILY };
+
+
+
+extern int world_log_init( World * );
+extern void world_log_close( World * );
+extern void world_log_server_line( World *, Line * );
+
+
+
+#endif  /* ifndef MOOPROXY__HEADER_LOG */

@@ -1,14 +1,8 @@
-Planned for 0.0.5:
-
-- Preliminary logging
-- Setting of options instead of just querying them
-- Options for automatic recall + pass?
-- Improve auth code
-- Day rollover notification
-
-
 Planned for 0.0.6
 
+- Improve logging (a lot :) )
+- Options for automatic recall + pass?
+- Timestamping of mooproxy messages?
 - limit certain messages / sec
 - print IP + time + numlines on connect / overtake
 - /uptime /stats

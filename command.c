@@ -31,45 +31,63 @@
 #include "misc.h"
 #include "network.h"
 #include "config.h"
+#include "log.h"
 
 
 
 static int do_command( World *, char *, char * );
-static int do_config( World *, char *, char * );
+static int refuse_arguments( World *, char *, char * );
 
-static void command_help( World *, char * );
-static void command_quit( World *, char * );
-static void command_shutdown( World *, char * );
-static void command_connect( World *, char * );
-static void command_disconnect( World *, char * );
-static void command_options( World *, char * );
-static void command_showopts( World *, char * );
-static void command_pass( World *, char * );
-static void command_block( World *, char * );
-static void command_recall( World *, char * );
-static void command_version( World *, char * );
-static void command_date( World *, char * );
+static void command_help( World *, char *, char * );
+static void command_quit( World *, char *, char * );
+static void command_shutdown( World *, char *, char * );
+static void command_connect( World *, char *, char * );
+static void command_disconnect( World *, char *, char * );
+static void command_listopts( World *, char *, char * );
+static void command_getopt( World *, char *, char * );
+static void command_setopt( World *, char *, char * );
+static void command_pass( World *, char *, char * );
+static void command_recall( World *, char *, char * );
+static void command_version( World *, char *, char * );
+static void command_date( World *, char *, char * );
 
 
+
+static char *help_text[] = {
+"Commands:",
+"  help                       Show this help message.",
+"  quit                       Disconnect from mooproxy.",
+"  shutdown                   Shut down the mooproxy.",
+"  connect [<host> [<port>]]  Connect to the server. If the arguments are",
+"                               given, use those instead of the set options.",
+"  disconnect                 Disconnect from the server.",
+"  listopts                   List the available option names.",
+"  getopt <option>            Query the value of one option.",
+"  setopt <option> <value>    Set the value of one option.",
+"  pass [<on|off>]            Turn pass on/off, or show the number of lines.",
+"  recall [<count>]           Recall <count> lines or show number of lines.",
+"  version                    Show the mooproxy version.",
+"  date                       Show the current time and date.",
+NULL
+};
 
 static const struct
 {
 	char *command;
-	void (*func)( World *, char * );
+	void (*func)( World *, char *, char * );
 } command_db[] = {
 	{ "help",		command_help },
 	{ "quit",		command_quit },
 	{ "shutdown",		command_shutdown },
 	{ "connect",		command_connect },
 	{ "disconnect",		command_disconnect },
-	{ "options",		command_options },
-	{ "showopts",		command_showopts },
+	{ "listopts",		command_listopts },
+	{ "getopt",		command_getopt },
+	{ "setopt",		command_setopt },
 	{ "pass",		command_pass },
-	{ "block",		command_block },
 	{ "recall",		command_recall },
 	{ "version",		command_version },
 	{ "date",		command_date },
-	{ "time",		command_date },
 
 	{ NULL,			NULL }
 };
@@ -81,9 +99,9 @@ extern int world_is_command( World *wld, char *line )
 {
 	int i = 0;
 
-	/* Does the line start with the command character(s)? */
 	while( wld->commandstring[i] == line[i] && line[i] )
 		i++;
+
 	return !wld->commandstring[i];
 }
 
@@ -91,7 +109,7 @@ extern int world_is_command( World *wld, char *line )
 
 /* Checks if the given string is a valid command for the given world.
  * If it's a valid command, it's executed (and output is sent to the client).
- * The return value is CMD_OK, CMD_NOCMD or CMD_INVCMD. */
+ * The return value is 1 for a succesful command, 0 for an invalid one. */
 extern int world_do_command( World *wld, char *line )
 {
 	int len, i = 0;
@@ -101,7 +119,10 @@ extern int world_do_command( World *wld, char *line )
 	while( wld->commandstring[i] == line[i] && line[i] )
 		i++;
 	if( wld->commandstring[i] )
-		return CMD_NOCMD;
+	{
+		free( line );
+		return 0;
+	}
 
 	/* Strip off command character(s) */
 	len = i;
@@ -124,22 +145,13 @@ extern int world_do_command( World *wld, char *line )
 	c = line[i];
 	line[i] = '\0';
 	cmd = strdup( line );
-	line[i] = c;
 	
 	/* Try if it's a command */
-	if( do_command( wld, cmd, line + i ) )
+	if( do_command( wld, cmd, line + i + 1 ) )
 	{
 		free( cmd );
 		free( line );
-		return CMD_OK;
-	}
-
-	/* Try if it's a config keyword */
-	if( do_config( wld, cmd, line + i ) )
-	{
-		free( cmd );
-		free( line );
-		return CMD_OK;
+		return 1;
 	}
 
 	/* Invalid blurb, inform client */
@@ -149,19 +161,20 @@ extern int world_do_command( World *wld, char *line )
 
 	free( cmd );
 	free( line );
-	return CMD_INVCMD;
+	return 0;
 }
 
 
 
-static int do_command( World *wld, char *cmd, char *arg )
+/* Tries to execute the given command. Returns 1 on succes, 0 on failure */
+static int do_command( World *wld, char *cmd, char *args )
 {
 	int i;
 
 	for( i = 0; command_db[i].command; i++ )
 		if( !strcmp( cmd, command_db[i].command ) )
 		{
-			(*command_db[i].func)( wld, arg );
+			(*command_db[i].func)( wld, cmd, args );
 			return 1;
 		}
 
@@ -170,91 +183,55 @@ static int do_command( World *wld, char *cmd, char *arg )
 
 
 
-static int do_config( World *wld, char *cmd, char *arg )
+/* If the args contains anything else than whitespace, complain to the
+ * client and return 1. Otherwise, NOP and return 0. */
+static int refuse_arguments( World *wld, char *cmd, char *args )
 {
-	char *line, *val;
+	char *str;
+
+	for( ; *args; args++ )
+		if( !isspace( *args ) )
+		{
+			asprintf( &str, "The command `%s' does not take "
+					"arguments.", cmd );
+			world_message_to_client( wld, str );
+			free( str );
+			return 1;
+		}
+
+	return 0;
+}
+
+
+
+static void command_help( World *wld, char *cmd, char *args )
+{
 	int i;
 
-	i = world_get_key( wld, cmd, &val );
+	if( refuse_arguments( wld, cmd, args ) )
+		return;
 
-	if( i == 1 )
-		return 0;
-
-	if( i == 2 )
-	{
-		asprintf( &line, "%s cannot be read.", cmd );
-		world_message_to_client( wld, line );
-		free( line );
-		return 1;
-	}
-
-	asprintf( &line, "%s is `%s'.", cmd, val );
-	world_message_to_client( wld, line );
-	free( line );
-	free( val );
-	return 1;
+	for( i = 0; help_text[i]; i++ )
+		world_message_to_client( wld, help_text[i] );
 }
 
 
 
-static void command_help( World *wld, char *args )
+static void command_quit( World *wld, char *cmd, char *args )
 {
-	int i, len = 0;
-	char *line;
-
-	/* Refuse if there are trailing characters */
-	if( args[0] != '\0' )
-	{
-		world_message_to_client( wld, "Trailing characters." );
+	if( refuse_arguments( wld, cmd, args ) )
 		return;
-	}
-
-	world_message_to_client( wld, "Commands:" );
-
-	for( i = 0; command_db[i].command; i++ )
-		len += strlen( command_db[i].command ) + 2;
-
-	line = malloc( len + 8 );
-	strcpy( line, "   " );
-
-	for( i = 0; command_db[i].command; i++ )
-	{
-		strcat( line, command_db[i].command );
-		if( command_db[i + 1].command )
-			strcat( line, ", " );
-	}
-	strcat( line, "." );
-
-	world_message_to_client( wld, line );
-	free( line );
-}
-
-
-
-static void command_quit( World *wld, char *args )
-{
-	/* Refuse if there are trailing characters */
-	if( args[0] != '\0' )
-	{
-		world_message_to_client( wld, "Trailing characters." );
-		return;
-	}
 
 	world_message_to_client( wld, "Closing connection." );
 	world_disconnect_client( wld );
-	wld->flags |= WLD_FDCHANGE;
 }
 
 
 
-static void command_shutdown( World *wld, char *args )
+static void command_shutdown( World *wld, char *cmd, char *args )
 {
-	/* Refuse if there are trailing characters */
-	if( args[0] != '\0' )
-	{
-		world_message_to_client( wld, "Trailing characters." );
+	if( refuse_arguments( wld, cmd, args ) )
 		return;
-	}
 
 	world_message_to_client( wld, "Shutting down." );
 	wld->flags |= WLD_QUIT;
@@ -262,17 +239,11 @@ static void command_shutdown( World *wld, char *args )
 
 
 
-static void command_connect( World *wld, char *args )
+static void command_connect( World *wld, char *cmd, char *args )
 {
 	int i;
-	char *line, *err;
-
-	/* Refuse if there are trailing characters */
-	if( args[0] != '\0' )
-	{
-		world_message_to_client( wld, "Trailing characters." );
-		return;
-	}
+	long backup_p = wld->port, port = wld->port;
+	char *line, *err, *backup_h = wld->host, *tmp;
 
 	/* Are we already connected? */
 	if( world_connected_to_server( wld ) )
@@ -281,26 +252,40 @@ static void command_connect( World *wld, char *args )
 		return;
 	}
 
+	/* If there is an argument, use it as hostname */
+	if( ( tmp = get_one_word( &args ) ) )
+		wld->host = tmp;
+
+	/* If there's another argument, use that as the port */
+	if( ( tmp = get_one_word( &args ) ) )
+		port = atol( tmp );
+
 	/* Try and resolve */
-	world_message_to_client( wld, "Resolving host..." );
+	asprintf( &line, "Resolving host `%s'...", wld->host );
+	world_message_to_client( wld, line );
+	free( line );
 	world_flush_client_sbuf( wld );
 	i = world_resolve_server( wld, &err );
+
+	/* Restore the original hostname */
+	wld->host = backup_h;
+
 	if( i != EXIT_OK )
 	{
 		world_message_to_client( wld, err );
 		free( err );
 		return;
 	}
-	/* Display that resolving succeeded */
-	asprintf( &line, "`%s' resolved to %s", wld->host,
-			wld->ipv4_address );
+
+	/* Try and connect. Set and restore the overriding port. */
+	asprintf( &line, "Connecting to %s, port %li...",
+			wld->ipv4_address, port );
 	world_message_to_client( wld, line );
 	free( line );
-
-	/* Try and connect */
-	world_message_to_client( wld, "Connecting to host..." );
 	world_flush_client_sbuf( wld );
+	wld->port = port;
 	i = world_connect_server( wld, &err );
+	wld->port = backup_p;
 	if( i != EXIT_OK )
 	{
 		world_message_to_client( wld, err );
@@ -314,41 +299,38 @@ static void command_connect( World *wld, char *args )
 	asprintf( &line, "Connected to world %s", wld->name );
 	world_message_to_client( wld, line );
 	free( line );
+
+	if( wld->log_fd == -1 )
+		world_log_init( wld );
+
+	wld->mcp_negotiated = 0;
 }
 
 
 
-static void command_disconnect( World *wld, char *args )
+static void command_disconnect( World *wld, char *cmd, char *args )
 {
-	/* Refuse if there are trailing characters */
-	if( args[0] != '\0' )
-	{
-		world_message_to_client( wld, "Trailing characters." );
+	if( refuse_arguments( wld, cmd, args ) )
 		return;
-	}
 
 	/* See if we're connected at all. */
 	if( world_connected_to_server( wld ) )
 		world_message_to_client( wld, "Disconnected." );
 	else
-		world_message_to_client( wld, "Not connected.." );
+		world_message_to_client( wld, "Not connected." );
 
 	world_disconnect_server( wld );
 }
 
 
 
-static void command_options( World *wld, char *args )
+static void command_listopts( World *wld, char *cmd, char *args )
 {
 	char *line, **list;
 	int i, num;
 
-	/* Refuse if there are trailing characters */
-	if( args[0] != '\0' )
-	{
-		world_message_to_client( wld, "Trailing characters." );
+	if( refuse_arguments( wld, cmd, args ) )
 		return;
-	}
 
 	world_message_to_client( wld, "Options:" );
 
@@ -375,43 +357,84 @@ static void command_options( World *wld, char *args )
 
 
 
-static void command_showopts( World *wld, char *args )
+static void command_getopt( World *wld, char *cmd, char *args )
 {
-	char *str, *line, **list;
-	int i, num, r;
+	char *line, *val;
 
-	/* Refuse if there are trailing characters */
-	if( args[0] != '\0' )
+	args = trim_whitespace( args );
+
+	if( !*args )
 	{
-		world_message_to_client( wld, "Trailing characters." );
+		world_message_to_client( wld, "Use: getopt <option>" );
 		return;
 	}
 
-	world_message_to_client( wld, "Options:" );
-
-	num = world_get_key_list( wld, &list );
-
-	for( i = 0; i < num; i++ )
+	switch( world_get_key( wld, args, &val ) )
 	{
-		r = world_get_key( wld, list[i], &str );
-		if( r )
-		{
-			free( list[i] );
-			continue;
-		}
-		asprintf( &line, "  %s: %s", list[i], str );
-		world_message_to_client( wld, line );
-		free( line );
-		free( list[i] );
-		free( str );
+		case 0:
+		asprintf( &line, "The option `%s' is `%s'.", args, val );
+		free( val );
+		break;
+
+		case 1:
+		asprintf( &line, "No such option, `%s'.", args );
+		break;
+
+		case 2:
+		asprintf( &line, "The option `%s' cannot be read.", args );
+		break;	
 	}
 
-	free( list );
+	world_message_to_client( wld, line );
+	free( line );
 }
 
 
 
-static void command_pass( World *wld, char *args )
+static void command_setopt( World *wld, char *cmd, char *args )
+{
+	char *line, *key, *val;
+
+	key = args = trim_whitespace( args );
+
+	while( *args && !isspace( *args ) )
+		args++;
+
+	if( !*args )
+	{
+		world_message_to_client( wld, "Use: setopt <option> <value>" );
+		return;
+	}
+
+	*args++ = '\0';
+
+	while( *args && isspace( *args ) )
+		args++;
+
+	val = remove_enclosing_quotes( args );
+
+	switch( world_set_key( wld, key, val ) )
+	{
+		case 0:
+		asprintf( &line, "The option `%s' is now `%s'.", key, val );
+		break;
+
+		case 1:
+		asprintf( &line, "No such option, `%s'.", args );
+		break;
+
+		case 2:
+		asprintf( &line, "The option `%s' cannot be written.", args );
+		break;	
+	}
+
+	world_message_to_client( wld, line );
+	free( line );
+}
+
+
+
+static void command_pass( World *wld, char *cmd, char *args )
 {
 	char *str;
 	int on;
@@ -454,37 +477,7 @@ static void command_pass( World *wld, char *args )
 
 
 
-static void command_block( World *wld, char *args )
-{
-	char *str;
-	int on;
-
-	str = trim_whitespace( strdup( args ) );
-	on = true_or_false( str );
-	free( str );
-
-	switch( on )
-	{
-	case 0:
-		wld->flags &= ~WLD_BLOCKSRV;
-		world_message_to_client( wld, "Block is off." );
-		break;
-	case 1:
-		wld->flags |= WLD_BLOCKSRV;
-		world_message_to_client( wld, "Block is on." );
-		break;
-	default:
-		asprintf( &str, "Block is %s.", wld->flags & WLD_BLOCKSRV ?
-				"on" : "off" );
-		world_message_to_client( wld, str );
-		free( str );
-		break;
-	}
-}
-
-
-
-static void command_recall( World *wld, char *args )
+static void command_recall( World *wld, char *cmd, char *args )
 {
 	int c = atoi( args ), i;
 	char *str;
@@ -520,23 +513,31 @@ static void command_recall( World *wld, char *args )
 
 
 
-static void command_version( World *wld, char *args )
+static void command_version( World *wld, char *cmd, char *args )
 {
+	if( refuse_arguments( wld, cmd, args ) )
+		return;
+
 	world_message_to_client( wld, "Mooproxy version " VERSIONSTR "." );
 }
 
 
 
-static void command_date( World *wld, char *args )
+static void command_date( World *wld, char *cmd, char *args )
 {
 	char *str, *tme;
 	time_t t;
 	size_t len;
 
+	if( refuse_arguments( wld, cmd, args ) )
+		return;
+
 	t = time( NULL );
 	tme = strdup( ctime( &t ) );
 	len = strlen( tme );
 
+	/* Sigh. Whoever thought it was a good idea to let ctime() return
+	 * a string with \n in it should be shot */
 	if( len > 0 && tme[len - 1] == '\n' )
 		tme[len - 1] = '\0';
 

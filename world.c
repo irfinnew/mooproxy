@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <stdio.h> /* FIXME: remove */
+#include <time.h>
 
 #include "world.h"
 #include "global.h"
@@ -32,10 +32,11 @@
 #include "network.h"
 #include "command.h"
 #include "mcp.h"
+#include "log.h"
 
 
 
-/* This function creates a world by allocating memory and initialises
+/* This function creates a world by allocating memory and initialising
  * some variables. */
 World* world_create( char *wldname )
 {
@@ -55,12 +56,9 @@ World* world_create( char *wldname )
 
 	/* Authentication related stuff */
 	wld->authstring = NULL;
+	wld->auth_connections = 0;
 	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
-	{
-		wld->auth_fd[i] = -1;
-		wld->auth_read[i] = 0;
 		wld->auth_buf[i] = malloc( 1024 );
-	}
 
 	/* Data related to the server connection */
 	wld->host = NULL;
@@ -86,6 +84,9 @@ World* world_create( char *wldname )
 	wld->client_rbfull = 0;
 	wld->client_sbuffer = malloc( NET_BBUFFER_LEN );
 	wld->client_sbfull = 0;
+
+	/* Miscellaneous */
+	wld->log_fd = -1;
 
 	/* MCP stuff */
 	wld->mcp_negotiated = 0;
@@ -134,6 +135,8 @@ void world_destroy( World *wld )
 	/* Options */
 	free( wld->commandstring );
 	free( wld->infostring );
+
+	/* Miscellaneous */
 
 	/* MCP stuff */
 	free( wld->mcp_key );
@@ -208,6 +211,7 @@ extern void world_message_to_client_buf( World *wld, char *str )
 	strcat( line->str, str );
 	strcat( line->str, MESSAGE_TERMINATOR );
 
+	world_log_server_line( wld, line );
 	linequeue_append( wld->buffered_text, line );
 }
 
@@ -229,12 +233,6 @@ extern void world_handle_client_queue( World *wld )
 		{
 			world_do_mcp_client( wld, line );
 		}				
-		else if( wld->flags & WLD_BLOCKSRV )
-		{
-			world_message_to_client( wld, "World is blocked." );
-			free( line->str );
-			free( line );
-		}
 		else
 		{
 			linequeue_append( wld->server_slines, line );
@@ -255,6 +253,7 @@ extern void world_handle_server_queue( World *wld )
 		else
 		{
 			line->store = 1;
+			world_log_server_line( wld, line );
 			linequeue_append( wld->buffered_text, line );
 		}
 }
@@ -299,4 +298,22 @@ extern void world_store_history_line( World *wld, Line *line )
 		free( l->str );
 		free( l );
 	}	
+}
+
+
+
+/* Should be called approx. once each second, with the current time
+ * as argument. Will handle periodic / scheduled events. */
+extern void world_timer_tick( World *wld, time_t t )
+{
+	static int previous = -1;
+	struct tm *tms;
+
+	tms = localtime( &t );
+	if( tms->tm_mday == previous )
+		return;
+
+	previous = tms->tm_mday;
+	world_log_init( wld );
+	world_message_to_client_buf( wld, time_string( t, "Day changed to %A %d %b %Y." ) );
 }

@@ -26,16 +26,14 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "misc.h"
 
 
 
 #define MAX_STRERROR_LEN 128
-
-
-
-static char strerror_buf[MAX_STRERROR_LEN];
+#define MAX_TIMESTR_LEN 128
 
 
 
@@ -75,7 +73,8 @@ int asprintf( char **strp, char *format, ... )
 
 
 /* This function gets the users homedir from the environment and returns it.
- * The string is strdup()ped, so it should be free()d. */
+ * The string is strdup()ped, so it should be free()d.
+ * The string will either be empty, or /-terminated */
 char *get_homedir( void )
 {
 	char *tmp;
@@ -99,7 +98,8 @@ char *get_homedir( void )
 /* Returns the given string, up to but excluding the first newline.
  * The given pointer is set to point to the first character after the
  * newline.
- * When there is nothing left, it returns NULL */
+ * When there is nothing left, it returns NULL
+ * The returned lines are separately allocated. */
 char *read_one_line( char **str )
 {
 	char *s, b, *line;
@@ -122,6 +122,37 @@ char *read_one_line( char **str )
 
 	*str = s;
 	return line;
+}
+
+
+
+/* Returns the given string, up to but excluding the first whitespace char.
+ * The given pointer is set to point to the first character after the
+ * whitespace character.
+ * When there is nothing left, it returns NULL
+ * The string pointed to is mangled, returned words are still inside. */
+char *get_one_word( char **str )
+{
+	char *s = *str, *word;
+
+	while( isspace( *s ) )
+		s++;
+
+	if( *s == '\0' )
+		return NULL;
+
+	while( !isspace( *s ) && *s != '\0' )
+		s++;
+
+	if( isspace( *s ) )
+		*s++ = '\0';
+	else
+		*s = '\0';
+
+	word = *str;
+
+	*str = s;
+	return word;
 }
 
 
@@ -150,7 +181,7 @@ char *strip_all_whitespace( char *line )
 		}
 	}
 
-	return realloc( line, t ? t : 1 );
+	return line;
 }
 
 
@@ -180,7 +211,7 @@ char *trim_whitespace( char *line )
 
 	line[t] = '\0';
 
-	return realloc( line, ++t );
+	return line;
 }
 
 
@@ -212,10 +243,8 @@ extern char *remove_enclosing_quotes( char *str )
 /* Converts an entire string to lowercase and returns the modified string */
 char *lowercase( char *str )
 {
-	size_t i, l = strlen( str );
-
-	for( i = 0; i < l; i++ )
-		str[i] = tolower( str[i] );
+	for( ; *str; str++ )
+		*str = tolower( *str );
 
 	return str;
 }
@@ -253,6 +282,7 @@ int true_or_false( char *str )
 /* Exactly like strerror(), except for the fucking irritating trailing \n */
 extern char *strerror_n( int err )
 {
+	static char strerror_buf[MAX_STRERROR_LEN];
 	char *str;
 	size_t len;
 
@@ -266,6 +296,22 @@ extern char *strerror_n( int err )
 		strerror_buf[len - 1] = '\0';
 	
 	return strerror_buf;
+}
+
+
+
+/* Convert the given time to a formatted string in local time.
+ * For the format, see strftime(3) .
+ * It returns a pointer to a statically allocated buffer. */
+extern char *time_string( time_t t, char *fmt )
+{
+	static char timestr_buf[MAX_TIMESTR_LEN];
+	struct tm *tms;
+
+	tms = localtime( &t );
+	strftime( timestr_buf, MAX_TIMESTR_LEN, fmt, tms );
+
+	return timestr_buf;
 }
 
 

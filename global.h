@@ -27,13 +27,14 @@
 
 
 /* Mooproxy version */
-#define VERSIONSTR "0.0.4"
+#define VERSIONSTR "0.0.5"
 
 /* Configuration paths */
 #define CONFIGDIR ".mooproxy/"
 #define WORLDSDIR ".mooproxy/worlds/"
 #define LOGSDIR ".mooproxy/logs/"
 #define LOCKSDIR ".mooproxy/locks/"
+#define LOG_EXTENSION ".log"
 
 /* Exit codes */
 #define EXIT_OK 0
@@ -58,7 +59,7 @@
 
 /* Maximum number of authenticating connections */
 #define NET_MAXAUTHCONN 4
-/* Maximum number of characters accepted from a authenticating client.
+/* Maximum number of characters accepted from an authenticating client.
  * This effectively also limits the authstring length */
 #define NET_MAXAUTHLEN 1024
 /* Various network messages */

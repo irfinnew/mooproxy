@@ -252,7 +252,7 @@ int world_load_config( World *wld, char **err )
 			key = trim_whitespace( key );
 			value = trim_whitespace( value );
 
-			/* Strip off a single leading and trailing " */
+			/* Strip off a single leading and trailing quote */
 			value = remove_enclosing_quotes( value );
 
 			if( add_key_value( wld, key, value, 0 ) )

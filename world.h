@@ -26,6 +26,8 @@
 
 
 
+#include <time.h>
+
 #include "global.h"
 #include "misc.h"
 
@@ -34,7 +36,6 @@
 #define WLD_FDCHANGE 0x01
 #define WLD_QUIT 0x02
 #define WLD_PASSTEXT 0x04
-#define WLD_BLOCKSRV 0x08
 
 
 
@@ -52,6 +53,7 @@ struct _World
 
 	/* Authentication related stuff */
 	char *authstring;
+	int auth_connections;
 	int auth_fd[NET_MAXAUTHCONN];
 	int auth_read[NET_MAXAUTHCONN];
 	char *auth_buf[NET_MAXAUTHCONN];
@@ -81,6 +83,9 @@ struct _World
 	char *client_sbuffer;
 	long client_sbfull;
 
+	/* Miscellaneous */
+	int log_fd;	
+
 	/* MCP stuff */
 	int mcp_negotiated;
 	char *mcp_key;
@@ -101,7 +106,7 @@ extern World *world_create( char * );
 extern void world_destroy( World * );
 
 /* This function takes a worldname as argument and returns the filename
- * The string is strdup()ped, so it can bee free()d. */
+ * The string is strdup()ped, so it can be free()d. */
 extern void world_configfile_from_name( World * );
 
 /* Queue a line for transmission to the client, and prefix the line with
@@ -128,6 +133,10 @@ extern void world_pass_buffered_text( World *, long );
 /* Store the line in the history buffer, pushing out lines on the
  * other end if space runs tight. */
 extern void world_store_history_line( World *, Line * );
+
+/* Should be called approx. once each second, with the current time
+ * as argument. Will handle periodic / scheduled events. */
+extern void world_timer_tick( World *, time_t );
 
 
 

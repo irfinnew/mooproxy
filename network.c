@@ -34,7 +34,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <stdio.h> /* FIXME: remove */
-#include <stdlib.h> /* FIXME: remove? */
+#include <stdlib.h>
+#include <time.h>
 
 #include "network.h"
 #include "global.h"
@@ -51,9 +52,11 @@
 static int create_fdset( fd_set *, World * );
 static void handle_listen_fd( World * );
 static void handle_auth_fd( World *, int );
+static void remove_auth_connection( World *, int, int );
+static void verify_authentication( World *, int );
 static void handle_client_fd( World * );
 static void handle_server_fd( World * );
-static void verify_authentication( World *, int );
+static int buffer_to_lines( char *, int, int, Linequeue * );
 
 
 
@@ -231,32 +234,39 @@ extern void world_disconnect_client( World *wld )
  * actual data over the connections. */
 void world_mainloop( World *wld )
 {
-	fd_set readset, rset, eset;
+	struct timeval tv;
+	fd_set readset, rset;
 	int high, i;
+	time_t last_checked = time( NULL ), ltime;
 
 	high = create_fdset( &readset, wld );
 
 	for(;;)
 	{
-		high = create_fdset( &eset, wld );
 		memcpy( &rset, &readset, sizeof( fd_set ) );
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 
-		/* FIXME: should check for errors */
-		select( high, &rset, NULL, &eset, NULL );
+		/* FIXME: should check for EBADF ? */
+		select( high, &rset, NULL, NULL, &tv );
 
 		if( wld->server_fd != -1 && FD_ISSET( wld->server_fd, &rset ) )
 			handle_server_fd( wld );
-		else if( wld->client_fd != -1 &&
-				FD_ISSET( wld->client_fd, &rset ) )
+
+		if( wld->client_fd != -1 && FD_ISSET( wld->client_fd, &rset ) )
 			handle_client_fd( wld );
-		else if( wld->listen_fd != -1 &&
-				FD_ISSET( wld->listen_fd, &rset ) )
+
+		if( wld->listen_fd != -1 && FD_ISSET( wld->listen_fd, &rset ) )
 			handle_listen_fd( wld );
-		else
-			for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
-				if( wld->auth_fd[i] != -1 && FD_ISSET(
-						wld->auth_fd[i], &rset ) )
-					handle_auth_fd( wld, i );
+
+		for( i = wld->auth_connections - 1; i >= 0; i-- )
+			if( FD_ISSET( wld->auth_fd[i], &rset ) )
+				handle_auth_fd( wld, i );
+
+		/* See if another second elapsed */
+		ltime = time( NULL );
+		if( ltime != last_checked )
+			world_timer_tick( wld, last_checked = ltime );
 
 		/* If the client is disconnected, turn pass off */
 		if( wld->client_fd == -1 )
@@ -303,10 +313,9 @@ int create_fdset( fd_set *set, World *wld )
 	high = wld->listen_fd > high ? wld->listen_fd : high;
 
 	/* Add the authenticating FDs */
-	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
+	for( i = wld->auth_connections - 1; i >= 0; i-- )
 	{
-		if( wld->auth_fd[i] != -1 )
-			FD_SET( wld->auth_fd[i], set );
+		FD_SET( wld->auth_fd[i], set );
 		high = wld->auth_fd[i] > high ? wld->auth_fd[i] : high;
 	}
 
@@ -335,19 +344,13 @@ static void handle_listen_fd( World *wld )
 		return;
 	}
 
-	/* Find a free auth slot. */
-	/* FIXME: if none are available, the oldest should be kicked */
-	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
-		if( wld->auth_fd[i] == -1 )
-			break;
+	/* If all auth slots are full, kick oldest */
+	if( wld->auth_connections == NET_MAXAUTHCONN )
+		remove_auth_connection( wld, 0, 0 );
 
-	if( i == -1 )
-	{
-		printf( "No more free auth_conns for new connection!\n" );
-		close( newfd );
-		return;
-	}
-
+	/* Use the next available slot */
+	i = wld->auth_connections++;
+	
 	wld->auth_fd[i] = newfd;
 	wld->auth_read[i] = 0;
 	write( newfd, NET_AUTHSTRING "\n", strlen( NET_AUTHSTRING "\n" ) );
@@ -360,49 +363,156 @@ static void handle_listen_fd( World *wld )
 
 /* Handle any events related to the authenticating connections. */
 /* FIXME: Inefficient, 1 syscall/character */
-static void handle_auth_fd( World *wld, int wauth )
+static void handle_auth_fd( World *wld, int wa )
 {
-	int i, n = 0;
-	char val;
+	int i, n;
 
-	/* Read characters */
-	for( i = wld->auth_read[wauth]; i < NET_MAXAUTHLEN; i++ )
-	{
-		n = read( wld->auth_fd[wauth], &val, 1 );
-		if( n < 1 || val == '\n' )
-			break;
-		wld->auth_buf[wauth][i] = val;
-	}
+	/* Read into the buffer */
+	n = read( wld->auth_fd[wa], wld->auth_buf[wa] +
+		wld->auth_read[wa], NET_MAXAUTHLEN - wld->auth_read[wa] );
 
-	/* Was the connection closed? */
+	if( n == -1 && ( errno == EINTR || errno == EAGAIN ) )
+		return;
+
+	/* Connection closed, or error */
 	if( n <= 0 )
 	{
-		close( wld->auth_fd[wauth] );
-		wld->auth_fd[wauth] = -1;
-		wld->flags |= WLD_FDCHANGE;
+		remove_auth_connection( wld, wa, 0 );
 		return;
 	}
 
-	wld->auth_read[wauth] = i;
+	for( i = wld->auth_read[wa]; i < wld->auth_read[wa] + n; i++ )
+		if( wld->auth_buf[wa][i] == '\n' )
+			break;
 
-	/* Read to many characters? */
-	if( i >= NET_MAXAUTHLEN )
+	/* If we didn't encounter a newline, and we didn't read
+	 * too many characters, return */
+	if( i == wld->auth_read[wa] + n && i < NET_MAXAUTHLEN )
 	{
-		write( wld->auth_fd[wauth], NET_AUTHFAIL "\n",
+		wld->auth_read[wa] += n;
+		return;
+	}
+
+	/* We encountered a newline or read too many characters */
+	wld->auth_read[wa] += n;
+	verify_authentication( wld, wa );
+	wld->flags |= WLD_FDCHANGE;
+}
+
+
+
+/* Close and remove one authentication connection from the array, shift
+ * the rest to make the array consecutive again, and decrease the counter.*/
+static void remove_auth_connection( World *wld, int wa, int donack )
+{
+	char *buf;
+	int i;
+
+	if( donack )
+		write( wld->auth_fd[wa], NET_AUTHFAIL "\n",
 				strlen( NET_AUTHFAIL "\n" ) );
-		close( wld->auth_fd[wauth] );
-		wld->auth_fd[wauth] = -1;
-		wld->flags |= WLD_FDCHANGE;
+
+	if( wld->auth_fd[wa] != -1 )
+		close( wld->auth_fd[wa] );
+
+	buf = wld->auth_buf[wa];
+
+	for( i = wa; i < wld->auth_connections - 1; i++ )
+	{
+		wld->auth_fd[i] = wld->auth_fd[i + 1];
+		wld->auth_read[i] = wld->auth_read[i + 1];
+		wld->auth_buf[i] = wld->auth_buf[i + 1];
+	}
+
+	wld->auth_connections--;
+	wld->auth_buf[wld->auth_connections] = buf;
+
+	wld->flags |= WLD_FDCHANGE;
+}
+
+
+
+/* Check the received buffer against the authstring.
+ * If they match, the current auth connection is transferred to client_fd.
+ * Otherwise, the auth connection is torn down. */
+/* FIXME: rewrite this. It's icky. */
+static void verify_authentication( World *wld, int wa )
+{
+	char *str;
+	int alen = strlen( wld->authstring );
+
+	/* If the authstring is nonexistent / empty, reject everything */
+	if( !wld->authstring || !wld->authstring[0] )
+	{
+		remove_auth_connection( wld, wa, 1 );
 		return;
 	}
 
-	/* Got a newline? */
-	if( val == '\n' )
+	/* We will only use the first (NET_MAXAUTHLEN - 2) chars */
+	alen = alen > NET_MAXAUTHLEN - 2 ? NET_MAXAUTHLEN - 2 : alen;
+
+	/* Is the authentication string correct? */
+	if( wld->auth_read[wa] < alen + 1 ||
+			strncmp( wld->auth_buf[wa], wld->authstring, alen ) )
 	{
-		verify_authentication( wld, wauth );
-		wld->flags |= WLD_FDCHANGE;
+		remove_auth_connection( wld, wa, 1 );
 		return;
 	}
+
+	/* Ignore a potential \r before the \n */
+	if( wld->auth_buf[wa][alen] == '\r' )
+		alen++;
+
+	/* If the (correct) authstring is not followed by \n, reject */
+	if( wld->auth_read[wa] < alen + 1 || wld->auth_buf[wa][alen] != '\n' )
+	{
+		remove_auth_connection( wld, wa, 1 );
+		return;
+	}
+	alen++;
+
+	/* Close the old connection */
+	if( wld->client_fd != -1 )
+	{
+		world_message_to_client( wld, NET_CONNTAKEOVER );
+		world_flush_client_sbuf( wld );
+		close( wld->client_fd );
+	}
+
+	/* If there's anything left, put it in the buffer and process it */
+	if( wld->auth_read[wa] > alen )
+	{
+		/* Copy it into the buffer */
+		memcpy( wld->client_rbuffer, wld->auth_buf[wa] + alen,
+			wld->auth_read[wa] - alen );
+		/* Process the buffer */
+		wld->client_rbfull = buffer_to_lines( wld->client_rbuffer,
+			0, wld->auth_read[wa] - alen, wld->client_rlines );
+	}
+	else
+		wld->client_rbfull = 0;
+
+	/* Transfer connection */
+	wld->client_fd = wld->auth_fd[wa];
+	wld->auth_fd[wa] = -1;
+	remove_auth_connection( wld, wa, 0 );
+
+	/* Confirm the connection to the authenticating client */
+	world_message_to_client( wld, NET_AUTHGOOD );
+
+	/* Inform about waiting lines and pass. */
+	wld->flags &= ~WLD_PASSTEXT;
+	asprintf( &str, "%li lines waiting. Pass is off.",
+			wld->buffered_text->count );
+	world_message_to_client( wld, str );
+	free( str );
+
+	/* Do the MCP reset, so MCP is set up correctly */
+	if( wld->server_fd != -1 )
+		world_send_mcp_reset( wld );
+
+	/* In case there was something left in the buffer, process that now */
+	world_handle_client_queue( wld );
 }
 
 
@@ -410,8 +520,8 @@ static void handle_auth_fd( World *wld, int wauth )
 /* Handle any events related to the client connection. */
 static void handle_client_fd( World *wld )
 {
-	int i, n, last = 0, offset = wld->client_rbfull;
-	char *s, *t, *buffer = wld->client_rbuffer;
+	int n, offset = wld->client_rbfull;
+	char *s, *buffer = wld->client_rbuffer;
 
 	/* If the bbuffer is full, pass the entire contents as one line */
 	if( offset == NET_BBUFFER_LEN )
@@ -452,27 +562,8 @@ static void handle_client_fd( World *wld )
 		return;
 	}
 
-	s = buffer;
-	for( i = offset; i < offset + n; i++ )
-		if( buffer[i] == '\n' )
-		{
-			last = i - last + 1;
-			t = malloc( last + 1 );
-			memcpy( t, s, last );
-			t[last] = '\0';
-			linequeue_append( wld->client_rlines,
-					line_create( t, last ) );
-
-			s = buffer + i + 1;
-			last = i + 1;
-		}
-
-	/* Shift the remaining buffer to the start.
-	 * A ringbuffer would be better. */
-	for( i = last; i < offset + n; i++ )
-		buffer[i - last] = buffer[i];
-
-	wld->client_rbfull = offset + n - last;
+	wld->client_rbfull =
+		buffer_to_lines( buffer, offset, n, wld->client_rlines );
 
 	/* Actually do something with the received lines */
 	world_handle_client_queue( wld );
@@ -483,8 +574,8 @@ static void handle_client_fd( World *wld )
 /* Handle any events related to the server connection. */
 static void handle_server_fd( World *wld )
 {
-	int err, i, n, last = 0, offset = wld->server_rbfull;
-	char *str, *s, *t, *buffer = wld->server_rbuffer;
+	int err, n, offset = wld->server_rbfull;
+	char *str, *s, *buffer = wld->server_rbuffer;
 
 	/* If the bbuffer is full, pass the entire contents as one line */
 	if( offset == NET_BBUFFER_LEN )
@@ -536,28 +627,8 @@ static void handle_server_fd( World *wld )
 		return;
 	}
 
-	/* Find the newlines, and process the line so far if we found one */
-	s = buffer;
-	for( i = offset; i < offset + n; i++ )
-		if( buffer[i] == '\n' )
-		{
-			last = i - last + 1;
-			t = malloc( last + 1 );
-			memcpy( t, s, last );
-			t[last] = '\0';
-			linequeue_append( wld->server_rlines,
-					line_create( t, last ) );
-
-			s = buffer + i + 1;
-			last = i + 1;
-		}
-
-	/* Shift the remaining buffer to the start.
-	 * A ringbuffer would be better. */
-	for( i = last; i < offset + n; i++ )
-		buffer[i - last] = buffer[i];
-
-	wld->server_rbfull = offset + n - last;
+	wld->server_rbfull =
+		buffer_to_lines( buffer, offset, n, wld->server_rlines );
 
 	/* Actually do something with the received lines */
 	world_handle_server_queue( wld );
@@ -565,70 +636,32 @@ static void handle_server_fd( World *wld )
 
 
 
-/* Check the received buffer against the authstring.
- * If they match, the current auth connection is transferred to client_fd.
- * Otherwise, the auth connection is torn down. */
-static void verify_authentication( World *wld, int wauth )
+/* Process the given buffer into lines. Start scanning at offset, scan
+ * only read bytes. The salvaged lines are appended to queue.
+ * Return the new offset. */
+static int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q )
 {
-	char *str;
-	int alen, slen;
+	int i, last = 0;
+	char *t, *s = buffer;
 
-	/* If the authstring is nonexistent / empty, reject everything */
-	if( !wld->authstring || !wld->authstring[0] )
-	{
-		write( wld->auth_fd[wauth], NET_AUTHFAIL "\n",
-				strlen( NET_AUTHFAIL "\n" ) );
-		close( wld->auth_fd[wauth] );
-		wld->auth_fd[wauth] = -1;
-		return;
-	}
+	for( i = offset; i < offset + read; i++ )
+		if( buffer[i] == '\n' )
+		{
+			last = i - last + 1;
+			t = malloc( last + 1 );
+			memcpy( t, s, last );
+			t[last] = '\0';
+			linequeue_append( q, line_create( t, last ) );
 
-	alen = strlen( wld->authstring );
-	slen = wld->auth_read[wauth];
+			s = buffer + i + 1;
+			last = i + 1;
+		}
 
-	/* If the client sent \r\n, the \r should be dropped */
-	if( slen > 0 && wld->auth_buf[wauth][slen - 1] == '\r' )
-		slen--;
+	/* Shift the remaining buffer to the start. */
+	for( i = last; i < offset + read; i++ )
+		buffer[i - last] = buffer[i];
 
-	/* Is the authentication string correct? */
-	if( slen != alen ||
-			strncmp( wld->auth_buf[wauth], wld->authstring, alen ) )
-	{
-		write( wld->auth_fd[wauth], NET_AUTHFAIL "\n",
-				strlen( NET_AUTHFAIL "\n" ) );
-		close( wld->auth_fd[wauth] );
-		wld->auth_fd[wauth] = -1;
-		return;
-	}
-
-	/* Close the old connection */
-	if( wld->client_fd != -1 )
-	{
-		world_message_to_client( wld, NET_CONNTAKEOVER );
-		world_flush_client_sbuf( wld );
-		close( wld->client_fd );
-	}
-
-	/* Transfer connection */
-	wld->client_fd = wld->auth_fd[wauth];
-	wld->auth_fd[wauth] = -1;
-
-	/* Start with empty block buffer */
-	wld->client_rbfull = 0;
-
-	/* Confirm the connection to the authenticating client */
-	world_message_to_client( wld, NET_AUTHGOOD );
-
-	/* Inform about waiting lines and pass. */
-	wld->flags &= ~WLD_PASSTEXT;
-	asprintf( &str, "%li lines waiting. Pass is off.",
-			wld->buffered_text->count );
-	world_message_to_client( wld, str );
-	free( str );
-
-	/* Do the MCP reset, so MCP is set up correctly */
-	if( wld->server_fd != -1 )
-		world_send_mcp_reset( wld );
+	return offset + read - last;
 }
 
 
