@@ -27,7 +27,7 @@
 
 
 /* Mooproxy version */
-#define VERSIONSTR "0.0.2"
+#define VERSIONSTR "0.0.3"
 
 /* Configuration paths */
 #define CONFIGDIR ".mooproxy/"

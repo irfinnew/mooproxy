@@ -227,6 +227,14 @@ static int factor_mcp_get_keyval( char **linep, char **key, char **val )
 			quote = 0;
 	}
 
+	/* Well, this is hacky. It chokes on multiline MCP with i = 0.
+	 * So let's just discard it :) */
+	if( i == 0 )
+	{
+		free( *key );
+		return 2;
+	}
+
 	/* Did we find a closing quote ? */
 	if( line[i] == '\n' )
 	{

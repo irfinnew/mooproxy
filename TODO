@@ -1,5 +1,5 @@
+* Seriously improve MCP code
 * "Authentication succesful" prependen in client_slines?
-* MCP support
 * Notify client if there are new lines and pass is off
 * Print context-lines on connect
 * Logging

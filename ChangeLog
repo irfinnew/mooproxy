@@ -1,3 +1,10 @@
+15-04-2004  -  0.0.3
+--------------------
+Oops, 0.0.2 SEGVs if the client sends multilines to the server. That's
+fixed (well, workarounded... Improve the MCP code is on the Todo) now.
+
+
+
 15-04-2004  -  0.0.2
 --------------------
 Prelimary MCP support. Mooproxy understands enough MCP to inject messages
