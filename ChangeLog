@@ -1,3 +1,29 @@
+19-07-2005  -  0.0.6
+--------------------
+* The infrastructure and main loop architecture have gotten a major overhaul
+* Regression: the output "resolving" and "connecting" steps of the /connect
+  command now only get reported to the user simultaneously, after the process
+  has completely succeeded or completely failed.
+* Mooproxy now automatically recalls and passes on connect
+* Removed command: /pass
+* New option: strict_commands. Determines what to do with invalid commands
+* New option: context_on_connect. The number of context lines you get
+* New option: max_buffered_size. The number of KB dedicated to buffer
+* New option: max_history_size. The number of KB dedicated to history
+* New option: logging_enabled. Determines if mooproxy logs.
+* Option parsing/management has been rewritten
+* Mooproxy now displays how full the buffer was in percent on connect
+* New command: /world. Prints the name of the current world
+* New command: /uptime. Reports starting date and running time
+* The output from /listopts is now limited to roughly 72 chars
+* The maximum linelength has been decreased from 100kb to 8kb
+* Mooproxy now ignores SIGHUP (so it continues running if parent dies)
+* MCP reset is now silent
+* Config dirs are now created with mode 700 instead of 750
+* Fixed bug in logging code. Extended ASCII chars are now logged too.
+
+
+
 29-04-2004  -  0.0.5
 --------------------
 * Forget MCP session on connect-to-server, so that MCP reset works properly

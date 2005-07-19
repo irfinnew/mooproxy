@@ -30,20 +30,34 @@
 
 
 
+#define LINE_DONTLOG 0x01
+#define LINE_DONTBUF 0x02
+#define LINE_NOHIST 0x04
+
+#define LINE_REGULAR ( 0 )
+#define LINE_MCP ( LINE_DONTLOG | LINE_DONTBUF | LINE_NOHIST )
+#define LINE_CHECKPOINT ( 0 )
+#define LINE_MESSAGE ( LINE_DONTLOG | LINE_NOHIST )
+#define LINE_BUFFERED ( LINE_DONTLOG )
+#define LINE_HISTORY ( LINE_DONTLOG | LINE_DONTBUF | LINE_NOHIST )
+
+
+
 typedef struct _Line Line;
 struct _Line
 {
 	char *str;
 	long len;
 	Line *next;
-	char store;
+	Line *prev;
+	int flags;
 };
 
 typedef struct _Linequeue Linequeue;
 struct _Linequeue
 {
-	Line *lines;
-	Line **tail;
+	Line *head;
+	Line *tail;
 	ulong count;
 	ulong length;
 };
@@ -103,8 +117,15 @@ extern char *strerror_n( int );
  * It returns a pointer to a statically allocated buffer. */
 extern char *time_string( time_t, char * );
 
-/* Create a line */
+/* Create a line, flags are clear, prev/next are NULL.
+ * If length is -1, it's calculated. */
 extern Line *line_create( char *, long );
+
+/* Destroy a line, freeing its resources */
+extern void line_destroy( Line * );
+
+/* Return a duplicate of the line (prev/next are NULL). */
+extern Line *line_dup( Line * );
 
 /* Allocate and initialize a line queue */
 extern Linequeue *linequeue_create( void );
@@ -115,12 +136,23 @@ extern void linequeue_destroy( Linequeue * );
 /* Clear all lines in the queue */
 extern void linequeue_clear( Linequeue * );
 
+/* Prepend a line to the start of the queue */
+extern void linequeue_prepend( Linequeue *, Line * );
+
 /* Append a line to the end of the queue */
 extern void linequeue_append( Linequeue *, Line * );
 
 /* Return the first line at the beginning of the queue. NULL if no line.
- * The next field in the returned line is garbage. */
+ * The next/prev fields in the returned line are garbage. */
 extern Line* linequeue_pop( Linequeue * );
+
+/* Return the last line at the end of the queue. NULL if no line.
+ * The next/prev fields in the returned line are garbage. */
+extern Line* linequeue_chop( Linequeue * );
+
+/* Merge the two queues. The contents of the second queue is appended
+ * to the first one, leaving the second one empty. */
+extern void linequeue_merge( Linequeue *, Linequeue * );
 
 
 

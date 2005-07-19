@@ -21,24 +21,19 @@
 
 
 
-#ifndef MOOPROXY__HEADER__LOG
-#define MOOPROXY__HEADER__LOG
+#ifndef MOOPROXY__HEADER__TIMER
+#define MOOPROXY__HEADER__TIMER
 
 
 
-#include "world.h"
+#include <time.h>
 
 
 
-enum logmodes { LOG_NONE, LOG_ONE_FILE, LOG_MONTHLY, LOG_DAILY };
+/* Should be called approx. once each second, with the current time
+ * as argument. Will handle periodic / scheduled events. */
+extern void world_timer_tick( World *, time_t );
 
 
 
-/* FIXME: comments */
-extern int world_log_init( World * );
-extern void world_log_close( World * );
-extern void world_flush_client_logqueue( World * );
-
-
-
-#endif  /* ifndef MOOPROXY__HEADER_LOG */
+#endif  /* ifndef MOOPROXY__HEADER__TIMER */

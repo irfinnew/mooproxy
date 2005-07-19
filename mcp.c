@@ -71,7 +71,7 @@ extern void world_do_mcp_client( World *wld, Line *line )
 	str = strdup( line->str );
 	len = line->len;
 
-	linequeue_append( wld->server_slines, line );
+	linequeue_append( wld->server_txqueue, line );
 
 	msg = factor_mcp_msg( str, len );
 
@@ -87,7 +87,6 @@ extern void world_do_mcp_client( World *wld, Line *line )
 		for( i = 0; i < msg->nkv; i++ )
 			if( !strcmp( msg->keys[i], "authentication-key" ) )
 			{
-				world_message_to_client( wld, "Got MCP key!" );
 				free( wld->mcp_key );
 				wld->mcp_key = strdup( msg->vals[i] );
 			}
@@ -95,15 +94,12 @@ extern void world_do_mcp_client( World *wld, Line *line )
 	/* Check for negotiate-can */
 	if( !wld->mcp_negotiated && !strcmp( msg->name, "mcp-negotiate-can" ) )
 	{
-		world_message_to_client( wld, "Caught mcp-negotiate-can! "
-				"Meddling..." );
-
 		wld->mcp_negotiated = 1;
 
 		asprintf( &tmp, "#$#mcp-negotiate-can %s package: "
 				"dns-nl-icecrew-mcpreset min-version: 1.0 "
 				"max-version: 1.0\n", wld->mcp_key );
-		linequeue_append( wld->server_slines, line_create( tmp, -1 ) );
+		linequeue_append( wld->server_txqueue, line_create( tmp, -1 ) );
 	}
 
 	free( str );
@@ -115,7 +111,8 @@ extern void world_do_mcp_client( World *wld, Line *line )
 /* Handle MCP from the server. The line will be reused or freed. */
 extern void world_do_mcp_server( World *wld, Line *line )
 {
-	linequeue_append( wld->client_slines, line );
+	line->flags = LINE_MCP;
+	linequeue_append( wld->client_txqueue, line );
 }
 
 
@@ -328,26 +325,23 @@ extern void world_send_mcp_reset( World *wld )
 	/* If the MCP negotiation has not taken place, do it now. */
 	if( !wld->mcp_negotiated )
 	{
-		world_message_to_client( wld, "No MCP session, negotiating "
-				"now." );
 		str = strdup( "#$#mcp authentication-key: mehkey version: "
 				"1.0 to: 2.1\n" );
-		linequeue_append( wld->server_slines, line_create( str, -1 ) );
+		linequeue_append( wld->server_txqueue, line_create( str, -1 ) );
 		str = strdup( "#$#mcp-negotiate-can mehkey package: "
 				"dns-nl-icecrew-mcpreset min-version: 1.0 "
 				"max-version: 1.0\n" );
-		linequeue_append( wld->server_slines, line_create( str, -1 ) );
+		linequeue_append( wld->server_txqueue, line_create( str, -1 ) );
 		str = strdup( "#$#mcp-negotiate-end mehkey\n" );
-		linequeue_append( wld->server_slines, line_create( str, -1 ) );
+		linequeue_append( wld->server_txqueue, line_create( str, -1 ) );
 
 		free( wld->mcp_key );
 		wld->mcp_key = strdup( "mehkey" );
 	}
 
 	/* Send the MCP reset */
-	world_message_to_client( wld, "Sending MCP reset." );
 	asprintf( &str, "#$#dns-nl-icecrew-mcpreset-reset %s\n",wld->mcp_key );
-	linequeue_append( wld->server_slines, line_create( str, -1 ) );
+	linequeue_append( wld->server_txqueue, line_create( str, -1 ) );
 
 	free( wld->mcp_key );
 	wld->mcp_key = NULL;

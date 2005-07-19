@@ -38,6 +38,9 @@ extern int world_bind_port( World *, char ** );
  * On failure, it returns non-zero and places the error in the last arg. */
 extern int world_resolve_server( World *, char ** );
 
+/* Return 1 if we're connected to the client, 0 if not. */
+extern int world_connected_to_client( World * );
+
 /* Return 1 if we're connected to the server, 0 if not. */
 extern int world_connected_to_server( World * );
 
@@ -51,21 +54,21 @@ extern void world_disconnect_server( World * );
 /* This function disconnects the client. */
 extern void world_disconnect_client( World * );
 
-/* This is the mainloop. It listens for incoming connetions and handles the
- * actual data over the connections. */
-extern void world_mainloop( World * );
+/* Wait for data from the network or timeout.
+ * Parse data into lines, return lines to main loop. */
+extern void wait_for_network( World * );
 
 /* Try to flush the queued lines into the send buffer, and the send buffer
  * to the client. If this fails, leave the contents of the buffer in the
  * queued lines, mark the fd as write-blocked, and signal an FD change. */
-extern void world_flush_client_sbuf( World * );
+extern void world_flush_client_txbuf( World * );
 
 /* Try to flush the queued lines into the send buffer, and the send buffer
  * to the server. If this fails, leave the contents of the buffer in the
  * queued lines, mark the fd as write-blocked, and signal an FD change.
  * If the socket is closed, discard contents, and announce
  * disconnectedness. */
-extern void world_flush_server_sbuf( World * );
+extern void world_flush_server_txbuf( World * );
 
 
 

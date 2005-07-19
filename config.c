@@ -32,8 +32,9 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
-#include "config.h"
 #include "global.h"
+#include "config.h"
+#include "accessor.h"
 #include "misc.h"
 #include "world.h"
 
@@ -41,37 +42,69 @@
 
 #define SEPARATOR '='
 
-#define K_LONG 1
-#define K_BOOL 2
-#define K_STR 3
-
-#define K_HIDE 1
-#define K_NONE 2
-#define K_R 3
-#define K_W 4
-#define K_RW 5
 
 
+static char *print_help_text( void );
+static char *print_version_text( void );
+static char *print_license_text( void );
+static int set_key_value( World *, char *, char *, char ** );
+/* static int get_key_value( World *, char *, char ** ); */
+static int set_key_internal( World *, char *, char *, int, char ** );
+static int get_key_internal( World *, char *, char **, int );
+static int attempt_createdir( char *, char ** );
 
-static World defwld;
+
+
 static const struct
 {
+	int hidden;
 	char *keyname;
-	char type;
-	char access;
-	void *var;
+	int (*setter)( World *, char *, char *, int, char ** );
+	int (*getter)( World *, char *, char **, int );
 } key_db[] = {
-	{ "listenport",		K_LONG,	K_RW,	&defwld.listenport },
-	{ "authstring",		K_STR,	K_W,	&defwld.authstring },
 
-	{ "host",		K_STR,	K_RW,	&defwld.host },
-	{ "port",		K_LONG,	K_RW,	&defwld.port },
+	{ 0, "listenport",
+		&aset_listenport,
+		&aget_listenport },
+	{ 0, "authstring",
+		&aset_authstring,
+		&aget_authstring },
 
-	{ "commandstring",	K_STR,	K_RW,	&defwld.commandstring },
-	{ "infostring",		K_STR,	K_RW,	&defwld.infostring },
+	{ 0, "host",
+		&aset_dest_host,
+		&aget_dest_host },
+	{ 0, "port",
+		&aset_dest_port,
+		&aget_dest_port },
 
-	{ NULL, 0, 0, NULL }
+	{ 0, "commandstring",
+		&aset_commandstring,
+		&aget_commandstring },
+	{ 0, "infostring",
+		&aset_infostring,
+		&aget_infostring },
+
+	{ 0, "logging_enabled",
+		&aset_logging_enabled,
+		&aget_logging_enabled },
+
+	{ 0, "context_on_connect",
+		&aset_context_on_connect,
+		&aget_context_on_connect },
+	{ 0, "max_buffered_size",
+		&aset_max_buffered_size,
+		&aget_max_buffered_size },
+	{ 0, "max_history_size",
+		&aset_max_history_size,
+		&aget_max_history_size },
+
+	{ 0, "strict_commands",
+		&aset_strict_commands,
+		&aget_strict_commands },
+
+	{ 0, NULL, NULL, NULL }
 };
+
 static const char short_opts[] = ":hVLw:";
 static const struct option long_opts[] = {
 	{ "help", 0, NULL, 'h' },
@@ -80,21 +113,6 @@ static const struct option long_opts[] = {
 	{ "world", 1, NULL, 'w' },
 	{ NULL, 0, NULL, 0 }
 };
-
-
-
-static char *print_help_text( void );
-static char *print_version_text( void );
-static char *print_license_text( void );
-static int add_key_value( World *, char *, char *, int );
-static int get_key_value( World *, char *, char **, int );
-static void store_value_long( World *, void *, char * );
-static void store_value_bool( World *, void *, char * );
-static void store_value_string( World *, void *, char * );
-static void get_value_long( World *, void *, char ** );
-static void get_value_bool( World *, void *, char ** );
-static void get_value_string( World *, void *, char ** );
-static int attempt_createdir( char *, char ** );
 	
 
 
@@ -202,7 +220,7 @@ static char *print_license_text( void )
 int world_load_config( World *wld, char **err )
 {
 	int fd, i;
-	char *line, *key, *value, *s, *contents, *cnt;
+	char *line, *key, *value, *s, *contents, *cnt, *tmp;
 	long wline;
 	size_t l;
 	
@@ -221,7 +239,7 @@ int world_load_config( World *wld, char **err )
 		return EXIT_NOSUCHWORLD;
 	}
 
-	contents = cnt = malloc( 102400 );
+	contents = cnt = malloc( 102401 );
 	i = read( fd, contents, 102400 );
 	if( i == - 1 )
 	{
@@ -255,19 +273,37 @@ int world_load_config( World *wld, char **err )
 			/* Strip off a single leading and trailing quote */
 			value = remove_enclosing_quotes( value );
 
-			if( add_key_value( wld, key, value, 0 ) )
+			switch( set_key_value( wld, key, value, err ) )
 			{
+				case SET_KEY_NF:
 				asprintf( err, "%s: line %li: unknown key `%s'"
 					, wld->configfile, wline, key );
-				free( contents );
-				free( line );
-				free( key );
-				free( value );
-				return EXIT_CONFIGERR;
-			};
+				break;
+
+				case SET_KEY_PERM:
+				asprintf( err, "%s: line %li: setting key `%s'"
+					" not allowed.", wld->configfile,
+					wline, key );
+				break;
+
+				case SET_KEY_BAD:
+				tmp = *err;
+				asprintf( err, "%s: line %li: setting key `%s'"
+					": %s", wld->configfile, wline,
+					key, tmp );
+				free( tmp );
+				break;
+			}
 
 			free( key );
 			free( value );
+
+			if( *err )
+			{
+				free( contents );
+				free( line );
+				return EXIT_CONFIGERR;
+			}
 		}
 		else
 		{
@@ -296,7 +332,7 @@ extern int world_get_key_list( World *wld, char ***list )
 
 	for( i = 0; key_db[i].keyname; i++ )
 	{
-		if( key_db[i].access == K_HIDE )
+		if( key_db[i].hidden )
 			continue;
 
 		*list = realloc( *list, ++num * sizeof( char * ) );
@@ -310,157 +346,74 @@ extern int world_get_key_list( World *wld, char ***list )
 
 /* This function searches for the key name in the database. If it matches,
  * it places the value in the appropriate variable of the World.
- * On success, it returns 0.
- * If the key isn't found, it returns 1.
- * If the key cannot be written, it returns 2. */
-extern int world_set_key( World *wld, char *key, char *value )
+ * Returns SET_KEY_???
+ * When returning SET_KEY_BAD, the string pointer contains a message. */
+extern int world_set_key( World *wld, char *key, char *value, char **err )
 {
-	return add_key_value( wld, key, value, 1 );
+	return set_key_internal( wld, key, value, ASRC_USER, err );
 }
 
 
 
 /* This function searches for the key name in the database. If it matches,
  * it places the corresponding value in the string pointer.
- * On success, it returns 0.
- * If the key isn't found, it returns 1.
- * If the key cannot be read, it returns 2. */
+ * Returns GET_KEY_??? */
 extern int world_get_key( World *wld, char *key, char **value )
 {
-	return get_key_value( wld, key, value, 1 );
+	return get_key_internal( wld, key, value, ASRC_USER );
 }
 
 
 
-static int add_key_value( World *wld, char *key, char *value, int ac )
+extern int set_key_value( World *wld, char *key, char *value, char **err )
+{
+	return set_key_internal( wld, key, value, ASRC_FILE, err );
+}
+
+
+
+/* extern int get_key_value( World *wld, char *key, char **value )
+{
+	return get_key_internal( wld, key, value, ASRC_FILE );
+} */
+
+
+
+static int set_key_internal( World *wld, char *key, char *value, int src,
+		char **err )
+{
+	int i;
+
+	*err = NULL;
+
+	for( i = 0; key_db[i].keyname; i++ )
+		if( !strcmp( key, key_db[i].keyname ) )
+		{
+			if( key_db[i].hidden )
+				return SET_KEY_NF;
+
+			return (*key_db[i].setter)( wld, key, value, src, err );
+		}
+
+	return SET_KEY_NF;
+}
+
+
+
+static int get_key_internal( World *wld, char *key, char **value, int src )
 {
 	int i;
 
 	for( i = 0; key_db[i].keyname; i++ )
-	{
 		if( !strcmp( key, key_db[i].keyname ) )
 		{
-			if( ac && key_db[i].access == K_HIDE )
-				return 1;
+			if( key_db[i].hidden )
+				return GET_KEY_NF;
 
-			if( ac && key_db[i].access != K_W &&
-					key_db[i].access != K_RW )
-				return 2;
-
-			switch( key_db[i].type )
-			{
-			case K_LONG:
-				store_value_long( wld, key_db[i].var, value );
-				break;
-
-			case K_BOOL:
-				store_value_bool( wld, key_db[i].var, value );
-				break;
-
-			case K_STR:
-				store_value_string( wld, key_db[i].var,
-						value );
-				break;
-			}
-
-			return 0;
+			return (*key_db[i].getter)( wld, key, value, src );
 		}
-	};
 
-	return 1;
-}
-
-
-
-static int get_key_value( World *wld, char *key, char **value, int ac )
-{
-	int i;
-
-	for( i = 0; key_db[i].keyname; i++ )
-	{
-		if( !strcmp( key, key_db[i].keyname ) )
-		{
-			if( ac && key_db[i].access == K_HIDE )
-				return 1;
-
-			if( ac && key_db[i].access != K_R &&
-					key_db[i].access != K_RW )
-				return 2;
-
-			switch( key_db[i].type )
-			{
-			case K_LONG:
-				get_value_long( wld, key_db[i].var, value );
-				break;
-
-			case K_BOOL:
-				get_value_bool( wld, key_db[i].var, value );
-				break;
-
-			case K_STR:
-				get_value_string( wld, key_db[i].var,	value );
-				break;
-			}
-
-			return 0;
-		}
-	};
-
-	return 1;
-}
-
-
-
-void store_value_long( World *world, void *ptr, char *value )
-{
-	ptr = ( ptr - (void *) &defwld ) + (void *) world;
-	*(long *) ptr = strtol( value, NULL, 0 );
-}
-
-
-
-void store_value_bool( World *world, void *ptr, char *value )
-{
-	ptr = ( ptr - (void *) &defwld ) + (void *) world;
-	*(char *) ptr = true_or_false( value ) == 1 ? 1 : 0;
-}
-
-
-
-void store_value_string( World *world, void *ptr, char *value )
-{
-	ptr = ( ptr - (void *) &defwld ) + (void *) world;
-	free( *(char **) ptr );
-	*(char **) ptr = strdup( value );
-}
-
-
-
-void get_value_long( World *world, void *ptr, char **value )
-{
-	ptr = ( ptr - (void *) &defwld ) + (void *) world;
-	asprintf( value, "%li", *(long *) ptr );
-}
-
-
-
-void get_value_bool( World *world, void *ptr, char **value )
-{
-	ptr = ( ptr - (void *) &defwld ) + (void *) world;
-	if( *(char *) ptr == 0 )
-		*value = strdup( "true" );
-	else
-		*value = strdup( "false" );
-}
-
-
-
-void get_value_string( World *world, void *ptr, char **value )
-{
-	ptr = ( ptr - (void *) &defwld ) + (void *) world;
-	*value = NULL;
-	if( *(char **) ptr )
-		*value = strdup( *(char **) ptr );
+	return GET_KEY_NF;
 }
 
 
@@ -475,9 +428,7 @@ int create_configdirs( char **err )
 		return i;
 	if( ( i = attempt_createdir( LOGSDIR, err ) ) )
 		return i;
-	if( ( i = attempt_createdir( LOCKSDIR, err ) ) )
-		return i;
-	
+
 	return EXIT_OK;
 }
 
@@ -493,7 +444,7 @@ int attempt_createdir( char *dirname, char **err )
 	strcat( path, dirname );
 	free( homedir );
 	
-	if( !mkdir( path, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP ) )
+	if( !mkdir( path, S_IRUSR | S_IWUSR | S_IXUSR ) )
 	{
 		free( path );
 		return EXIT_OK;

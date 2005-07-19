@@ -1,38 +1,46 @@
-* Use alarm signal for timing purposes?
-* Make callback functions for server/client connect/disconnect.
-* Make select() check for writable FD's if there's congestion
+* Licentie veranderen naar GPL 2.0 specifiek?
+* Do newlines the right way (tm)
 * Merge multiple lines in one write()
-* Notify client if there are new lines and pass is off
-* Print context-lines on connect?
-* Logging
-* Make resolve and connect() non-blocking
+* Delimiters before/by recall and/or pass
+* Split up messages in "info" messages and "checkpoint" msgs
+* Errorchecking on logging; improve logging robustness in general (time checkpoint)
+* Timestamp lines, and allow timestamp-based recall ?
+* More context lines on lost connection
+* Print date on a lot of messages
+* Delayed MCP
+* Use alarm signal for timing purposes?
+* Make select() check for writable FD's if there's congestion
+* Make resolve and connect() non-blocking, also fix messaging
 * IPv6 support
 * Limit number of certain messages per <time>
 * /stats: running time, servconn time, clientconn time, totallines, lines since
 * Timeout on authenticating connections
 * When connection is taken over, print the address of overtaking client ?
-* At connect, print "last connected from <addr> at <time> ?
+* At connect, print "last connected from <addr> at <time>" ?
+* Better help, /help <cmd> etc
+* Daemonize (with option to stay on foreground)
+* Number of context lines depend on number of buffered lines waiting?
+* Not a fixed number of context lines, but anything from the previous xxx minuts?
 
 
+* Clean up function commentary / put variable names in function prototypes
+* Is src in the aset_* and aget_* functions redundant?
 * /escape or /quote command?
 * Disallow the proxy to connect to itself
-* client connect/disconnect hook? Server connect hook?
+* client/server connect/disconnect hook?
 * SSL support
 * MCP userlist in mooproxy
 * Multiple connections to one daemon ?
 * Multiple worlds with one daemon ?
+* Remember user and password (connectstring)
 * MD5 hash support for password
+* authstring-based encryption for connectstring?
 * Connection logging (also to stdout if not daemon)
 * Global 'master' config ?
 * Autoreconnect
-* Idle-protection
-* Option: strict-cmd
-* Day rollover
-* Timestamping
-* Daemonize (with option to stay on foreground)
-* Better help, /help <cmd> etc
+* Idle-protection ?
 * Perhaps it's possible to set socket options to make proxy-client connections
   time out more quickly. The quicker the proxy knows the connection is dead,
   the less lines will be sent into the void.
-* Prefix information from mooproxy with date/time?
 * Log compression?
+* Documentation!

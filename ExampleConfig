@@ -1,15 +1,45 @@
+# This is an example configuration file for mooproxy.
+# It contains all configurable options, all set to the same defaults that are
+# hardcoded into mooproxy.
+#
+# You need to change at least listenport, authstring, host and port before
+# you can use mooproxy.
+
+
+
 # The port to accept connections from clients on
-listenport = 2222
+listenport = -1
 # The authentication string clients must give after connecting
-authstring = blah
+authstring = ""
 
 # The address of the MOO server to connect to
-host = localhost
+host = ""
 # The port to connect to on the above host
-port = 1111
+port = -1
 
 # Lines starting with this string are interpreted as commands
-commandstring = /
+commandstring = "/"
 # Messages from mooproxy are prefixed by this (ANSI sequences allowed)
-# If you want the % to be red, try:  infostring = [0m[31m % [0m[37m
-infostring = ' % '
+# If you want the % to be red, try:  infostring = "[0m[31m% [0m[37m"
+infostring = "% "
+
+# Log output from the server to the client?
+logging_enabled = true
+
+# When a client connects, mooproxy can reproduce lines from history to
+# the client, in order to provide the user with context.
+# This setting sets the number of recalled lines.
+context_on_connect = 50
+# Lines received from the server when the client is not connected are
+# buffered. This setting limits the number of KB devoted to this.
+max_buffered_size = 2048
+# Lines transmitted to the client are kept around for use as history.
+# This setting limits the number of KB devoted to this.
+max_history_size = 256
+
+# If mooproxy receives a string from the client that starts with the
+# commandstring, but is not a valid command, this setting says what to do.
+# If it's set to true, mooproxy will complain that the command is invalid.
+# If it's set to false, mooproxy will send the string to the server as
+# if it was a regular line.
+strict_commands = true

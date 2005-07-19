@@ -26,12 +26,10 @@
 
 
 
-/* Returns 1 if the string begins with the command character(s) */
-extern int world_is_command( World *, char * );
-
 /* Checks if the given string is a valid command for the given world.
  * If it's a valid command, it's executed (and output is sent to the client).
- * The return value is 1 for a succesful command, 0 for an invalid one. */
+ * The return value is 1 for a succesful command, 0 for an invalid one.
+ * If the command is succesful, the line is freed, otherwise not. */
 extern int world_do_command( World *, char * );
 
 

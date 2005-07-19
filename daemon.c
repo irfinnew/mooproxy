@@ -24,14 +24,36 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <time.h>
 
 #include "daemon.h"
 
 
 
+static time_t program_start_time = 0;
+
+
+
+/* Set up the signal handlers. Duh :) */
 extern void set_up_signal_handlers( void )
 {
-	/* FIXME: error detection */
 	/* According to valgrind, libc6 fucks something up here */
 	signal( SIGPIPE, SIG_IGN );
+	signal( SIGHUP, SIG_IGN );
+}
+
+
+
+/* Set the time at which mooproxy started, to determine the uptime */
+extern void uptime_started_now( void )
+{
+	program_start_time = time( NULL );
+}
+
+
+
+/* Get the time at which mooproxy started. */
+extern time_t uptime_started_at( void )
+{
+	return program_start_time;
 }

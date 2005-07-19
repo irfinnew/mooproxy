@@ -27,13 +27,12 @@
 
 
 /* Mooproxy version */
-#define VERSIONSTR "0.0.5"
+#define VERSIONSTR "0.0.6"
 
 /* Configuration paths */
 #define CONFIGDIR ".mooproxy/"
 #define WORLDSDIR ".mooproxy/worlds/"
 #define LOGSDIR ".mooproxy/logs/"
-#define LOCKSDIR ".mooproxy/locks/"
 #define LOG_EXTENSION ".log"
 
 /* Exit codes */
@@ -56,6 +55,11 @@
 /* Some default values */
 #define DEFAULT_CMDSTRING "/"
 #define DEFAULT_INFOSTRING "% "
+#define DEFAULT_LOGENABLE 1
+#define DEFAULT_CONTEXTLINES 50
+#define DEFAULT_MAXBUFFERED 2048
+#define DEFAULT_MAXHISTORY 256
+#define DEFAULT_STRICTCMDS 1
 
 /* Maximum number of authenticating connections */
 #define NET_MAXAUTHCONN 4
@@ -69,7 +73,7 @@
 #define NET_CONNTAKEOVER "Connection is taken over."
 /* Size of blocks-to-lines buffer in bytes.
  * Note that this limits the maximum line length. */
-#define NET_BBUFFER_LEN 102400
+#define NET_BBUFFER_LEN 8192
 /* string to be appended to messages */
 #define MESSAGE_TERMINATOR "[0m\n"
 

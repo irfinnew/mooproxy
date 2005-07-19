@@ -34,6 +34,9 @@
 
 #define MAX_STRERROR_LEN 128
 #define MAX_TIMESTR_LEN 128
+/* The estimated memory cost of a line object: the size of the object itself,
+ * and some random guess at memory management cost */
+#define LINE_BYTE_COST ( sizeof( Line ) + 20 )
 
 
 
@@ -46,7 +49,7 @@ int asprintf( char **strp, char *format, ... )
 	int i;
 
 	va_start( argp, format );
-	
+
 	*strp = malloc( 1024 );
 	i = vsnprintf( *strp, 1023, format, argp );
 	if( i != -1 && i < 1023 )
@@ -235,7 +238,7 @@ extern char *remove_enclosing_quotes( char *str )
 
 	str[len - 2] = '\0';
 
-	return str;	
+	return str;
 }
 
 
@@ -294,7 +297,7 @@ extern char *strerror_n( int err )
 	len = strlen( strerror_buf );
 	if( len > 0 && strerror_buf[len - 1] == '\n' )
 		strerror_buf[len - 1] = '\0';
-	
+
 	return strerror_buf;
 }
 
@@ -316,7 +319,8 @@ extern char *time_string( time_t t, char *fmt )
 
 
 
-/* Create a line */
+/* Create a line, flags are clear, prev/next are NULL.
+ * If length is -1, it's calculated. */
 extern Line *line_create( char *str, long len )
 {
 	Line *line;
@@ -324,9 +328,39 @@ extern Line *line_create( char *str, long len )
 	line = malloc( sizeof( Line ) );
 	line->str = str;
 	line->len = len == -1 ? strlen( str ) : len;
-	line->store = 0;
+	line->flags = 0;
+	line->prev = NULL;
+	line->next = NULL;
 
 	return line;
+}
+
+
+
+/* Destroy a line, freeing its resources */
+extern void line_destroy( Line *line )
+{
+	if( line )
+		free( line->str );
+	free( line );
+}
+
+
+
+/* Return a duplicate of the line (prev/next are NULL). */
+extern Line *line_dup( Line *line )
+{
+	Line *newline;
+
+	newline = malloc( sizeof( Line ) );
+	newline->str = malloc( line->len + 1 );
+	strcpy( newline->str, line->str );
+	newline->len = line->len;
+	newline->flags = line->flags;
+	newline->prev = NULL;
+	newline->next = NULL;
+
+	return newline;
 }
 
 
@@ -338,8 +372,8 @@ extern Linequeue *linequeue_create( void )
 
 	queue = malloc( sizeof( Linequeue ) );
 
-	queue->lines = NULL;
-	queue->tail = &( queue->lines );
+	queue->head= NULL;
+	queue->tail = NULL;
 	queue->count = 0;
 	queue->length = 0;
 
@@ -363,17 +397,41 @@ extern void linequeue_clear( Linequeue *queue )
 {
 	Line *line, *next;
 
-	for( line = queue->lines; line; line = next )
+	for( line = queue->head; line; line = next )
 	{
 		next = line->next;
 		free( line->str );
 		free( line );
 	}
 
-	queue->lines = NULL;
-	queue->tail = &( queue->lines );
+	queue->head = NULL;
+	queue->tail = NULL;
 	queue->count = 0;
 	queue->length = 0;
+}
+
+
+
+/* Prepend a line to the start of the queue */
+extern void linequeue_prepend( Linequeue *queue, Line *line )
+{
+	line->prev= NULL;
+
+	if( !queue->head )
+	{
+		line->next = NULL;
+		queue->head = line;
+		queue->tail = line;
+	}
+	else
+	{
+		queue->head->prev = line;
+		line->next = queue->head;
+		queue->head = line;
+	}
+
+	queue->count++;
+	queue->length += line->len + LINE_BYTE_COST;
 }
 
 
@@ -383,33 +441,86 @@ extern void linequeue_append( Linequeue *queue, Line *line )
 {
 	line->next = NULL;
 
-	*( queue->tail ) = line;
-	queue->tail = &( line->next );
+	if( !queue->head )
+	{
+		line->prev = NULL;
+		queue->head = line;
+		queue->tail = line;
+	}
+	else
+	{
+		queue->tail->next = line;
+		line->prev = queue->tail;
+		queue->tail = line;
+	}
 
 	queue->count++;
-	queue->length += line->len;
+	queue->length += line->len + LINE_BYTE_COST;
 }
 
 
 
 /* Return the first line at the beginning of the queue. NULL if no line.
- * The next field in the returned line is garbage. */
+ * The next/prev fields in the returned line are garbage. */
 extern Line* linequeue_pop( Linequeue *queue )
 {
 	Line *line;
 
-	line = queue->lines;
+	line = queue->head;
 
 	if( !line )
 		return NULL;
 
-	queue->lines = line->next;
+	queue->head = line->next;
 
-	if( !queue->lines )
-		queue->tail = &( queue->lines );
+	if( !queue->head )
+		queue->tail = NULL;
 
 	queue->count--;
-	queue->length -= line->len;
+	queue->length -= line->len + LINE_BYTE_COST;
 
 	return line;
+}
+
+
+
+/* Return the last line at the end of the queue. NULL if no line.
+ * The next/prev fields in the returned line are garbage. */
+extern Line* linequeue_chop( Linequeue *queue )
+{
+	Line *line;
+
+	line = queue->tail;
+
+	if( !line )
+		return NULL;
+
+	queue->tail = line->prev;
+
+	if( !queue->tail )
+		queue->head = NULL;
+
+	queue->count--;
+	queue->length -= line->len + LINE_BYTE_COST;
+
+	return line;
+}
+
+
+
+/* Merge the two queues. The contents of the second queue is appended
+ * to the first one, leaving the second one empty. */
+extern void linequeue_merge( Linequeue *one, Linequeue *two )
+{
+	one->tail->next = two->head;
+	two->head->prev = one->tail;
+	one->tail = two->tail;
+
+	one->count += two->count;
+	one->length += two->length;
+
+	two->head = NULL;
+	two->tail = NULL;
+	two->count = 0;
+	two->length = 0;
 }

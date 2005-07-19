@@ -37,22 +37,28 @@
 
 static void log_line( World *, char *, long );
 static char *strip_ansi( char *, long, long * );
+/* static char *strip_nonprint( char *, long, long * ); */
 
 
 
 extern int world_log_init( World *wld )
 {
-	char *file, *home = get_homedir();
+	char *file, *home;
 	int fd;
 
 	world_log_close( wld );
 
+	if( !wld->logging_enabled )
+		return 0;
+
+	home = get_homedir();
 	asprintf( &file, "%s.mooproxy/logs/%s - %s.log", home, wld->name,
 			time_string( time( NULL ), "%F" ) );
 	free( home );
 
 	/* FIXME: error checking */
-	fd = open( file, O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR );
+	fd = open( file, O_WRONLY | O_CREAT | O_APPEND | O_NONBLOCK,
+			S_IRUSR | S_IWUSR );
 
 	wld->log_fd = fd;
 
@@ -72,9 +78,15 @@ extern void world_log_close( World *wld )
 
 
 
-extern void world_log_server_line( World *wld, Line *line )
+extern void world_flush_client_logqueue( World *wld )
 {
-	log_line( wld, line->str, line->len );
+	Line *line;
+
+	while( ( line = linequeue_pop( wld->client_logqueue ) ) )
+	{
+		log_line( wld, line->str, line->len );
+		line_destroy( line );
+	}
 }
 
 
@@ -102,18 +114,31 @@ static char *strip_ansi( char *orig, long len, long *nlen )
 	char *str, *newstr = malloc( len + 2 );
 	int escape = 0;
 
+	/* escape = 0   Processing normal characters.
+	 * escape = 1   Seen ^[, expect [
+	 * escape = 2   Seen ^[[, process until alpha char */
+
 	for( str = newstr; *orig; orig++ )
 	{
-		if( escape == 0 && *orig == '' )
-			escape = 1;
-		if( escape == 1 && *orig == '[' )
-			escape = 2;
-		if( escape == 0 && isprint( *orig ) )
-			*str++ = *orig;
-		if( escape == 1 && *orig != '' )
-			escape = 0;
-		if( escape == 2 && isalpha( *orig ) )
-			escape = 0;
+		if( escape == 0 )
+		{
+			if( *orig == 0x1B )
+				escape = 1;
+			if( (unsigned char) *orig >= ' ' )
+				*str++ = *orig;
+		}
+		else if( escape == 1 )
+		{
+			if( *orig == '[' )
+				escape = 2;
+			else
+				escape = 0;
+		}
+		else /* escape == 2 */
+		{
+			if( isalpha( *orig ) )
+				escape = 0;
+		}
 	}
 	*str++ = '\n';
 	*str = '\0';
@@ -121,3 +146,19 @@ static char *strip_ansi( char *orig, long len, long *nlen )
 	*nlen = str - newstr;
 	return newstr;
 }
+
+
+
+/* static char *strip_nonprint( char *orig, long len, long *nlen )
+{
+	char *str, *newstr = malloc( len + 2 );
+
+	for( str = newstr; *orig; orig++ )
+		if( (unsigned char) *orig >= ' ' || *orig == 0x1B )
+				*str++ = *orig;
+	*str++ = '\n';
+	*str = '\0';
+
+	*nlen = str - newstr;
+	return newstr;
+} */

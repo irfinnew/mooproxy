@@ -30,6 +30,17 @@
 
 
 
+#define SET_KEY_OK 0
+#define SET_KEY_NF 1
+#define SET_KEY_PERM 2
+#define SET_KEY_BAD 3
+
+#define GET_KEY_OK 0
+#define GET_KEY_NF 1
+#define GET_KEY_PERM 2
+
+
+
 /* This function parses the commandline options (argc and argv), and
  * acts accordingly. It places the name of the world in the third arg.
  * On failure, it returns non-zero and places the error in the last arg. */
@@ -45,17 +56,14 @@ extern int world_get_key_list( World *, char *** );
 
 /* This function searches for the key name in the database. If it matches,
  * it places the corresponding value in the string pointer.
- * On success, it returns 0.
- * If the key isn't found, it returns 1.
- * If the key cannot be read, it returns 2. */
+ * Returns GET_KEY_??? */
 extern int world_get_key( World *, char *, char ** );
 
 /* This function searches for the key name in the database. If it matches,
  * it places the value in the appropriate variable of the World.
- * On success, it returns 0.
- * If the key isn't found, it returns 1.
- * If the key cannot be written, it returns 2. */
-extern int world_set_key( World *, char *, char * );
+ * Returns SET_KEY_???
+ * When returning SET_KEY_BAD, the string pointer contains a message. */
+extern int world_set_key( World *, char *, char *, char ** );
 
 /* This function attempts to create the configuration dirs for mooproxy.
  * On failure, it returns non-zero and places the error in the last arg. */
@@ -63,4 +71,4 @@ extern int create_configdirs( char ** );
 
 
 
-#endif  /* ifndef MOOPROXY__HEADER__CONFIG */
+#endif  /* ifndef MoOPROXY__HEADER__CONFIG */

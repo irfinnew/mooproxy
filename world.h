@@ -33,9 +33,9 @@
 
 
 
-#define WLD_FDCHANGE 0x01
-#define WLD_QUIT 0x02
-#define WLD_PASSTEXT 0x04
+#define WLD_SHUTDOWN 0x01
+#define WLD_CLIENTQUIT 0x02
+#define WLD_SERVERQUIT 0x04
 
 
 
@@ -47,6 +47,11 @@ struct _World
 	char *configfile;       
 	long flags;
 
+	/* Destination */
+	char *dest_host;
+	char *dest_ipv4_address;
+	long dest_port;
+
 	/* Listening connection */
 	long listenport;
 	int listen_fd;
@@ -54,37 +59,48 @@ struct _World
 	/* Authentication related stuff */
 	char *authstring;
 	int auth_connections;
+	int auth_correct[NET_MAXAUTHCONN];
 	int auth_fd[NET_MAXAUTHCONN];
 	int auth_read[NET_MAXAUTHCONN];
 	char *auth_buf[NET_MAXAUTHCONN];
 
 	/* Data related to the server connection */
-	char *host;
-	char *ipv4_address;
-	long port;
 	int server_fd;
 
-	Linequeue *server_rlines;
-	Linequeue *server_slines;
-	char *server_rbuffer;
-	long server_rbfull;
-	char *server_sbuffer;
-	long server_sbfull;
+	Linequeue *server_rxqueue;
+	Linequeue *server_txqueue;
+	char *server_rxbuffer;
+	long server_rxfull;
+	char *server_txbuffer;
+	long server_txfull;
 
 	/* Data related to the client connection */
 	int client_fd;
 
-	Linequeue *client_rlines;
-	Linequeue *client_slines;
-	Linequeue *buffered_text;
-	Linequeue *history_text;
-	char *client_rbuffer;
-	long client_rbfull;
-	char *client_sbuffer;
-	long client_sbfull;
+	Linequeue *client_rxqueue;
+	Linequeue *client_txqueue;
+	Linequeue *client_logqueue;
+	Linequeue *client_buffered;
+	Linequeue *client_history;
+	char *client_rxbuffer;
+	long client_rxfull;
+	char *client_txbuffer;
+	long client_txfull;
 
 	/* Miscellaneous */
-	int log_fd;	
+	long buffer_dropped_lines;
+
+	/* Timer stuff */
+	int timer_prev_sec;
+	int timer_prev_min;
+	int timer_prev_hour;
+	int timer_prev_day;
+	int timer_prev_mon;
+	int timer_prev_year;
+
+	/* Logging */
+	int log_fd;
+	int logging_enabled;
 
 	/* MCP stuff */
 	int mcp_negotiated;
@@ -93,6 +109,10 @@ struct _World
 	/* Options */
 	char *commandstring;
 	char *infostring;
+	long context_on_connect;
+	long max_buffered_size;
+	long max_history_size;
+	int strict_commands;
 };
 
 
@@ -114,29 +134,25 @@ extern void world_configfile_from_name( World * );
  * The line will not be free()d. */
 extern void world_message_to_client( World *, char * );
 
-/* Exactly like world_message_to_client, but pass it through the buffer
- * regular server->client lines go through. */
-extern void world_message_to_client_buf( World *, char * );
+/* Queue a line for transmission to the client, and prefix the line with
+ * the infostring, to indicate it's a message from mooproxy.
+ * The line will not be free()d. */
+extern void world_checkpoint_to_client( World *, char * );
 
-/* Handle all the queued lines from the client.
- * Handling includes commands, MCP, logging, requeueing, etc. */
-extern void world_handle_client_queue( World * );
-
-/* Handle all the queued lines from the server.
- * Handling includes commands, MCP, logging, requeueing, etc. */
-extern void world_handle_server_queue( World * );
-
-/* Pass the lines from buffered_text to the client send buffer.
- * The long is the number of lines to pass, -1 for all. */
-extern void world_pass_buffered_text( World *, long );
-
-/* Store the line in the history buffer, pushing out lines on the
- * other end if space runs tight. */
+/* Store the line in the history buffer. */
 extern void world_store_history_line( World *, Line * );
 
-/* Should be called approx. once each second, with the current time
- * as argument. Will handle periodic / scheduled events. */
-extern void world_timer_tick( World *, time_t );
+/* Measure the length of dynamic queues such as buffered and history,
+ * and remove the oldest lines until they are small enought. */
+extern void world_trim_dynamic_queues( World * );
+
+/* Replicate the set number of history lines to provide context for the newly
+ * connected client, and then pass all buffered lines. */
+extern void world_recall_and_pass( World * );
+
+/* Recall a number of history lines. The second parameter is the
+ * number of lines to recall. */
+extern void world_recall_history_lines( World *, int );
 
 
 

@@ -12,12 +12,14 @@ or become disconnected because of bad network, etc. It will also provide
 features like centralised logging, which is useful if you connect with
 different clients.
 
-Mooproxy is still pretty basic; many features (such as logging and MCP
-support) are lacking, but it is usable. It is still under development;
+Mooproxy is pretty basic, but quite usable. It is still under development;
 bug reports and suggestions are appreciated. If you really want to help,
-run it with `` valgrind --leak-check=yes ./mooproxy '' in the source
-directory, and report the full output of valgrind (and the mooproxy
-version you're running) if it crashes or detects memleaks.
+run it like this:
+
+    valgrind --leak-check=yes --show-reachable=yes ./mooproxy
+
+in the source directory, and report the full output of valgrind (and the
+mooproxy version you're running) if it crashes or detects memleaks.
 
 To compile mooproxy, simply type `` make '' in the source directory.
 You need a working C compiler, and the development libraries for libc.
@@ -26,3 +28,6 @@ Running mooproxy is simple, just do `` ./mooproxy -w <wld> '', where <wld>
 is the name of the world. Mooproxy will use the configuration file
 ~/.mooproxy/worlds/<wld> . See the file ExampleConfig for an example
 configuration file.
+
+Note: as of now, mooproxy cannot run as a daemon in the background. If you
+want it to run in the background, use nohup and &, or screen.

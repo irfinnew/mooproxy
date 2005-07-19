@@ -3,7 +3,7 @@ CFLAGS = -Wall -g
 LFLAGS = -Wall
 
 OBJS = mooproxy.o misc.o config.o daemon.o world.o network.o command.o \
-	mcp.o log.o
+	mcp.o log.o accessor.o timer.o
 
 all: mooproxy
 

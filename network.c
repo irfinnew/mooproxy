@@ -35,12 +35,13 @@
 #include <arpa/inet.h>
 #include <stdio.h> /* FIXME: remove */
 #include <stdlib.h>
-#include <time.h>
 
-#include "network.h"
 #include "global.h"
+#include "network.h"
 #include "misc.h"
 #include "mcp.h"
+#include "log.h"
+#include "timer.h"
 
 
 
@@ -54,6 +55,7 @@ static void handle_listen_fd( World * );
 static void handle_auth_fd( World *, int );
 static void remove_auth_connection( World *, int, int );
 static void verify_authentication( World *, int );
+static void promote_auth_connection( World *, int );
 static void handle_client_fd( World * );
 static void handle_server_fd( World * );
 static int buffer_to_lines( char *, int, int, Linequeue * );
@@ -131,27 +133,35 @@ int world_resolve_server( World *wld, char **err )
 {
 	struct hostent *host;
 
-	if( wld->host == NULL )
+	if( wld->dest_host == NULL )
 	{
 		*err = strdup( "No hostname to connect to." );
 		return EXIT_NOHOST;
 	}
 	
 	/* FIXME: Use getnameinfo ? */
-	host = gethostbyname( wld->host );
+	host = gethostbyname( wld->dest_host );
 	if( host == NULL )
 	{
-		asprintf( err, "Could not resolve ``%s'': %s.", wld->host,
+		asprintf( err, "Could not resolve ``%s'': %s.", wld->dest_host,
 				hstrerror( h_errno ) );
 		return EXIT_RESOLV;
 	}
 
-	if( wld->ipv4_address )
-		free( wld->ipv4_address );
+	if( wld->dest_ipv4_address )
+		free( wld->dest_ipv4_address );
 
-	wld->ipv4_address = strdup( inet_ntoa( *( (struct in_addr *)
+	wld->dest_ipv4_address = strdup( inet_ntoa( *( (struct in_addr *)
 			host->h_addr ) ) );
 	return EXIT_OK;
+}
+
+
+
+/* Return 1 if we're connected to the client, 0 if not. */
+extern int world_connected_to_client( World *wld )
+{
+	return wld->client_fd != -1;
 }
 
 
@@ -172,8 +182,8 @@ extern int world_connect_server( World *wld, char **err )
 	struct sockaddr_in addr;
 
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons( wld->port );
-	inet_aton( wld->ipv4_address, &( addr.sin_addr ) );
+	addr.sin_port = htons( wld->dest_port );
+	inet_aton( wld->dest_ipv4_address, &( addr.sin_addr ) );
 	memset( &( addr.sin_zero ), '\0', 8 );
 
 	if( ( fd = socket( AF_INET, SOCK_STREAM, 0 ) ) == -1 )
@@ -199,7 +209,6 @@ extern int world_connect_server( World *wld, char **err )
 	}
 
 	wld->server_fd = fd;
-	wld->flags |= WLD_FDCHANGE;
 	return EXIT_OK;
 }
 
@@ -211,10 +220,10 @@ extern void world_disconnect_server( World *wld )
 	if( wld->server_fd == -1 )
 		return;
 
-	world_flush_server_sbuf( wld );
 	close( wld->server_fd );
 	wld->server_fd = -1;
-	wld->flags |= WLD_FDCHANGE;
+	wld->server_txfull = 0;
+	wld->server_rxfull = 0;
 }
 
 
@@ -222,75 +231,51 @@ extern void world_disconnect_server( World *wld )
 /* This function disconnects the client. */
 extern void world_disconnect_client( World *wld )
 {
-	world_flush_client_sbuf( wld );
-	close( wld->client_fd );
+	if( wld->client_fd != -1 )
+		close( wld->client_fd );
 	wld->client_fd = -1;
-	wld->flags |= WLD_FDCHANGE;
+	wld->client_txfull = 0;
+	wld->client_rxfull = 0;
 }
 
 
 
-/* This is the mainloop. It listens for incoming connetions and handles the
- * actual data over the connections. */
-void world_mainloop( World *wld )
+/* Wait for data from the network or timeout.
+ * Parse data into lines, return lines to main loop. */
+extern void wait_for_network( World *wld )
 {
 	struct timeval tv;
-	fd_set readset, rset;
+	fd_set rset;
 	int high, i;
-	time_t last_checked = time( NULL ), ltime;
 
-	high = create_fdset( &readset, wld );
-
-	for(;;)
-	{
-		memcpy( &rset, &readset, sizeof( fd_set ) );
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-
-		/* FIXME: should check for EBADF ? */
-		select( high, &rset, NULL, NULL, &tv );
-
-		if( wld->server_fd != -1 && FD_ISSET( wld->server_fd, &rset ) )
-			handle_server_fd( wld );
-
-		if( wld->client_fd != -1 && FD_ISSET( wld->client_fd, &rset ) )
-			handle_client_fd( wld );
-
-		if( wld->listen_fd != -1 && FD_ISSET( wld->listen_fd, &rset ) )
-			handle_listen_fd( wld );
-
-		for( i = wld->auth_connections - 1; i >= 0; i-- )
-			if( FD_ISSET( wld->auth_fd[i], &rset ) )
-				handle_auth_fd( wld, i );
-
-		/* See if another second elapsed */
-		ltime = time( NULL );
-		if( ltime != last_checked )
-			world_timer_tick( wld, last_checked = ltime );
-
-		/* If the client is disconnected, turn pass off */
-		if( wld->client_fd == -1 )
-			wld->flags &= ~WLD_PASSTEXT;
-
-		/* Pass lines, if the client wants that */
-		if( wld->flags & WLD_PASSTEXT )
-			world_pass_buffered_text( wld, -1 );
-
-		/* Flush the send buffers */
-		world_flush_server_sbuf( wld );
-		world_flush_client_sbuf( wld );
-
-		/* Does the set of FDs need to be rebuilt? */
-		if( wld->flags & WLD_FDCHANGE )
+	/* If there is a correctly authenticated authconn, promote that
+	 * and be done. */
+	for( i = 0; i < wld->auth_connections; i++ )
+		if( wld->auth_correct[i] )
 		{
-			high = create_fdset( &readset, wld );
-			wld->flags &= ~WLD_FDCHANGE;
+			promote_auth_connection( wld, i );
+			return;
 		}
 
-		/* Do we wanna quit? */
-		if( wld->flags & WLD_QUIT )
-			return;
-	}
+	high = create_fdset( &rset, wld );
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+
+	/* FIXME: should check for EBADF ? */
+	select( high, &rset, NULL, NULL, &tv );
+
+	if( wld->server_fd != -1 && FD_ISSET( wld->server_fd, &rset ) )
+		handle_server_fd( wld );
+
+	if( wld->client_fd != -1 && FD_ISSET( wld->client_fd, &rset ) )
+		handle_client_fd( wld );
+
+	if( wld->listen_fd != -1 && FD_ISSET( wld->listen_fd, &rset ) )
+		handle_listen_fd( wld );
+
+	for( i = wld->auth_connections - 1; i >= 0; i-- )
+		if( FD_ISSET( wld->auth_fd[i], &rset ) )
+			handle_auth_fd( wld, i );
 }
 
 
@@ -333,14 +318,15 @@ int create_fdset( fd_set *set, World *wld )
 static void handle_listen_fd( World *wld )
 {
 	struct sockaddr_in rhost;
-	int newfd, i, addrlen = sizeof( struct sockaddr_in );
+	int newfd, i;
+	socklen_t addrlen = sizeof( struct sockaddr_in );
 
 	/* FIXME: more error checking */
 	newfd = accept( wld->listen_fd, (struct sockaddr *) &rhost, &addrlen );
 
 	if( newfd == -1 )
 	{
-		printf( "Error on accept() !\n" );
+		printf( "accept(): %s !\n", strerror_n( errno ) );
 		return;
 	}
 
@@ -351,21 +337,32 @@ static void handle_listen_fd( World *wld )
 	/* Use the next available slot */
 	i = wld->auth_connections++;
 	
+	/* Initialize carefully. auth_correct = 0 is especially important. */
 	wld->auth_fd[i] = newfd;
+	wld->auth_correct[i] = 0;
 	wld->auth_read[i] = 0;
+
+	/* Zero the buffer, just to be sure.
+	 * Now an erroneous compare won't check against garbage (or, worse,
+	 * a correct authstring) still in the buffer. */
+	memset( wld->auth_buf[i], 0, NET_MAXAUTHLEN );
+
+	/* "Hey you!" */
 	write( newfd, NET_AUTHSTRING "\n", strlen( NET_AUTHSTRING "\n" ) );
 
-	wld->flags |= WLD_FDCHANGE;
 	return;
 }
 
 
 
 /* Handle any events related to the authenticating connections. */
-/* FIXME: Inefficient, 1 syscall/character */
 static void handle_auth_fd( World *wld, int wa )
 {
 	int i, n;
+
+	/* If this connection has already been authenticated, ignore it. */
+	if( wld->auth_correct[wa] )
+		return;
 
 	/* Read into the buffer */
 	n = read( wld->auth_fd[wa], wld->auth_buf[wa] +
@@ -381,6 +378,7 @@ static void handle_auth_fd( World *wld, int wa )
 		return;
 	}
 
+	/* Search for the first newline in the newly read part. */
 	for( i = wld->auth_read[wa]; i < wld->auth_read[wa] + n; i++ )
 		if( wld->auth_buf[wa][i] == '\n' )
 			break;
@@ -396,7 +394,6 @@ static void handle_auth_fd( World *wld, int wa )
 	/* We encountered a newline or read too many characters */
 	wld->auth_read[wa] += n;
 	verify_authentication( wld, wa );
-	wld->flags |= WLD_FDCHANGE;
 }
 
 
@@ -408,15 +405,18 @@ static void remove_auth_connection( World *wld, int wa, int donack )
 	char *buf;
 	int i;
 
+	/* Tell the peer the authstring was wrong? */
 	if( donack )
-		write( wld->auth_fd[wa], NET_AUTHFAIL "\n",
-				strlen( NET_AUTHFAIL "\n" ) );
+		write( wld->auth_fd[wa], NET_AUTHFAIL "\r\n",
+				strlen( NET_AUTHFAIL "\r\n" ) );
 
 	if( wld->auth_fd[wa] != -1 )
 		close( wld->auth_fd[wa] );
 
+	/* Save the buffer of the kicked connection for later */
 	buf = wld->auth_buf[wa];
 
+	/* Shift the later part of the array */
 	for( i = wa; i < wld->auth_connections - 1; i++ )
 	{
 		wld->auth_fd[i] = wld->auth_fd[i + 1];
@@ -425,20 +425,19 @@ static void remove_auth_connection( World *wld, int wa, int donack )
 	}
 
 	wld->auth_connections--;
+	wld->auth_read[wld->auth_connections] = 0;
+	wld->auth_fd[wld->auth_connections] = -1;
 	wld->auth_buf[wld->auth_connections] = buf;
-
-	wld->flags |= WLD_FDCHANGE;
 }
 
 
 
 /* Check the received buffer against the authstring.
- * If they match, the current auth connection is transferred to client_fd.
+ * If they match, the auth connection is flagged as authenticated, and
+ * the client connection is flagged for disconnection.
  * Otherwise, the auth connection is torn down. */
-/* FIXME: rewrite this. It's icky. */
 static void verify_authentication( World *wld, int wa )
 {
-	char *str;
 	int alen = strlen( wld->authstring );
 
 	/* If the authstring is nonexistent / empty, reject everything */
@@ -449,17 +448,25 @@ static void verify_authentication( World *wld, int wa )
 	}
 
 	/* We will only use the first (NET_MAXAUTHLEN - 2) chars */
-	alen = alen > NET_MAXAUTHLEN - 2 ? NET_MAXAUTHLEN - 2 : alen;
+	if( alen > NET_MAXAUTHLEN - 2 )
+		alen = NET_MAXAUTHLEN - 2;
 
-	/* Is the authentication string correct? */
-	if( wld->auth_read[wa] < alen + 1 ||
-			strncmp( wld->auth_buf[wa], wld->authstring, alen ) )
+	/* The given string needs to be at least as long as the authstring
+	 * plus a newline. If it's not, dump it. */
+	if( wld->auth_read[wa] < alen + 1 )
 	{
 		remove_auth_connection( wld, wa, 1 );
 		return;
 	}
 
-	/* Ignore a potential \r before the \n */
+	/* Is the authentication string correct? */
+	if( strncmp( wld->auth_buf[wa], wld->authstring, alen ) )
+	{
+		remove_auth_connection( wld, wa, 1 );
+		return;
+	}
+
+	/* Ignore a potential \r following the (correct) authstring */
 	if( wld->auth_buf[wa][alen] == '\r' )
 		alen++;
 
@@ -469,50 +476,64 @@ static void verify_authentication( World *wld, int wa )
 		remove_auth_connection( wld, wa, 1 );
 		return;
 	}
-	alen++;
+	alen++; /* alen now holds the length of the checked authstring. */
 
-	/* Close the old connection */
-	if( wld->client_fd != -1 )
-	{
-		world_message_to_client( wld, NET_CONNTAKEOVER );
-		world_flush_client_sbuf( wld );
-		close( wld->client_fd );
-	}
-
-	/* If there's anything left, put it in the buffer and process it */
-	if( wld->auth_read[wa] > alen )
-	{
-		/* Copy it into the buffer */
-		memcpy( wld->client_rbuffer, wld->auth_buf[wa] + alen,
+	/* Move anything after the (correct) authstring to the start of
+	 * the buffer. */
+	memmove( wld->auth_buf[wa], wld->auth_buf[wa] + alen, 
 			wld->auth_read[wa] - alen );
-		/* Process the buffer */
-		wld->client_rbfull = buffer_to_lines( wld->client_rbuffer,
-			0, wld->auth_read[wa] - alen, wld->client_rlines );
+	wld->auth_read[wa] -= alen;
+
+	/* Tell the client (if any) that the connection is taken over,
+	 * and flag the client connection for disconnection. */
+	if( wld->client_fd != -1 )
+		world_message_to_client( wld, NET_CONNTAKEOVER );
+	wld->flags |= WLD_CLIENTQUIT;
+
+	/* Finally, flag this connection as correctly authenticated. */
+	wld->auth_correct[wa] = 1;
+}
+
+
+
+/* Promote the (correct) authconn to the client connection.
+ * Clean up old auth stuff, transfer anything left in buffer to
+ * client buffer. */
+static void promote_auth_connection( World *wld, int wa )
+{
+	/* If the world is not correctly authenticated, ignore it. */
+	if( !wld->auth_correct[wa] )
+		return;
+
+	/* The client shouln't be connected.
+	 * If it is, flag for disconnection and let 'em come back to us.  */
+	if( world_connected_to_client( wld ) )
+	{
+		wld->flags |= WLD_CLIENTQUIT;
+		return;
 	}
-	else
-		wld->client_rbfull = 0;
 
 	/* Transfer connection */
 	wld->client_fd = wld->auth_fd[wa];
 	wld->auth_fd[wa] = -1;
+
+	/* Copy anything left in the authbuf to client buffer, and process */
+	memcpy( wld->client_rxbuffer, wld->auth_buf[wa], wld->auth_read[wa] );
+	wld->client_rxfull = buffer_to_lines( wld->client_rxbuffer, 0,
+			wld->auth_read[wa], wld->client_rxqueue );
+
+	/* Clean up stuff left of the auth connection */
 	remove_auth_connection( wld, wa, 0 );
 
 	/* Confirm the connection to the authenticating client */
 	world_message_to_client( wld, NET_AUTHGOOD );
 
-	/* Inform about waiting lines and pass. */
-	wld->flags &= ~WLD_PASSTEXT;
-	asprintf( &str, "%li lines waiting. Pass is off.",
-			wld->buffered_text->count );
-	world_message_to_client( wld, str );
-	free( str );
+	/* Show context history and pass buffered text */
+	world_recall_and_pass( wld );
 
 	/* Do the MCP reset, so MCP is set up correctly */
 	if( wld->server_fd != -1 )
 		world_send_mcp_reset( wld );
-
-	/* In case there was something left in the buffer, process that now */
-	world_handle_client_queue( wld );
 }
 
 
@@ -520,8 +541,8 @@ static void verify_authentication( World *wld, int wa )
 /* Handle any events related to the client connection. */
 static void handle_client_fd( World *wld )
 {
-	int n, offset = wld->client_rbfull;
-	char *s, *buffer = wld->client_rbuffer;
+	int n, offset = wld->client_rxfull;
+	char *s, *buffer = wld->client_rxbuffer;
 
 	/* If the bbuffer is full, pass the entire contents as one line */
 	if( offset == NET_BBUFFER_LEN )
@@ -530,9 +551,9 @@ static void handle_client_fd( World *wld )
 		memcpy( s, buffer, NET_BBUFFER_LEN );
 		s[NET_BBUFFER_LEN] = '\n';
 		s[NET_BBUFFER_LEN + 1] = '\0';
-		linequeue_append( wld->client_rlines,
+		linequeue_append( wld->client_rxqueue,
 				line_create( s, NET_BBUFFER_LEN + 1 ) );
-		wld->client_rbfull = 0;
+		wld->client_rxfull = 0;
 		offset = 0;
 	}
 
@@ -544,29 +565,12 @@ static void handle_client_fd( World *wld )
 	if( n == 0 || n == -1 )
 	{
 		/* Ok, the connection dropped dead */
-		close( wld->client_fd );
-		wld->client_fd = -1;
-		wld->flags |= WLD_FDCHANGE;
-
-		/* If there's something left in the buffer, process it */
-		if( offset > 0 )
-		{
-			s = malloc( offset + 2 );
-			memcpy( s, buffer, offset );
-			s[offset] = '\n';
-			s[offset + 1] = '\0';
-			linequeue_append( wld->client_rlines,
-					line_create( s, offset + 1 ) );
-		}
-
+		world_disconnect_client( wld );
 		return;
 	}
 
-	wld->client_rbfull =
-		buffer_to_lines( buffer, offset, n, wld->client_rlines );
-
-	/* Actually do something with the received lines */
-	world_handle_client_queue( wld );
+	wld->client_rxfull =
+		buffer_to_lines( buffer, offset, n, wld->client_rxqueue );
 }
 
 
@@ -574,8 +578,8 @@ static void handle_client_fd( World *wld )
 /* Handle any events related to the server connection. */
 static void handle_server_fd( World *wld )
 {
-	int err, n, offset = wld->server_rbfull;
-	char *str, *s, *buffer = wld->server_rbuffer;
+	int err, n, offset = wld->server_rxfull;
+	char *str, *s, *buffer = wld->server_rxbuffer;
 
 	/* If the bbuffer is full, pass the entire contents as one line */
 	if( offset == NET_BBUFFER_LEN )
@@ -584,10 +588,10 @@ static void handle_server_fd( World *wld )
 		memcpy( s, buffer, NET_BBUFFER_LEN );
 		s[NET_BBUFFER_LEN] = '\n';
 		s[NET_BBUFFER_LEN + 1] = '\0';
-		linequeue_append( wld->server_rlines,
+		linequeue_append( wld->server_rxqueue,
 				line_create( s, NET_BBUFFER_LEN + 1 ) );
-		wld->server_rbfull = 0;
-		offset = 0;		
+		wld->server_rxfull = 0;
+		offset = 0;
 	}
 
 	n = read( wld->server_fd, buffer + offset, NET_BBUFFER_LEN - offset );
@@ -599,39 +603,19 @@ static void handle_server_fd( World *wld )
 	{
 		/* Ok, the connection dropped dead */
 		err = errno;
-		close( wld->server_fd );
-		wld->server_fd = -1;
-		wld->flags |= WLD_FDCHANGE;
-
-		/* If there's something left in the buffer, process it */
-		if( offset > 0 )
-		{
-			s = malloc( offset + 2 );
-			memcpy( s, buffer, offset );
-			s[offset] = '\n';
-			s[offset + 1] = '\0';
-			linequeue_append( wld->server_rlines,
-					line_create( s, offset + 1 ) );
-		}
-
-		world_handle_server_queue( wld );
+		world_disconnect_server( wld );
 
 		/* Notify the client */
 		asprintf( &str, "Connection to server lost (%s).",
 				n ? strerror_n( err ) : "connection closed" );
-		world_message_to_client( wld, str );
-		world_message_to_client_buf( wld, str );
+		world_checkpoint_to_client( wld, str );
 		free( str );
 
-		wld->server_rbfull = 0;
 		return;
 	}
 
-	wld->server_rbfull =
-		buffer_to_lines( buffer, offset, n, wld->server_rlines );
-
-	/* Actually do something with the received lines */
-	world_handle_server_queue( wld );
+	wld->server_rxfull =
+		buffer_to_lines( buffer, offset, n, wld->server_rxqueue );
 }
 
 
@@ -669,27 +653,24 @@ static int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q )
 /* Try to flush the queued lines into the send buffer, and the send buffer
  * to the client. If this fails, leave the contents of the buffer in the
  * queued lines, mark the fd as write-blocked, and signal an FD change. */
-extern void world_flush_client_sbuf( World *wld )
+extern void world_flush_client_txbuf( World *wld )
 {
 	Line *line = NULL;
-	char *buffer = wld->client_sbuffer, *s;
-	long offset = wld->client_sbfull, len;
+	char *buffer = wld->client_txbuffer, *s;
+	long offset = wld->client_txfull, len;
 	int r;
 
 	/* If there is nothing to send, do nothing */
-	if( wld->client_slines->length == 0 && wld->client_sbfull == 0 )
+	if( wld->client_txqueue->count == 0 && wld->client_txfull == 0 )
 		return;
 
-	/* If we're not connected, discard lines and exit */
+	/* If we're not connected, do nothing */
 	if( wld->client_fd == -1 )
-	{
-		linequeue_clear( wld->client_slines );
 		return;
-	}
 
 	/* FIXME: It's scary how double free's are avoided. */
 	/* FIXME: 1 write() per line. Subpar... */
-	while( offset > 0 || ( line = linequeue_pop( wld->client_slines ) ) )
+	while( offset > 0 || ( line = linequeue_pop( wld->client_txqueue ) ) )
 	{
 		/* Get pointer/length of to-be-written data */
 		s = line ? line->str : buffer;
@@ -705,10 +686,13 @@ extern void world_flush_client_sbuf( World *wld )
 		/* Not all was written. Save in buffer. */
 		if( r < len )
 		{
-			len -= r == -1 ? 0 : r;
+			if( r < 0 )
+				r = 0;
+
+			len -= r;
 			/* Don't move if not needed */
-			if( buffer != s )
-				memmove( buffer, s, len );
+			if( buffer != s + r )
+				memmove( buffer, s + r, len );
 			offset = len;
 			break;
 		}
@@ -721,7 +705,7 @@ extern void world_flush_client_sbuf( World *wld )
 	if( line )
 		world_store_history_line( wld, line );
 
-	wld->client_sbfull = offset;
+	wld->client_txfull = offset;
 }
 
 
@@ -731,28 +715,28 @@ extern void world_flush_client_sbuf( World *wld )
  * queued lines, mark the fd as write-blocked, and signal an FD change.
  * If the socket is closed, discard contents, and announce
  * disconnectedness. */
-extern void world_flush_server_sbuf( World *wld )
+extern void world_flush_server_txbuf( World *wld )
 {
 	Line *line = NULL;
-	char *buffer = wld->server_sbuffer, *s;
-	long offset = wld->server_sbfull, len;
+	char *buffer = wld->server_txbuffer, *s;
+	long offset = wld->server_txfull, len;
 	int r;
 
 	/* If there is nothing to send, do nothing */
-	if( wld->server_slines->length == 0 && wld->server_sbfull == 0 )
+	if( wld->server_txqueue->count == 0 && wld->server_txfull == 0 )
 		return;
 
 	/* If we're not connected, discard and notify client */
 	if( wld->server_fd == -1 )
 	{
-		linequeue_clear( wld->server_slines );
+		linequeue_clear( wld->server_txqueue );
 		world_message_to_client( wld, "Not connected to server!" );
 		return;
 	}
 
 	/* FIXME: It's scary how double free's are avoided. */
 	/* FIXME: 1 write() per line. Subpar... */
-	while( offset > 0 || ( line = linequeue_pop( wld->server_slines ) ) )
+	while( offset > 0 || ( line = linequeue_pop( wld->server_txqueue ) ) )
 	{
 		/* Get pointer/length of to-be-written data */
 		s = line ? line->str : buffer;
@@ -768,56 +752,24 @@ extern void world_flush_server_sbuf( World *wld )
 		/* Not all was written. Save in buffer. */
 		if( r < len )
 		{
-			len -= r == -1 ? 0 : r;
+			if( r < 0 )
+				r = 0;
+
+			len -= r;
 			/* Don't move if not needed */
-			if( buffer != s )
-				memmove( buffer, s, len );
+			if( buffer != s + r )
+				memmove( buffer, s + r, len );
 			offset = len;
 			break;
 		}
 
 		/* Free the line, if it exists */
-		if( line )
-			free( line->str );
-		free( line );
+		line_destroy( line );
 		offset = 0;
 	}
 
 	/* Free the line, if it exists */
-	if( line )
-		free( line->str );
-	free( line );
+	line_destroy( line );
 
-	wld->server_sbfull = offset;
+	wld->server_txfull = offset;
 }
-
-
-
-#if 0
-/* Doesn't handle partial writes... But I'm not happy with the current
- * either, so let's keep this around, just in case */
-	while( ( line = linequeue_pop( wld->server_slines ) ) )
-	{
-		loff = 0;
-		while( loff < line->len )
-		{
-			/* Copy the line (or as much as will fit) in the buf */
-			todo = line->len - loff;
-			if( todo > NET_BBUFFER_LEN - offset )
-				todo = NET_BBUFFER_LEN - offset;
-			memcpy( buffer + offset, line->str + loff, todo );
-			loff += todo;
-			offset += todo;
-
-			/* If the buffer is full or last line, send it */
-			if( offset == NET_BBUFFER_LEN || !line->next )
-			{
-				r = write( wld->server_fd, buffer, offset );
-				if( r > 0 )
-					offset -= r;
-			}
-		}
-		free( line->str );
-		free( line );
-	}
-#endif

@@ -26,8 +26,18 @@
 
 
 
+#include <time.h>
+
+
+
 /* Set up the signal handlers. Duh :) */
 extern void set_up_signal_handlers( void );
+
+/* Set the time at which mooproxy started, to determine the uptime */
+extern void uptime_started_now( void );
+
+/* Get the time at which mooproxy started. */
+extern time_t uptime_started_at( void );
 
 
 
