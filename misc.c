@@ -512,9 +512,22 @@ extern Line* linequeue_chop( Linequeue *queue )
  * to the first one, leaving the second one empty. */
 extern void linequeue_merge( Linequeue *one, Linequeue *two )
 {
-	one->tail->next = two->head;
-	two->head->prev = one->tail;
-	one->tail = two->tail;
+	/* If the second list is empty, nop. */
+	if( two->head == NULL || two->tail == NULL )
+		return;
+
+	/* If the first list is empty, simple copy the references. */
+	if( one->head == NULL || one->tail == NULL )
+	{
+		one->head = two->head;
+		one->tail = two->tail;
+	}
+	else
+	{
+		one->tail->next = two->head;
+		two->head->prev = one->tail;
+		one->tail = two->tail;
+	}
 
 	one->count += two->count;
 	one->length += two->length;
