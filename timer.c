@@ -1,21 +1,16 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2002 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  the Free Software Foundation; version 2 dated June, 1991.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
 
@@ -26,20 +21,19 @@
 #include "world.h"
 #include "timer.h"
 #include "log.h"
+#include "misc.h"
 
 
 
 static void tick_second( World *, time_t );
 static void tick_minute( World *, time_t );
 static void tick_hour( World *, time_t );
-static void tick_day( World *, time_t );
+static void tick_day( World *, time_t, long );
 static void tick_month( World *, time_t );
 static void tick_year( World *, time_t );
 
 
 
-/* Should be called approx. once each second, with the current time
- * as argument. Will handle periodic / scheduled events. */
 extern void world_timer_tick( World *wld, time_t t )
 {
 	struct tm *ts;
@@ -60,7 +54,7 @@ extern void world_timer_tick( World *wld, time_t t )
 
 	/* Days */
 	if( wld->timer_prev_day != -1 && wld->timer_prev_day != ts->tm_mday )
-		tick_day( wld, t );
+		tick_day( wld, t, ts->tm_year * 366 + ts->tm_yday );
 
 	/* Months */
 	if( wld->timer_prev_mon != -1 && wld->timer_prev_mon != ts->tm_mon )
@@ -80,40 +74,51 @@ extern void world_timer_tick( World *wld, time_t t )
 
 
 
+/* Called each time a second elapses. */
 static void tick_second( World *wld, time_t t )
 {
+	set_current_time( t );
 }
 
 
 
+/* Called each time a minute elapses. */
 static void tick_minute( World *wld, time_t t )
 {
 }
 
 
 
+/* Called each time an hour elapses. */
 static void tick_hour( World *wld, time_t t )
 {
 }
 
 
 
-static void tick_day( World *wld, time_t t )
+/* Called each time a day elapses. */
+static void tick_day( World *wld, time_t t, long day )
 {
-	world_log_init( wld );
-	world_checkpoint_to_client( wld,
+	Line *line;
+
+	set_current_day( day );
+
+	line = world_msg_client( wld, "%s",
 			time_string( t, "Day changed to %A %d %b %Y." ) );
+	line->flags = LINE_CHECKPOINT;
 }
 
 
 
+/* Called each time a month elapses. */
 static void tick_month( World *wld, time_t t )
 {
 }
 
 
 
+/* Called each time a year elapses. */
 static void tick_year( World *wld, time_t t )
 {
-	world_message_to_client( wld, time_string( t, "Happy %Y!" ) );
+	world_msg_client( wld, "%s", time_string( t, "Happy %Y!" ) );
 }

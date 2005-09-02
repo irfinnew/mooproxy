@@ -1,3 +1,34 @@
+02-09-2005  -  0.0.7
+--------------------
+* From now on, mooproxy is licensed under GPL 2, instead of "GPL 2 or later"
+* The README has gotten a major upgrade and now contains much more useful info
+* Server side now supports IPv6 (actually AF independant)
+* Client side now supports IPv6 (actually AF independant)
+* The authentication string is now MD5-hashed in the config file
+* Mooproxy accepts the --md5crypt option to generate a MD5 hash
+* /getopt and /setopt have been renamed to /get and /set
+* New option: autologin. Determines if the proxy logs in after connect
+* Logging has been improved further. On error conditions (such as lack of
+  disk space), mooproxy now buffers loggable lines in memory, and writes
+  them to log as soon as the error condition is resolved. The amount of
+  memory mooproxy may use for this is not yet limited.
+* Multiple lines are now merged in one write(), improving throughput
+* Mooproxy now always emits network newlines (\r\n)
+* On connect, mooproxy now prints when and where from you were last connected
+* On connection takeover, mooproxy now reports the IP address of the overtaking
+  client to the overtaken client.
+* The maximum authstring length has been reduced from 1024 to 128 bytes
+* The maximum linelength has been increased from 8kb to 16kb
+* Resolve of and connect to server are now nonblocking
+* /disconnect now aborts any resolving or connecting in progress
+* Mooproxy now checks every memory allocation, and aborts if one fails.
+* Mooproxy now returns EXIT_FAILURE or EXIT_SUCCESS, instead of
+  the (undocumented) list of specific exit codes
+* Mooproxy now ignores SIGURG (used in OOB TCP, which we don't use anyway)
+* Cleaned up code comments, and added lots of new ones
+
+
+
 19-07-2005  -  0.0.6.1
 ----------------------
 * Fixed SEGV on connect with no buffered lines waiting.

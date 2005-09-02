@@ -1,21 +1,16 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2002 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  the Free Software Foundation; version 2 dated June, 1991.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
 
@@ -25,21 +20,22 @@
 #include <string.h>
 #include <limits.h>
 #include <time.h>
+#include <stdarg.h>
+#include <unistd.h>
 
 #include "global.h"
 #include "world.h"
 #include "misc.h"
+#include "line.h"
 
 
 
-/* This function creates a world by allocating memory and initialising
- * some variables. */
-World* world_create( char *wldname )
+extern World *world_create( char *wldname )
 {
 	int i;
 	World *wld;
 
-	wld = malloc( sizeof( World ) );
+	wld = xmalloc( sizeof( World ) );
 
 	/* Essentials */
 	wld->name = wldname;
@@ -48,43 +44,60 @@ World* world_create( char *wldname )
 
 	/* Destination */
 	wld->dest_host = NULL;
-	wld->dest_ipv4_address = NULL;
 	wld->dest_port = -1;
 
 	/* Listening connection */
 	wld->listenport = -1;
-	wld->listen_fd = -1;
+	wld->listen_fds = NULL;
 
 	/* Authentication related stuff */
-	wld->authstring = NULL;
+	wld->auth_md5hash = NULL;
+	wld->auth_literal = NULL;
 	wld->auth_connections = 0;
 	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
-		wld->auth_buf[i] = malloc( NET_MAXAUTHLEN );
+	{
+		wld->auth_buf[i] = xmalloc( NET_MAXAUTHLEN );
+		wld->auth_address[i] = NULL;
+	}
 
 	/* Data related to the server connection */
+	wld->server_status = ST_DISCONNECTED;
 	wld->server_fd = -1;
-	
+	wld->server_port = NULL;
+	wld->server_host = NULL;
+	wld->server_address = NULL;
+
+	wld->server_resolver_pid = -1;
+	wld->server_resolver_fd = -1;
+	wld->server_addresslist = NULL;
+	wld->server_connecting_fd = -1;
+
 	wld->server_rxqueue = linequeue_create();
+	wld->server_toqueue = linequeue_create();
 	wld->server_txqueue = linequeue_create();
-	wld->server_rxbuffer = malloc( NET_BBUFFER_LEN );
+	wld->server_rxbuffer = xmalloc( NET_BBUFFER_LEN );
 	wld->server_rxfull = 0;
-	wld->server_txbuffer = malloc( NET_BBUFFER_LEN );
+	wld->server_txbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
 	wld->server_txfull = 0;
 
 	/* Data related to the client connection */
+	wld->client_status = ST_DISCONNECTED;
 	wld->client_fd = -1;
+	wld->client_address = NULL;
+	wld->client_prev_address = NULL;
+	wld->client_last_connected = 0;
 
 	wld->client_rxqueue = linequeue_create();
+	wld->client_toqueue = linequeue_create();
 	wld->client_txqueue = linequeue_create();
-	wld->client_logqueue = linequeue_create();
-	wld->client_buffered = linequeue_create();
-	wld->client_history = linequeue_create();
-	wld->client_rxbuffer = malloc( NET_BBUFFER_LEN );
+	wld->client_rxbuffer = xmalloc( NET_BBUFFER_LEN );
 	wld->client_rxfull = 0;
-	wld->client_txbuffer = malloc( NET_BBUFFER_LEN );
+	wld->client_txbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
 	wld->client_txfull = 0;
 
 	/* Miscellaneous */
+	wld->buffered_lines = linequeue_create();
+	wld->history_lines = linequeue_create();
 	wld->buffer_dropped_lines = 0;
 
 	/* Timer stuff */
@@ -96,29 +109,43 @@ World* world_create( char *wldname )
 	wld->timer_prev_year = -1;
 
 	/* Logging */
+	wld->log_queue = linequeue_create();
+	wld->log_current = linequeue_create();
+	wld->log_currentday = 0;
 	wld->log_fd = -1;
-	wld->logging_enabled = DEFAULT_LOGENABLE;
+	wld->log_buffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
+	wld->log_bfull = 0;
+	wld->log_lasterror = xstrdup( "" );
+	wld->log_lasterrtime = 0;
 
 	/* MCP stuff */
 	wld->mcp_negotiated = 0;
 	wld->mcp_key = NULL;
 
 	/* Options */
-	wld->commandstring = strdup( DEFAULT_CMDSTRING );
-	wld->infostring = strdup( DEFAULT_INFOSTRING );
+	wld->logging_enabled = DEFAULT_LOGENABLE;
+	wld->autologin = DEFAULT_AUTOLOGIN;
+	wld->commandstring = xstrdup( DEFAULT_CMDSTRING );
+	wld->infostring = xstrdup( DEFAULT_INFOSTRING );
 	wld->context_on_connect = DEFAULT_CONTEXTLINES;
 	wld->max_buffered_size = DEFAULT_MAXBUFFERED;
 	wld->max_history_size = DEFAULT_MAXHISTORY;
 	wld->strict_commands = DEFAULT_STRICTCMDS;
 
 	return wld;
+
+	/* (1) comment for allocations of several buffers:
+	 * 
+	 * The network TX buffers and the log write buffer must be a little
+	 * longer than the RX buffers, so that mooproxy can append a newline
+	 * (\n or \r\n) to the line written into the buffer, even if the
+	 * line is as long as the (RX) buffer itself.
+	 * 4 bytes is a bit much perhaps, but oh well. */
 }
 
 
 
-/* This function de-initialises a world and frees the allocated memory.
- * The world must be disconnected before destroying it */
-void world_destroy( World *wld )
+extern void world_destroy( World *wld )
 {
 	int i;
 
@@ -128,38 +155,70 @@ void world_destroy( World *wld )
 
 	/* Destination */
 	free( wld->dest_host );
-	free( wld->dest_ipv4_address );
+
+	/* Listening connection */
+	free( wld->listen_fds );
 
 	/* Authentication related stuff */
-	free( wld->authstring );
+	free( wld->auth_md5hash );
+	free( wld->auth_literal );
 	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
+	{
 		free( wld->auth_buf[i] );
+		free( wld->auth_address[i] );
+		if( wld->auth_fd[i] > -1 )
+			close( wld->auth_fd[i] );
+	}
 
 	/* Data related to server connection */
+	if( wld->server_fd > -1 )
+		close( wld->server_fd );
+	free( wld->server_host );
+	free( wld->server_port );
+	free( wld->server_address );
+
+	if( wld->server_resolver_fd > -1 )
+		close( wld->server_resolver_fd );
+	free( wld->server_addresslist );
+	if( wld->server_connecting_fd > -1 )
+		close( wld->server_connecting_fd );
+
 	linequeue_destroy( wld->server_rxqueue );
+	linequeue_destroy( wld->server_toqueue );
 	linequeue_destroy( wld->server_txqueue );
 	free( wld->server_rxbuffer );
 	free( wld->server_txbuffer );
 
 	/* Data related to client connection */
+	if( wld->client_fd > -1 )
+		close( wld->client_fd );
+	free( wld->client_address );
+	free( wld->client_prev_address );
+
 	linequeue_destroy( wld->client_rxqueue );
+	linequeue_destroy( wld->client_toqueue );
 	linequeue_destroy( wld->client_txqueue );
-	linequeue_destroy( wld->client_logqueue );
-	linequeue_destroy( wld->client_buffered );
-	linequeue_destroy( wld->client_history );
 	free( wld->client_rxbuffer );
 	free( wld->client_txbuffer );
+
+	/* Miscellaneous */
+	linequeue_destroy( wld->buffered_lines );
+	linequeue_destroy( wld->history_lines );
+
+	/* Logging */
+	linequeue_destroy( wld->log_queue );
+	linequeue_destroy( wld->log_current );
+	if( wld->log_fd > -1 )
+		close( wld->log_fd );
+	free( wld->log_buffer );
+	free( wld->log_lasterror );
+
+	/* MCP stuff */
+	free( wld->mcp_key );
 
 	/* Options */
 	free( wld->commandstring );
 	free( wld->infostring );
-
-	/* Miscellaneous */
-
-	/* Logging */
-
-	/* MCP stuff */
-	free( wld->mcp_key );
 
 	/* The world itself */
 	free( wld );
@@ -167,15 +226,14 @@ void world_destroy( World *wld )
 
 
 
-/* This function takes a worldname as argument and returns the filename
- * The string is strdup()ped, so it can be free()d. */
-void world_configfile_from_name( World *wld )
+extern void world_configfile_from_name( World *wld )
 {
 	char *homedir = get_homedir();
 
-	wld->configfile = malloc( strlen( homedir ) + 
-			strlen( wld->name ) + sizeof( WORLDSDIR ) + 1 );
+	wld->configfile = xmalloc( strlen( homedir ) + 
+			strlen( wld->name ) + strlen( WORLDSDIR ) + 1 );
 
+	/* Configuration file = homedir + WORLDSDIR + world name */
 	strcpy( wld->configfile, homedir );
 	strcat( wld->configfile, WORLDSDIR );
 	strcat( wld->configfile, wld->name );
@@ -185,83 +243,49 @@ void world_configfile_from_name( World *wld )
 
 
 
-/* Queue a line for transmission to the client, and prefix the line with
- * the infostring, to indicate it's a message from mooproxy.
- * The line will not be free()d. */
-extern void world_message_to_client( World *wld, char *str )
+extern Line *world_msg_client( World *wld, const char *fmt, ... )
 {
+	va_list argp;
 	Line *line;
-	int len;
-	char *tmp;
+	char *str, *msg;
 
-	len = strlen( str ) + strlen( wld->infostring )
-		+ sizeof( MESSAGE_TERMINATOR );
-	tmp = malloc( len );
-	strcpy( tmp, wld->infostring );
-	strcat( tmp, str );
-	strcat( tmp, MESSAGE_TERMINATOR );
+	/* Parse the arguments into a string */
+	va_start( argp, fmt );
+	xvasprintf( &str, fmt, argp );
+	va_end( argp );
 
-	line = line_create( tmp, len - 1 );
+	/* Construct the message */
+	msg = xmalloc( strlen( str ) + strlen( wld->infostring )
+		+ strlen( MESSAGE_TERMINATOR ) + 1 );
+	strcpy( msg, wld->infostring );
+	strcat( msg, str );
+	strcat( msg, MESSAGE_TERMINATOR );
+	free( str );
+
+	/* And append it to the client queue */
+	line = line_create( msg, -1 );
 	line->flags = LINE_MESSAGE;
-	linequeue_append( wld->client_txqueue, line );
+	linequeue_append( wld->client_toqueue, line );
+
+	return line;
 }
 
 
 
-/* Queue a line for transmission to the client, and prefix the line with
- * the infostring, to indicate it's a message from mooproxy.
- * The line will not be free()d. */
-extern void world_checkpoint_to_client( World *wld, char *str )
-{
-	Line *line;
-	int len;
-	char *tmp;
-
-	len = strlen( str ) + strlen( wld->infostring )
-		+ sizeof( MESSAGE_TERMINATOR );
-	tmp = malloc( len );
-	strcpy( tmp, wld->infostring );
-	strcat( tmp, str );
-	strcat( tmp, MESSAGE_TERMINATOR );
-
-	line = line_create( tmp, len - 1 );
-	line->flags = LINE_CHECKPOINT;
-	linequeue_append( wld->client_txqueue, line );
-}
-
-
-
-/* Store the line in the history buffer. */
-extern void world_store_history_line( World *wld, Line *line )
-{
-	if( line->flags & LINE_NOHIST )
-	{
-		line_destroy( line );
-		return;
-	}
-
-	line->flags = LINE_HISTORY;
-	linequeue_append( wld->client_history, line );
-}
-
-
-
-/* Measure the length of dynamic queues such as buffered and history,
- * and remove the oldest lines until they are small enought. */
 extern void world_trim_dynamic_queues( World *wld )
 {
-	long limit;
+	unsigned long limit;
 
 	/* Trim history lines */
 	limit = wld->max_history_size * 1024;
-	while( wld->client_history->length > limit )
-		line_destroy( linequeue_pop( wld->client_history ) );
+	while( wld->history_lines->length > limit )
+		line_destroy( linequeue_pop( wld->history_lines ) );
 
 	/* Trim bufferd lines */
 	limit = wld->max_buffered_size * 1024;
-	while( wld->client_buffered->length > limit )
+	while( wld->buffered_lines->length > limit )
 	{
-		line_destroy( linequeue_pop( wld->client_buffered ) );
+		line_destroy( linequeue_pop( wld->buffered_lines ) );
 		/* Buffered line dropped, take note! */
 		wld->buffer_dropped_lines++;
 	}
@@ -269,92 +293,113 @@ extern void world_trim_dynamic_queues( World *wld )
 
 
 
-/* Replicate the set number of history lines to provide context for the newly
- * connected client, and then pass all buffered lines. */
 extern void world_recall_and_pass( World *wld )
 {
-	char *str;
-	long hlines = wld->client_history->count;
-	long blines = wld->client_buffered->count;
+	long hlines = wld->history_lines->count;
+	long blines = wld->buffered_lines->count;
 	long dropped = wld->buffer_dropped_lines;
 	double bfull;
 
+	/* Pass min(wld->history_lines->count, wld->context_on_connect) lines */
 	if( hlines > wld->context_on_connect )
 		hlines = wld->context_on_connect;
 
 	/* Calculate how full the buffer is. */
-	bfull = wld->client_buffered->length / 10.24 / wld->max_buffered_size;
+	bfull = wld->buffered_lines->length / 10.24 / wld->max_buffered_size;
 
 	/* If there's nothing to show, say so and be done. */
 	if( hlines == 0 && blines == 0 )
 	{
-		world_message_to_client( wld, "No context lines and no "
-			"buffered lines." );
+		world_msg_client( wld, "No context lines and no "
+				"buffered lines." );
 		return;
 	}
 
 	/* Inform about the context lines, if any. */
 	if( hlines > 0 )
-	{
-		asprintf( &str, "Passing %li line%s of context history.",
-			hlines, hlines == 1 ? "" : "s" );
-		world_message_to_client( wld, str );
-		free( str );
-	}
+		world_msg_client( wld, "Passing %li line%s of context history.",
+				hlines, hlines == 1 ? "" : "s" );
 
 	/* Append context lines. */
 	world_recall_history_lines( wld, hlines );
 
 	/* Inform about end context and/or start buffer, as applicable. */
 	if( blines > 0 )
-	{
-		asprintf( &str, "%s context lines. Passing %li buffered line%s"
-			" (buffer %.1f%% full).", hlines > 0 ? "End" : "No",
-			blines, blines == 1 ? "" : "s", bfull );
-	} else {
-		/* blines <= 0 AND hlines > 0 */
-		asprintf( &str, "End context. No buffered lines." );
-	}
-	world_message_to_client( wld, str );
-	free( str );
+		world_msg_client( wld, "%s context lines. Passing %li buffered"
+			" line%s (buffer %.1f%% full).",
+			hlines > 0 ? "End" : "No", blines,
+			blines == 1 ? "" : "s", bfull );
+	else
+		world_msg_client( wld, "End context. No buffered lines." );
 
 	/* If there were lines dropped, report that. */
 	if( dropped > 0 )
-	{
-		asprintf( &str, "NOTE: %li buffered line%s dropped due to low "
-			"buffer space.", dropped, dropped == 1 ? "" : "s" );
-		world_message_to_client( wld, str );
-		free( str );
-		wld->buffer_dropped_lines = 0;
-	}
+		world_msg_client( wld, "WARNING: %li buffered line%s dropped "
+				"due to low buffer space.", dropped,
+				dropped == 1 ? "" : "s" );
+	wld->buffer_dropped_lines = 0;
 
 	/* Append the buffered lines. */
-	linequeue_merge( wld->client_txqueue, wld->client_buffered );
+	linequeue_merge( wld->client_toqueue, wld->buffered_lines );
 
 	/* Mark end of buffered text (if any). */
 	if( blines > 0 )
-		world_message_to_client( wld, "End pass." );
+		world_msg_client( wld, "End of buffered lines." );
 }
 
 
 
-/* Recall a number of history lines. The second parameter is the
- * number of lines to recall. */
 extern void world_recall_history_lines( World *wld, int lines )
 {
 	Line *line;
 	int i;
 
 	/* No history lines? Bail out. */
-	if( wld->client_history->count == 0 || lines == 0 )
+	if( wld->history_lines->count == 0 || lines == 0 )
 		return;
 
 	/* Seek to correct line in the history queue. */
-	line = wld->client_history->tail;
+	line = wld->history_lines->tail;
 	for( i = lines; i > 1 && line->prev; i-- )
 		line = line->prev;
 
 	/* Duplicate lines, copying them to the txqueue. */
 	for( ; line; line = line->next )
-		linequeue_append( wld->client_txqueue, line_dup( line ) );
+		linequeue_append( wld->client_toqueue, line_dup( line ) );
+}
+
+
+
+extern void world_login_server( World *wld, int override )
+{
+	/* Only log in if autologin is enabled or override is in effect */
+	if( !wld->autologin && !override )
+		return;
+
+	/* Of course, we need to be connected */
+	if( wld->server_status != ST_CONNECTED )
+	{
+		world_msg_client( wld, "Not connected to server, "
+				"cannot login." );
+		return;
+	}
+
+	/* We can't login without wld->auth_literal */
+	if( wld->auth_literal == NULL )
+	{
+		world_msg_client( wld, "Cannot login to server, literal "
+				"authentication string not known." );
+		world_msg_client( wld, "You need to re-authenticate to moo"
+				"proxy (i.e. reconnect) for this to work." );
+		return;
+	}
+
+	if( override )
+		world_msg_client( wld, "Logging in on world %s.", wld->name );
+	else
+		world_msg_client( wld, "Automatically logging in on world %s.",
+				wld->name );
+
+	linequeue_append( wld->server_toqueue,
+			line_create( xstrdup( wld->auth_literal ), -1 ) );
 }

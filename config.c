@@ -1,21 +1,16 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2002 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  the Free Software Foundation; version 2 dated June, 1991.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
 
@@ -40,21 +35,23 @@
 
 
 
+/* The separator for keys and values in the configfile. */
 #define SEPARATOR '='
+/* The maximum length of the configuration file, in bytes. */
+#define MAX_CONFIG_LENGTH (32 * 1024)
 
 
 
-static char *print_help_text( void );
-static char *print_version_text( void );
-static char *print_license_text( void );
 static int set_key_value( World *, char *, char *, char ** );
-/* static int get_key_value( World *, char *, char ** ); */
 static int set_key_internal( World *, char *, char *, int, char ** );
 static int get_key_internal( World *, char *, char **, int );
 static int attempt_createdir( char *, char ** );
 
 
 
+/* The list of settable/gettable options. The hidden flag indicates if the
+ * option is accessible to the user. The setters and getters are functions
+ * that actually set or query the option, and are located in accessor.c. */
 static const struct
 {
 	int hidden;
@@ -66,9 +63,9 @@ static const struct
 	{ 0, "listenport",
 		&aset_listenport,
 		&aget_listenport },
-	{ 0, "authstring",
-		&aset_authstring,
-		&aget_authstring },
+	{ 0, "auth_md5hash",
+		&aset_auth_md5hash,
+		&aget_auth_md5hash },
 
 	{ 0, "host",
 		&aset_dest_host,
@@ -76,6 +73,9 @@ static const struct
 	{ 0, "port",
 		&aset_dest_port,
 		&aget_dest_port },
+	{ 0, "autologin",
+		&aset_autologin,
+		&aget_autologin },
 
 	{ 0, "commandstring",
 		&aset_commandstring,
@@ -105,24 +105,23 @@ static const struct
 	{ 0, NULL, NULL, NULL }
 };
 
-static const char short_opts[] = ":hVLw:";
+/* Command line options. */
+static const char short_opts[] = ":hVLw:m";
 static const struct option long_opts[] = {
 	{ "help", 0, NULL, 'h' },
 	{ "version", 0, NULL, 'V' },
 	{ "license", 0, NULL, 'L' },
 	{ "world", 1, NULL, 'w' },
+	{ "md5crypt", 0, NULL, 'm' },
 	{ NULL, 0, NULL, 0 }
 };
-	
 
 
-/* This function parses the commandline options (argc and argv), and
- * acts accordingly. It places the name of the world in the third arg.
- * On failure, it returns non-zero and places the error in the last arg. */
-int parse_command_line_options( int argc, char **argv,
+
+extern int parse_command_line_options( int argc, char **argv,
 		char **worldname, char **err )
 {
-	int result, i;
+	int result;
 
 	opterr = 0;
 
@@ -131,170 +130,175 @@ int parse_command_line_options( int argc, char **argv,
 	{
 		switch( result )
 		{
+		/* -h, --help */
 		case 'h':
-			*err = print_help_text();
-			return EXIT_HELP;
+		return PARSEOPTS_HELP;
+		break;
+
+		/* -L, --license */
 		case 'L':
-			*err = print_license_text();
-			return EXIT_HELP;
+		return PARSEOPTS_LICENSE;
+		break;
+
+		/* -V, --version */
 		case 'V':
-			*err = print_version_text();
-			return EXIT_HELP;
+		return PARSEOPTS_VERSION;
+		break;
+
+		/* -m, --md5crypt */
+		case 'm':
+		return PARSEOPTS_MD5CRYPT;
+		break;
+
+		/* -w, --world */
 		case 'w':
-			if( *worldname != NULL )
-				free( *worldname );
-			*worldname = strdup( optarg );
-			break;
+		free( *worldname );
+		*worldname = xstrdup( optarg );
+		break;
+
+		/* Unrecognised */
 		case '?':
-			asprintf( err, "Unknown option: `%s'.",
-					argv[optind - 1] );
-			return EXIT_UNKNOWNOPT;
+		/* On unrecognised short option, optopt is the unrecognized
+		 * char. On unrecognised long option, optopt is 0 and optind
+		 * contains the number of the unrecognized argument.
+		 * Sigh... */
+		if( optopt == 0 )
+			xasprintf( err, "Unrecognized option: `%s'. Use "
+					"--help for help.", argv[optind - 1] );
+		else
+			xasprintf( err, "Unrecognized option: `-%c'. Use "
+					"--help for help.", optopt );
+		return PARSEOPTS_ERROR;
+		break;
+
+		/* Option without required argument. */
 		case ':':
-			asprintf( err, "Option `%s' expects an argument.",
-					argv[optind - 1] );
-			return EXIT_UNKNOWNOPT;
+		xasprintf( err, "Option `%s' expects an argument.",
+				argv[optind - 1] );
+		return PARSEOPTS_ERROR;
+		break;
+
+		/* We shouldn't get here */
 		default:
-			break;
+		break;
 		}
 	}
 
+	/* Any non-options left? */
 	if( optind < argc )
 	{
-		for( i = optind; i < argc; i++ )
-			asprintf( err, "Unexpected argument: `%s'.",
-					argv[i] );
-		return EXIT_UNKNOWNOPT;
+		xasprintf( err, "Unexpected argument: `%s'. Use --help for "
+				"help.", argv[optind] );
+		return PARSEOPTS_ERROR;
 	}
 
-	return EXIT_OK;
+	return PARSEOPTS_START;
 }
 
 
 
-char *print_help_text( void )
-{
-	return strdup(
-	"mooproxy - a proxy for moo/mud connections (C) 2002 by "
-			"Marcel L. Moreaux\n\n"
-	"usage: mooproxy [options]\n\n"
-	"-h, --help\t\tshows this help screen and exits\n"
-	"-V, --version\t\tshows version information and exits\n"
-	"-L, --license\t\tshows licensing information and exits\n"
-	"-w, --world\t\tworld to load\n"
-	"\nreleased under the GPL 2.0, report bugs to <marcelm@luon.net>\n"
-	"mooproxy comes with ABSOLUTELY NO WARRANTY; for details run "
-			"mooproxy --license" );
-}
-
-
-
-static char *print_version_text( void )
-{
-	return strdup( "mooproxy version " VERSIONSTR " Copyright (C) 2004 "
-			"Marcel L Moreaux" );
-}
-
-
-
-static char *print_license_text( void )
-{
-	return strdup(
-	"mooproxy - a proxy for moo/mud connections\n"
-	"Copyright (C) 2002 Marcel L Moreaux\n"
-	"This program is free software; you can redistribute it and/or "
-			"modify\n"
-	"it under the terms of the GNU General Public License as "
-			"published by\n"
-	"the Free Software Foundation; either version 2 of the License, or\n"
-	"(at your option) any later version.\n\n"
-	"This program is distributed in the hope that it will be useful,\n"
-	"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
-	"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
-	"GNU General Public License for more details." );
-}
-
-
-
-/* This function attempts to load the configuration file of the World.
- * On failure, it returns non-zero and places the error in the last arg. */
-int world_load_config( World *wld, char **err )
+/* FIXME: this isn't pretty. Rewrite some time. */
+extern int world_load_config( World *wld, char **err )
 {
 	int fd, i;
 	char *line, *key, *value, *s, *contents, *cnt, *tmp;
 	long wline;
 	size_t l;
-	
+
+	/* We need this to be NULL or valid error later on. */
+	*err = NULL;
+
 	if( wld->configfile == NULL )
 	{
-		asprintf( err, "Could not open (null).\nNo such world `%s'",
+		xasprintf( err, "Could not open (null).\nNo such world, `%s'",
 				wld->name );
-		return EXIT_NOSUCHWORLD;
+		return 1;
 	}
 
 	fd = open( wld->configfile, O_RDONLY );
 	if( fd == -1 )
 	{
-		asprintf( err, "Error opening `%s': %s\nNo such world `%s'",
-			wld->configfile, strerror_n( errno ), wld->name );
-		return EXIT_NOSUCHWORLD;
+		xasprintf( err, "Error opening `%s': %s\nNo such world, `%s'",
+			wld->configfile, strerror( errno ), wld->name );
+		return 1;
 	}
 
-	contents = cnt = malloc( 102401 );
-	i = read( fd, contents, 102400 );
+	/* We read the entire configuration file in one go, and then parse
+	 * everything in memory. */
+	contents = cnt = xmalloc( MAX_CONFIG_LENGTH + 1 );
+	i = read( fd, contents, MAX_CONFIG_LENGTH );
+
+	/* Error! */
 	if( i == - 1 )
 	{
-		asprintf( err, "Error reading from `%s': %s\nNo such world `%s'"
-			, wld->configfile, strerror_n( errno ), wld->name );
+		xasprintf( err, "Error reading from `%s': %s\nNo such world, "
+			"`%s'", wld->configfile, strerror( errno ), wld->name );
 		free( contents );
-		return EXIT_NOSUCHWORLD;
+		return 1;
 	}
 
+	/* If the file is longer than we can read, refuse as well. */
+	if( i == MAX_CONFIG_LENGTH )
+	{
+		xasprintf( err, "Error: `%s' is greater than %li bytes.",
+				wld->configfile, MAX_CONFIG_LENGTH );
+		free( contents );
+		return 1;
+	}
+
+	/* NUL-terminate the string. */
 	contents[i] = '\0';
 	close( fd );
-	
+
 	for( wline = 1; ( line = read_one_line( &cnt ) ); wline++ )
 	{
+		/* Get a line, trim the whitespace, and parse. */
 		line = trim_whitespace( line );
 
+		/* If the line is empty, or starts with #, ignore */
 		if( line[0] == '\0' || line[0] == '#' )
 			;
 		else if( ( s = strchr( line, SEPARATOR ) ) )
 		{
-			key = malloc( ( l = s - line ) + 1 );
+			/* Isolate the key and value */
+			key = xmalloc( ( l = s - line ) + 1 );
 			strncpy( key, line, l );
 			key[l] = '\0';
-			value = malloc( ( l = strlen( line ) - l - 1 ) + 1 );
+			value = xmalloc( ( l = strlen( line ) - l - 1 ) + 1 );
 			strncpy( value, ++s, l );
 			value[l] = '\0';
 
+			/* Trim key and value */
 			key = trim_whitespace( key );
 			value = trim_whitespace( value );
 
 			/* Strip off a single leading and trailing quote */
 			value = remove_enclosing_quotes( value );
 
+			/* Try and set the key */
 			switch( set_key_value( wld, key, value, err ) )
 			{
 				case SET_KEY_NF:
-				asprintf( err, "%s: line %li: unknown key `%s'"
+				xasprintf( err, "%s: line %li: unknown key `%s'"
 					, wld->configfile, wline, key );
 				break;
 
 				case SET_KEY_PERM:
-				asprintf( err, "%s: line %li: setting key `%s'"
+				xasprintf( err, "%s: line %li: setting key `%s'"
 					" not allowed.", wld->configfile,
 					wline, key );
 				break;
 
 				case SET_KEY_BAD:
 				tmp = *err;
-				asprintf( err, "%s: line %li: setting key `%s'"
+				xasprintf( err, "%s: line %li: setting key `%s'"
 					": %s", wld->configfile, wline,
 					key, tmp );
 				free( tmp );
 				break;
 			}
 
+			/* Clean up */
 			free( key );
 			free( value );
 
@@ -302,29 +306,28 @@ int world_load_config( World *wld, char **err )
 			{
 				free( contents );
 				free( line );
-				return EXIT_CONFIGERR;
+				return 1;
 			}
 		}
 		else
 		{
-			asprintf( err, "%s: line %li, parse error: `%s'", 
+			/* We don't understand that! */
+			xasprintf( err, "%s: line %li, parse error: `%s'", 
 				wld->configfile, wline, line );
 			free( contents );
 			free( line );
-			return EXIT_CONFIGERR;
+			return 1;
 		}
-		
+
 		free( line );
 	}
 
 	free( contents );
-	return EXIT_OK;
+	return 0;
 }
 
 
 
-/* Place a list of key names (except the hidden ones) in the string pointer
- * and return the number of keys. The list must be freed. */
 extern int world_get_key_list( World *wld, char ***list )
 {
 	int i, num = 0;
@@ -332,11 +335,12 @@ extern int world_get_key_list( World *wld, char ***list )
 
 	for( i = 0; key_db[i].keyname; i++ )
 	{
+		/* Hidden? Skip. */
 		if( key_db[i].hidden )
 			continue;
 
-		*list = realloc( *list, ++num * sizeof( char * ) );
-		( *list )[num - 1] = strdup( key_db[i].keyname );
+		*list = xrealloc( *list, ++num * sizeof( char * ) );
+		( *list )[num - 1] = xstrdup( key_db[i].keyname );
 	}
 
 	return num;
@@ -344,10 +348,6 @@ extern int world_get_key_list( World *wld, char ***list )
 
 
 
-/* This function searches for the key name in the database. If it matches,
- * it places the value in the appropriate variable of the World.
- * Returns SET_KEY_???
- * When returning SET_KEY_BAD, the string pointer contains a message. */
 extern int world_set_key( World *wld, char *key, char *value, char **err )
 {
 	return set_key_internal( wld, key, value, ASRC_USER, err );
@@ -355,9 +355,6 @@ extern int world_set_key( World *wld, char *key, char *value, char **err )
 
 
 
-/* This function searches for the key name in the database. If it matches,
- * it places the corresponding value in the string pointer.
- * Returns GET_KEY_??? */
 extern int world_get_key( World *wld, char *key, char **value )
 {
 	return get_key_internal( wld, key, value, ASRC_USER );
@@ -365,31 +362,29 @@ extern int world_get_key( World *wld, char *key, char **value )
 
 
 
-extern int set_key_value( World *wld, char *key, char *value, char **err )
+/* This function is like world_set_key(), but internal to this file.
+ * It's for setting from file, not from the user. */
+static int set_key_value( World *wld, char *key, char *value, char **err )
 {
 	return set_key_internal( wld, key, value, ASRC_FILE, err );
 }
 
 
 
-/* extern int get_key_value( World *wld, char *key, char **value )
-{
-	return get_key_internal( wld, key, value, ASRC_FILE );
-} */
-
-
-
+/* Attempts to set a single key to a new value.
+ * For the interface, see world_set_key().
+ * Additional arguments:
+ *   src:  One of ASRC_FILE, ASRC_USER. Indicates if the set request
+ *         is coming from the config file or from the user. */
 static int set_key_internal( World *wld, char *key, char *value, int src,
 		char **err )
 {
 	int i;
 
-	*err = NULL;
-
 	for( i = 0; key_db[i].keyname; i++ )
 		if( !strcmp( key, key_db[i].keyname ) )
 		{
-			if( key_db[i].hidden )
+			if( key_db[i].hidden && src == ASRC_USER )
 				return SET_KEY_NF;
 
 			return (*key_db[i].setter)( wld, key, value, src, err );
@@ -400,6 +395,10 @@ static int set_key_internal( World *wld, char *key, char *value, int src,
 
 
 
+/* Queries a single key. For the interface, see world_get_key().
+ * Additional arguments:
+ *   src:  One of ASRC_FILE, ASRC_USER. Indicates if the request
+ *         is coming from the config file or from the user. */
 static int get_key_internal( World *wld, char *key, char **value, int src )
 {
 	int i;
@@ -418,62 +417,66 @@ static int get_key_internal( World *wld, char *key, char **value, int src )
 
 
 
-int create_configdirs( char **err )
+extern int create_configdirs( char **err )
 {
-	int i;
+	if( attempt_createdir( CONFIGDIR, err ) != 0 )
+		return 1;
+	if( attempt_createdir( WORLDSDIR, err ) != 0 )
+		return 1;
+	if( attempt_createdir( LOGSDIR, err ) != 0 )
+		return 1;
 
-	if( ( i = attempt_createdir( CONFIGDIR, err ) ) )
-		return i;
-	if( ( i = attempt_createdir( WORLDSDIR, err ) ) )
-		return i;
-	if( ( i = attempt_createdir( LOGSDIR, err ) ) )
-		return i;
-
-	return EXIT_OK;
+	return 0;
 }
 
 
 
-int attempt_createdir( char *dirname, char **err )
+/* Attempt to create the directory ~/dirname.
+ * On succes, return 0.
+ * On failure, return non-zero, and put error in err (err should be free()d) */
+static int attempt_createdir( char *dirname, char **err )
 {
 	char *path, *homedir = get_homedir();
 	struct stat fileinfo;
 
-	path = malloc( strlen( homedir ) + strlen( dirname ) + 1 );
+	/* Construct the path */
+	path = xmalloc( strlen( homedir ) + strlen( dirname ) + 1 );
 	strcpy( path, homedir );
 	strcat( path, dirname );
 	free( homedir );
-	
+
 	if( !mkdir( path, S_IRUSR | S_IWUSR | S_IXUSR ) )
 	{
 		free( path );
-		return EXIT_OK;
+		return 0;
 	}
 
+	/* If there was an error other than "already exists", complain */
 	if( errno != EEXIST )
 	{
-		asprintf( err, "Could not create directory `%s': %s",
-				path, strerror_n( errno ) );
+		xasprintf( err, "Could not create directory `%s': %s",
+				path, strerror( errno ) );
 		free( path );
-		return EXIT_CONFIGDIRS;
+		return 1;
 	}
 
+	/* The directory already existed. But is it really a dir? */
 	if( stat( path, &fileinfo ) == -1 )
 	{
-		asprintf( err, "Could not stat `%s': %s",
-				path, strerror_n( errno ) );
+		xasprintf( err, "Could not stat `%s': %s",
+				path, strerror( errno ) );
 		free( path );
-		return EXIT_CONFIGDIRS;
+		return 1;
 	}
 	
 	if( !S_ISDIR( fileinfo.st_mode ) )
 	{
-		asprintf( err, "`%s' exists, but it is not a directory.",
+		xasprintf( err, "`%s' exists, but it is not a directory.",
 				path );
 		free( path );
-		return EXIT_CONFIGDIRS;
+		return 1;
 	}
 
 	free( path );
-	return EXIT_OK;
+	return 0;
 }

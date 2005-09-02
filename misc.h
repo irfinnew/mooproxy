@@ -1,21 +1,16 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2002 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  the Free Software Foundation; version 2 dated June, 1991.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
 
@@ -26,133 +21,99 @@
 
 
 
+#include <stdarg.h>
 #include <sys/types.h>
+#include <time.h>
+
+#include "line.h"
 
 
 
-#define LINE_DONTLOG 0x01
-#define LINE_DONTBUF 0x02
-#define LINE_NOHIST 0x04
+/* Wrappers for malloc(), realloc(), strdup(), xasprintf(), and xvasprintf() 
+ * These wrappers check for and abort on memory allocation failure.
+ * Otherwise, they behave identical to the original functions. */
+extern void *xmalloc( size_t size );
+extern void *xrealloc( void *ptr, size_t size );
+extern char *xstrdup( const char *s );
+extern int xasprintf( char **strp, const char *fmt, ... );
+extern int xvasprintf( char **strp, const char *fmt, va_list argp );
 
-#define LINE_REGULAR ( 0 )
-#define LINE_MCP ( LINE_DONTLOG | LINE_DONTBUF | LINE_NOHIST )
-#define LINE_CHECKPOINT ( 0 )
-#define LINE_MESSAGE ( LINE_DONTLOG | LINE_NOHIST )
-#define LINE_BUFFERED ( LINE_DONTLOG )
-#define LINE_HISTORY ( LINE_DONTLOG | LINE_DONTBUF | LINE_NOHIST )
+/* Set the current time which can later be queried by current_time().
+ * The time is used e.g. to timestamp newly created lines. */
+extern void set_current_time( time_t t );
 
+/* Get the current time, as set by set_current_time(). */
+extern time_t current_time( void );
 
+/* Set the current day which can later be queried by current_day().
+ * The time is used to timestamp lines for logging. */
+extern void set_current_day( long day );
 
-typedef struct _Line Line;
-struct _Line
-{
-	char *str;
-	long len;
-	Line *next;
-	Line *prev;
-	int flags;
-};
+/* Get the current day, as set by set_current_day(). */
+extern long current_day( void );
 
-typedef struct _Linequeue Linequeue;
-struct _Linequeue
-{
-	Line *head;
-	Line *tail;
-	ulong count;
-	ulong length;
-};
-
-
-
-/* Exactly like the GNU asprintf() (though different implementation).
- * It is like sprintf, but it allocates its own memory.
- * The memory should be free()d afterwards. */
-extern int asprintf( char **, char *, ... );
-
-/* This function gets the users homedir from the environment and returns it.
- * The string is strdup()ped, so it should be free()d.
- * The string will either be empty, or /-terminated */
+/* Returns a string containing the users homedir. The string should be free()d.
+ * The string will euther be empty, or be /-terminated */
 extern char *get_homedir( void );
 
-/* Returns the given string, up to but excluding the first newline.
- * The given pointer is set to point to the first character after the
- * newline.
- * When there is nothing left, it returns NULL
- * The returned lines are separately allocated. */
-extern char *read_one_line( char ** );
+/* Extract the first line from str.
+ * Returns a pointer to a copy of the first line of str, excluding the
+ * newline character. The copy should be free()d.
+ * If there are no lines left in str, the function returns NULL.
+ * str is modified to point to the next line. */
+extern char *read_one_line( char **str );
 
-/* Returns the given string, up to but excluding the first whitespace char.
- * The given pointer is set to point to the first character after the
- * whitespace character.
- * When there is nothing left, it returns NULL
- * The string pointed to is mangled, returned words are still inside. */
-extern char *get_one_word( char ** );
+/* Extract the first from word str.
+ * Returns a pointer to the first word of str, excluding any whitespace
+ * characters. The pointer points to the word inside the (mangled) str,
+ * it should not be free()d separately.
+ * If there are no words left in str, the function returns NULL.
+ * str is modified to point to the first character after the first whitespace
+ * character after the first word. */
+extern char *get_one_word( char **str );
 
-/* Strips all whitespace (determined by isspace()) from a line and returns
- * the modified string */
-extern char *strip_all_whitespace( char * );
+/* Strips all whitespace from the start and end of line.
+ * Returns line. */
+extern char *trim_whitespace( char *line );
 
-/* Strips all whitespace (determined by isspace()) in the left and right
- * of the string and returns the modified string */
-extern char *trim_whitespace( char * );
+/* If str starts and ends with ", or starts and ends with ', modify str
+ * to remove leading and trailing quote. Returns str. */
+extern char *remove_enclosing_quotes( char *str );
 
-/* If the string starts and ends with " or with ', remove both the leading
- * and trailing quote. Return the new string */
-extern char *remove_enclosing_quotes( char * );
+/* Determines if str says true or false (case insensitive).
+ * If the string is "true", "yes", or "on", return 1.
+ * If the string is "false", "no", or "off", return 0.
+ * If the string is not recognized, return -1. */
+extern int true_or_false( const char *str );
 
-/* Converts an entire string to lowercase and returns the modified string */
-extern char *lowercase( char * );
+/* Convert the time in t to a formatted string in local time.
+ * For the format, see strftime (3).
+ * Returns a pointer to a statically allocated buffer.
+ * The buffer should not be free()d, and will be overwritten by subsequent
+ * calls to time_string(). */
+extern char *time_string( time_t t, const char *fmt );
 
-/* Determines if a string says true or false (case insensitive).
- * If the string is "true", "yes", "on" or "1", it returns 1.
- * If the string is "false", "no", "off" or "0", it returns 0.
- * If the string is unknown, return -1 */
-extern int true_or_false( char * );
+/* Process buffer into lines. Start scanning at offset, scan only read bytes.
+ * The salvaged lines are appended to q. Return the new offset. */
+extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q );
 
-/* Exactly like strerror(), except for the fucking irritating trailing \n */
-extern char *strerror_n( int );
-
-/* Convert the given time to a formatted string in local time.
- * For the format, see strftime(3) .
- * It returns a pointer to a statically allocated buffer. */
-extern char *time_string( time_t, char * );
-
-/* Create a line, flags are clear, prev/next are NULL.
- * If length is -1, it's calculated. */
-extern Line *line_create( char *, long );
-
-/* Destroy a line, freeing its resources */
-extern void line_destroy( Line * );
-
-/* Return a duplicate of the line (prev/next are NULL). */
-extern Line *line_dup( Line * );
-
-/* Allocate and initialize a line queue */
-extern Linequeue *linequeue_create( void );
-
-/* De-initialize and free al resources */
-extern void linequeue_destroy( Linequeue * );
-
-/* Clear all lines in the queue */
-extern void linequeue_clear( Linequeue * );
-
-/* Prepend a line to the start of the queue */
-extern void linequeue_prepend( Linequeue *, Line * );
-
-/* Append a line to the end of the queue */
-extern void linequeue_append( Linequeue *, Line * );
-
-/* Return the first line at the beginning of the queue. NULL if no line.
- * The next/prev fields in the returned line are garbage. */
-extern Line* linequeue_pop( Linequeue * );
-
-/* Return the last line at the end of the queue. NULL if no line.
- * The next/prev fields in the returned line are garbage. */
-extern Line* linequeue_chop( Linequeue * );
-
-/* Merge the two queues. The contents of the second queue is appended
- * to the first one, leaving the second one empty. */
-extern void linequeue_merge( Linequeue *, Linequeue * );
+/* Process the given buffer/queue, and write it to the given fd.
+ * Arguments:
+ *   fd:      FD to write to.
+ *   buffer:  Buffer to use for writing to the FD.
+ *   bffl:    Indicates how full the buffer is. Will be updated.
+ *   queue:   Queue of lines to be written.
+ *   tohist:  Queue to append written lines to.
+ *            If queue is NULL, written lines are discarded.
+ *   nnl:     If true:  appends network newlines to written lines.
+ *            If false: appends UNIX newlines to written lines.
+ *   errnum:  Modified to contain error code on error.
+ * Return value:
+ *   0 on succes (everything in buffer and queue was written without error)
+ *   1 on congestion (the FD could take no more)
+ *   2 on error (errnum is set) */
+extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
+		Linequeue *tohist, int nnl, int *errnum );
 
 
 

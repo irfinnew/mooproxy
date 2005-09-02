@@ -1,33 +1,208 @@
-Mooproxy, a buffering proxy for moo-connections.
-Copyright (C) 2002 Marcel L. Moreaux <marcelm@luon.net>
 
 
-Mooproxy is a layer between your MOO client and a MOO proxy, as shown below:
+               Mooproxy - a buffering proxy for moo-connections
+         Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
 
-MOO client  <---->  Mooproxy  <---->  MOO server
+
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; version 2 dated June, 1991.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+
+
+
+  1. About
+  2. Compiling and installing
+  3. Using
+  4. Authentication
+  5. Portability
+
+
+
+  1. About
+  --------
+
+Mooproxy is a layer between your MOO client and a MOO server, as shown below:
+
+    MOO client  <---->  Mooproxy  <---->  MOO server
 
 The intention is that the proxy remains connected to the server, even if
-you disconnect your client (because you shutdown/suspend your computer),
-or become disconnected because of bad network, etc. It will also provide
-features like centralised logging, which is useful if you connect with
-different clients.
+you disconnect your MOO client, for example, if you shutdown your computer,
+take your laptop to a different place, or have network problems.
 
-Mooproxy is pretty basic, but quite usable. It is still under development;
-bug reports and suggestions are appreciated. If you really want to help,
-run it like this:
+Mooproxy also provides centralised logging, which is useful if you use
+multiple MOO clients.
 
-    valgrind --leak-check=yes --show-reachable=yes ./mooproxy
+Mooproxy is still under development; bug reports and other feedback is
+appreciated. If you really want to help, run it in valgrind (with 
+--leak-check=full and --show-reachable=yes), and report any crashes or
+memleaks you get (Please report the full valgrind output, and the version
+of mooproxy you're using).
 
-in the source directory, and report the full output of valgrind (and the
-mooproxy version you're running) if it crashes or detects memleaks.
+gdb backtraces of crashes are also helpful.
 
-To compile mooproxy, simply type `` make '' in the source directory.
-You need a working C compiler, and the development libraries for libc.
 
-Running mooproxy is simple, just do `` ./mooproxy -w <wld> '', where <wld>
-is the name of the world. Mooproxy will use the configuration file
-~/.mooproxy/worlds/<wld> . See the file ExampleConfig for an example
-configuration file.
 
-Note: as of now, mooproxy cannot run as a daemon in the background. If you
+  2. Compiling and installing
+  ---------------------------
+
+To compile mooproxy, simply run
+
+    make
+
+in the source directory. You need a working C compiler, and the development
+libraries for libc. Mooproxy also uses some functionality that may not be
+present on all Unices; see Portability.
+
+You can install it by simply copying the mooproxy executable to a suitable
+place, such as /usr/local/bin or ~/bin. Mooproxy requires no other files.
+
+
+
+  3. Using
+  --------
+
+Running mooproxy is simple, just invoke it like this:
+
+    mooproxy -w <wld>
+
+where <wld> is the name of the world. Mooproxy will use the configuration
+file ~/.mooproxy/worlds/<wld> . See the file ExampleConfig for an example
+configuration file. The ExampleConfig file contains all configurable
+options, and the settings in ExampleConfig are exactly the same as the
+builtin defaults in mooproxy.
+
+Note: currently, mooproxy cannot run as a daemon in the background. If you
 want it to run in the background, use nohup and &, or screen.
+
+Mooproxy accepts commands to change a lot of its behaviour run-time.
+When connected to mooproxy, do /help for a brief list of commands.
+
+
+
+  4. Authentication
+  -----------------
+
+There are two situations in mooproxy that require authentication;
+
+  - A MOO client connects to mooproxy
+  - Mooproxy connects to a MOO server
+
+Mooproxy uses the same authentication string for both. In the configuration
+file for the world, you should put a MD5 hash of the authentication string.
+When the client connects to mooproxy, the client or the user supplies the
+authentication string to mooproxy. Mooproxy hashes the authentication
+string from the client, compares it to the stored MD5 hash, and if they
+match, the client is accepted.
+
+At this point, mooproxy stores the _literal_ authentication string received
+from the client in its memory. When mooproxy logs in to the server (for
+example, because autologin is enabled), mooproxy uses this literal
+authentication string to authenticate itself to the MOO server.
+
+The MD5 hash can be created with the following command:
+
+    mooproxy --md5crypt
+
+
+An example scenario. Assume:
+
+    The MOO server expects:     connect <username> <password>
+    Your MOO client generates:  connect Gandalf Shire
+
+Now, run the following command:
+
+    mooproxy --md5crypt
+
+When mooproxy asks for your authentication string (it will ask twice, to
+save you from typo's), you should enter:
+
+    connect Gandalf Shire
+
+Mooproxy will print a MD5 hash of the string, e.g.:
+
+    $1$DWuIlrlu$vjiUiV7i23jNMCpSkDzDz.
+
+You put this string in your configuration file, like so:
+
+    auth_md5hash = "$1$DWuIlrlu$vjiUiV7i23jNMCpSkDzDz."
+
+Now, when your client connects to mooproxy, it is prompted for the
+authentication string. If your client responds with:
+
+    connect Gandalf Shire
+
+Mooproxy will accept the client, and store "connect Gandalf Shire" in its
+memory. Now, when mooproxy connects to the MOO server, and autologin is
+enabled, mooproxy sends the saved string, namely
+
+    connect Gandalf Shire
+
+to the MOO server, logging you in, just like your MOO client would without
+mooproxy in the middle.
+
+
+To change the authentication string from within mooproxy, you must also
+provide the old literal authentication string, like this:
+
+    /set auth_md5hash <new hash> <old literal>
+
+So, continuing the example scenario above, if you change your password to
+"Mirkwood", you must run mooproxy --md5crypt to generate a MD5 hash of the
+new authentication string:
+
+    $ mooproxy --md5crypt
+    Authentication string: connect Gandalf Mirkwood
+    MD5 hash: $1$PzGmXA.I$qmZomnNK2gBW6tR8iTJLA/
+
+You can then set the new hash like this:
+
+    /set auth_md5hash $1$PzGmXA.I$qmZomnNK2gBW6tR8iTJLA/ "connect Gandalf Shire"
+
+The MD5 hash should not be enclosed in quotes. It is recommended to enclose
+the old literal in quotes, to remove ambiguity. After changing auth_md5hash
+from within mooproxy, mooproxy no longer has a literal authentication string.
+Therefore, autologin will not work until you re-authenticate to mooproxy
+(for example, by disconnecting your client, and connecting again).
+
+
+
+  5. Portability
+  --------------
+
+Mooproxy is designed to run on modern Unices, most notably GNU/Linux and
+the open source BSD variants. Mooproxy is written in ANSI C, using mostly
+POSIX-defined systemcalls. This section documents the additional requirements
+for mooproxy.
+
+As of this writing, mooproxy is tested on Debian Unstable with Linux 2.6,
+and FreeBSD 5.4.
+
+Portability pitfalls:
+
+ * Mooproxy uses vasprintf(). This is a GNU extension that is also
+   implemented in the BSDs.
+
+ * Mooproxy uses getopt_long(). This is a GNU extension that is also
+   implemented in the BSDs.
+
+ * Mooproxy uses getaddrinfo() and getnameinfo() for address family
+   independent networking. These functions are defined in POSIX, but they're
+   fairly recent additions, which could lead to problems on older OSses.
+
+ * On systems with IPv6, mooproxy works best if the (pretty recent)
+   IPV6_V6ONLY socket option is available, but this is not required.
+
+ * Mooproxy uses crypt(), and expects it to support MD5 hashing.
+   crypt() is defined in POSIX, but MD5 hashing is a GNU extension that is
+   also implemented in the BSDs.
+
+
+
+(end of document)

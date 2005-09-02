@@ -1,35 +1,39 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2002 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  the Free Software Foundation; version 2 dated June, 1991.
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
  */
 
 
 
+/* FIXME: This code is not very elegant. It should be rewritten.
+ * Many eery interdependancies, arbitrary limits and unreadable or
+ * unmaintanable code. Comments are also lacking. */
+
+
+
+#include <stdio.h>  /* FIXME: remove */
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
 #include "mcp.h"
+#include "misc.h"
+#include "line.h"
 
 
 
-/* FIXME: mjah */
+/* FIXME: Don't arbitrarily limit the number of key-value pairs. */
 #define MAX_KEYVALS 32
 
 enum mcp_types { MCP_NORMAL, MCP_MULTI, MCP_MULTI_END };
@@ -53,7 +57,6 @@ static int factor_mcp_get_keyval( char **, char **, char ** );
 
 
 
-/* Returns non-zero if the string is a MCP command */
 extern int world_is_mcp( char *line )
 {
 	return line[0] == '#' && line[1] == '$' && line[2] == '#';
@@ -61,17 +64,21 @@ extern int world_is_mcp( char *line )
 
 
 
-/* Handle MCP from the client. The line will be reused or freed. */
 extern void world_do_mcp_client( World *wld, Line *line )
 {
 	char *str, *tmp;
 	long len, i;
 	MCPmsg *msg;
 
-	str = strdup( line->str );
-	len = line->len;
+	/* Ugly hack: append a space to the string, the parsing code expects
+	 * something bogus or whitespace before \0...
+	 * This really needs to be re-written. */
+	str = xmalloc( line->len + 2 );
+	strcpy( str, line->str );
+	strcat( str, " " );
+	len = line->len + 1;
 
-	linequeue_append( wld->server_txqueue, line );
+	linequeue_append( wld->server_toqueue, line );
 
 	msg = factor_mcp_msg( str, len );
 
@@ -88,7 +95,7 @@ extern void world_do_mcp_client( World *wld, Line *line )
 			if( !strcmp( msg->keys[i], "authentication-key" ) )
 			{
 				free( wld->mcp_key );
-				wld->mcp_key = strdup( msg->vals[i] );
+				wld->mcp_key = xstrdup( msg->vals[i] );
 			}
 
 	/* Check for negotiate-can */
@@ -96,10 +103,10 @@ extern void world_do_mcp_client( World *wld, Line *line )
 	{
 		wld->mcp_negotiated = 1;
 
-		asprintf( &tmp, "#$#mcp-negotiate-can %s package: "
+		xasprintf( &tmp, "#$#mcp-negotiate-can %s package: "
 				"dns-nl-icecrew-mcpreset min-version: 1.0 "
-				"max-version: 1.0\n", wld->mcp_key );
-		linequeue_append( wld->server_txqueue, line_create( tmp, -1 ) );
+				"max-version: 1.0", wld->mcp_key );
+		linequeue_append( wld->server_toqueue, line_create( tmp, -1 ) );
 	}
 
 	free( str );
@@ -108,11 +115,10 @@ extern void world_do_mcp_client( World *wld, Line *line )
 
 
 
-/* Handle MCP from the server. The line will be reused or freed. */
 extern void world_do_mcp_server( World *wld, Line *line )
 {
 	line->flags = LINE_MCP;
-	linequeue_append( wld->client_txqueue, line );
+	linequeue_append( wld->client_toqueue, line );
 }
 
 
@@ -122,14 +128,8 @@ extern void world_do_mcp_server( World *wld, Line *line )
  * Returns 0 if it could not parse the MCP line */
 static MCPmsg *factor_mcp_msg( char *line, long len )
 {
-	MCPmsg *msg = malloc( sizeof( MCPmsg ) );
+	MCPmsg *msg = xmalloc( sizeof( MCPmsg ) );
 	int i;
-
-	/* Strip off trailing \r and \n */
-	if( line[len - 1] == '\r' || line[len - 1] == '\n' )
-		line[--len] = '\0';
-	if( line[len - 1] == '\r' || line[len - 1] == '\n' )
-		line[--len] = '\0';
 
 	/* We assume it starts with #$# */
 	line += 3;
@@ -216,6 +216,7 @@ static MCPmsg *factor_mcp_msg( char *line, long len )
 	msg->nkv = 0;
 
 	for(;;)
+	{
 		switch( factor_mcp_get_keyval( &line, msg->keys + msg->nkv,
 					msg->vals + msg->nkv ) )
 		{
@@ -233,6 +234,15 @@ static MCPmsg *factor_mcp_msg( char *line, long len )
 			return NULL;
 			break;
 		}
+
+		if( msg->nkv == MAX_KEYVALS )
+		{
+			printf( "Maximum number of key-value pairs for a MCP "
+					"message exceeded!\n" );
+			free( msg );
+			return NULL;
+		}
+	}
 }
 
 
@@ -317,7 +327,6 @@ static int factor_mcp_get_keyval( char **linep, char **key, char **val )
 
 
 
-/* Send MCP reset to the server. */
 extern void world_send_mcp_reset( World *wld )
 {
 	char *str;
@@ -325,23 +334,23 @@ extern void world_send_mcp_reset( World *wld )
 	/* If the MCP negotiation has not taken place, do it now. */
 	if( !wld->mcp_negotiated )
 	{
-		str = strdup( "#$#mcp authentication-key: mehkey version: "
-				"1.0 to: 2.1\n" );
-		linequeue_append( wld->server_txqueue, line_create( str, -1 ) );
-		str = strdup( "#$#mcp-negotiate-can mehkey package: "
+		str = xstrdup( "#$#mcp authentication-key: mehkey version: "
+				"1.0 to: 2.1" );
+		linequeue_append( wld->server_toqueue, line_create( str, -1 ) );
+		str = xstrdup( "#$#mcp-negotiate-can mehkey package: "
 				"dns-nl-icecrew-mcpreset min-version: 1.0 "
-				"max-version: 1.0\n" );
-		linequeue_append( wld->server_txqueue, line_create( str, -1 ) );
-		str = strdup( "#$#mcp-negotiate-end mehkey\n" );
-		linequeue_append( wld->server_txqueue, line_create( str, -1 ) );
+				"max-version: 1.0" );
+		linequeue_append( wld->server_toqueue, line_create( str, -1 ) );
+		str = xstrdup( "#$#mcp-negotiate-end mehkey" );
+		linequeue_append( wld->server_toqueue, line_create( str, -1 ) );
 
 		free( wld->mcp_key );
-		wld->mcp_key = strdup( "mehkey" );
+		wld->mcp_key = xstrdup( "mehkey" );
 	}
 
 	/* Send the MCP reset */
-	asprintf( &str, "#$#dns-nl-icecrew-mcpreset-reset %s\n",wld->mcp_key );
-	linequeue_append( wld->server_txqueue, line_create( str, -1 ) );
+	xasprintf( &str, "#$#dns-nl-icecrew-mcpreset-reset %s",wld->mcp_key );
+	linequeue_append( wld->server_toqueue, line_create( str, -1 ) );
 
 	free( wld->mcp_key );
 	wld->mcp_key = NULL;

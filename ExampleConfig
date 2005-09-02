@@ -9,19 +9,24 @@
 
 # The port to accept connections from clients on
 listenport = -1
-# The authentication string clients must give after connecting
-authstring = ""
+# An MD5 hash of the authentication string clients must give after
+# connecting to mooproxy. Use mooproxy --md5crypt to create the hash.
+auth_md5hash = ""
 
 # The address of the MOO server to connect to
 host = ""
 # The port to connect to on the above host
 port = -1
+# If set to true, mooproxy will automatically try to log you in after
+# connecting to the MOO server. It uses the authentication string the
+# client gave mooproxy for this purpose.
+autologin = false
 
 # Lines starting with this string are interpreted as commands
 commandstring = "/"
 # Messages from mooproxy are prefixed by this (ANSI sequences allowed)
-# If you want the % to be red, try:  infostring = "[0m[31m% [0m[37m"
-infostring = "% "
+# If you don't want the "% " to be cyan, try:   infostring = "% "
+infostring = "[0m[36m% [0m[37m"
 
 # Log output from the server to the client?
 logging_enabled = true
