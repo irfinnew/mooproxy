@@ -351,7 +351,7 @@ extern void world_recall_and_pass( World *wld )
 
 extern void world_recall_history_lines( World *wld, int lines )
 {
-	Line *line;
+	Line *line, *recalled;
 	int i;
 
 	/* No history lines? Bail out. */
@@ -365,7 +365,12 @@ extern void world_recall_history_lines( World *wld, int lines )
 
 	/* Duplicate lines, copying them to the txqueue. */
 	for( ; line; line = line->next )
-		linequeue_append( wld->client_toqueue, line_dup( line ) );
+	{
+		recalled = line_dup( line );
+		/* The recalled copy shouldnt go into the history again. */
+		recalled->flags |= LINE_NOHIST;
+		linequeue_append( wld->client_toqueue, recalled );
+	}
 }
 
 

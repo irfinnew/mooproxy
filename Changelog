@@ -1,3 +1,10 @@
+12-12-2005  -  0.0.7.1
+----------------------
+* Fixed a bug where recalled lines would go in the history again, leading to
+  duplicated lines in the history. Thanks to Admar Schoonen for reporting.
+
+
+
 02-09-2005  -  0.0.7
 --------------------
 * From now on, mooproxy is licensed under GPL 2, instead of "GPL 2 or later"
