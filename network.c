@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -92,7 +92,8 @@ extern void wait_for_network( World *wld )
 	tv.tv_usec = 0;
 
 	if( select( high + 1, &rset, &wset, NULL, &tv ) < 0 )
-		printf( "Select() said %s!\n", strerror( errno ) );
+		/* FIXME: This shouldn't happen. Should this be reported? */
+		return;
 
 	/* Check all of the monitored FD's, and handle them appropriately. */
 
@@ -512,7 +513,7 @@ extern void world_disconnect_client( World *wld )
 
 	wld->client_last_connected = current_time();
 
-	wld->client_fd = -1;
+	world_set_clientfd( wld, -1 );
 	wld->client_txfull = 0;
 	wld->client_rxfull = 0;
 
@@ -534,7 +535,7 @@ static void handle_listen_fd( World *wld, int which )
 	newfd = accept( wld->listen_fds[which], (struct sockaddr *) &sa, &sal );
 	if( newfd == -1 )
 	{
-		printf( "accept(): %s !\n", strerror( errno ) );
+		/* FIXME: This shouldn't happen. Should this be reported? */
 		return;
 	}
 
@@ -543,7 +544,7 @@ static void handle_listen_fd( World *wld, int which )
 			NULL, 0, NI_NUMERICHOST );
 	if( ret != 0 )
 	{
-		printf( "getnameinfo(): %s\n", gai_strerror( ret ) );
+		/* FIXME: This shouldn't happen. Should this be reported? */
 		close( newfd );
 		return;
 	}
@@ -551,12 +552,13 @@ static void handle_listen_fd( World *wld, int which )
 	/* Make the new fd nonblocking */
 	if( fcntl( newfd, F_SETFL, O_NONBLOCK ) == -1 )
 	{
-		printf( "Could not fcntl(): %s", strerror( errno ) );
+		/* FIXME: This shouldn't happen. Should this be reported? */
 		close( newfd );
 		return;
 	}
 
-	printf( "Accepted connection from %s.\n", hostbuf );
+	/* FIXME: Should this be logged somewhere? */
+	/* printf( "Accepted connection from %s.\n", hostbuf ); */
 
 	/* If all auth slots are full, kick oldest */
 	if( wld->auth_connections == NET_MAXAUTHCONN )
@@ -763,7 +765,7 @@ static void promote_auth_connection( World *wld, int wa )
 	wld->client_status = ST_CONNECTED;
 
 	/* Transfer connection */
-	wld->client_fd = wld->auth_fd[wa];
+	world_set_clientfd( wld, wld->auth_fd[wa] );
 	wld->auth_fd[wa] = -1;
 	wld->client_address = wld->auth_address[wa];
 	wld->auth_address[wa] = NULL;

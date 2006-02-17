@@ -1,0 +1,19 @@
+Source: mooproxy
+Section: net
+Priority: extra
+Maintainer: Marcel Moreaux <marcelm@luon.net>
+Build-Depends: debhelper (>= 4.0.0)
+Standards-Version: 3.6.2
+
+Package: mooproxy
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: a buffering proxy for moo-connections
+ Mooproxy is a buffering proxy for MOO's (a class of text-based RPG's,
+ descending from MUDs). The MOO client connects to mooproxy, and mooproxy
+ connects to the MOO server.
+ .
+ Mooproxy keeps you connected to the MOO server if your MOO client crashes,
+ or when you're experiencing network problems (between the client and the
+ proxy). Mooproxy also provides centralised logging, buffers text when
+ you're not connected, and provides context when you do connect.

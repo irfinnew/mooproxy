@@ -1,7 +1,7 @@
 
 
                Mooproxy - a buffering proxy for moo-connections
-         Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+         Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
 
 
 
@@ -18,10 +18,13 @@ GNU General Public License for more details.
 
 
   1. About
-  2. Compiling and installing
-  3. Using
-  4. Authentication
-  5. Portability
+  2. Manual compiling and installing
+  3. Installing the Debian package
+  4. Creating a Debian package
+  5. Using
+  6. Authentication
+  7. Portability
+  8. Authors and thanks
 
 
 
@@ -49,10 +52,13 @@ gdb backtraces of crashes are also helpful.
 
 
 
-  2. Compiling and installing
-  ---------------------------
+  2. Manual compiling and installing
+  ----------------------------------
 
-To compile mooproxy, simply run
+First, you can edit the Makefile to change some options (like installation
+path and compiler flags), if you want to.
+
+Next, to compile mooproxy, simply run
 
     make
 
@@ -60,12 +66,48 @@ in the source directory. You need a working C compiler, and the development
 libraries for libc. Mooproxy also uses some functionality that may not be
 present on all Unices; see Portability.
 
-You can install it by simply copying the mooproxy executable to a suitable
-place, such as /usr/local/bin or ~/bin. Mooproxy requires no other files.
+You can install by running
+
+   make install
+
+This will install the mooproxy binary (by default in /usr/local/bin), and
+the manpage (by default in /usr/local/share/man/man1).
+Alternatively, you can install by simply copying the mooproxy executable
+to a suitable place, such as /usr/local/bin or ~/bin. Mooproxy requires no
+other files (except configuration files) to run.
 
 
 
-  3. Using
+
+  3. Installing the Debian package
+  --------------------------------
+
+Currently, an i386 Debian package is provided. You can install it with
+
+  dpkg -i mooproxy_<version>.deb
+
+
+
+  4. Creating a Debian package
+  ----------------------------
+
+You can create your own Debian package as well (for another architecture,
+for example). Follow the following steps:
+
+  - Download mooproxy-debsrc-<version>.tar.gz
+  - Unpack it somewhere
+  - cd into mooproxy-<version>
+  - Unpack mooproxy_<version>.orig.tar.gz
+  - Run zcat mooproxy_<version>.diff.gz | patch -p0
+  - cd into mooproxy-<version>
+  - Run dpkg-buildpackage -us -uc -rfakeroot
+
+The Debian package (and some other files) will be generated in the top-level
+mooproxy-<version> directory.
+
+
+
+  5. Using
   --------
 
 Running mooproxy is simple, just invoke it like this:
@@ -86,7 +128,7 @@ When connected to mooproxy, do /help for a brief list of commands.
 
 
 
-  4. Authentication
+  6. Authentication
   -----------------
 
 There are two situations in mooproxy that require authentication;
@@ -173,7 +215,7 @@ Therefore, autologin will not work until you re-authenticate to mooproxy
 
 
 
-  5. Portability
+  7. Portability
   --------------
 
 Mooproxy is designed to run on modern Unices, most notably GNU/Linux and
@@ -194,7 +236,7 @@ Portability pitfalls:
 
  * Mooproxy uses getaddrinfo() and getnameinfo() for address family
    independent networking. These functions are defined in POSIX, but they're
-   fairly recent additions, which could lead to problems on older OSses.
+   fairly recent additions, which could lead to problems on older OSes.
 
  * On systems with IPv6, mooproxy works best if the (pretty recent)
    IPV6_V6ONLY socket option is available, but this is not required.
@@ -202,6 +244,22 @@ Portability pitfalls:
  * Mooproxy uses crypt(), and expects it to support MD5 hashing.
    crypt() is defined in POSIX, but MD5 hashing is a GNU extension that is
    also implemented in the BSDs.
+
+
+
+  8. Authors and thanks
+  ---------------------
+
+The sole author of mooproxy is:
+
+  Marcel L. Moreaux <marcelm@luon.net>
+
+Thanks (for testing, reporting bugs, and giving suggestions) to:
+
+  Paul van Tilburg <paul@luon.net>
+  Wouter Lueks <wouter@telox.net>
+  Admar Schoonen <admar@luon.net>
+  Bram Senders <bram@luon.net>
 
 
 

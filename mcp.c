@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -237,8 +237,9 @@ static MCPmsg *factor_mcp_msg( char *line, long len )
 
 		if( msg->nkv == MAX_KEYVALS )
 		{
-			printf( "Maximum number of key-value pairs for a MCP "
-					"message exceeded!\n" );
+			/* Ugh. FIXME */
+			/* printf( "Maximum number of key-value pairs for a "
+					"MCP message exceeded!\n" ); */
 			free( msg );
 			return NULL;
 		}

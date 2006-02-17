@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "world.h"
 #include "misc.h"
 #include "line.h"
+#include "panic.h"
 
 
 
@@ -41,6 +42,8 @@ extern World *world_create( char *wldname )
 	wld->name = wldname;
 	wld->configfile = NULL;
 	wld->flags = 0;
+	wld->lockfile = NULL;
+	wld->lockfile_fd = -1;
 
 	/* Destination */
 	wld->dest_host = NULL;
@@ -58,6 +61,7 @@ extern World *world_create( char *wldname )
 	{
 		wld->auth_buf[i] = xmalloc( NET_MAXAUTHLEN );
 		wld->auth_address[i] = NULL;
+		wld->auth_fd[i] = -1;
 	}
 
 	/* Data related to the server connection */
@@ -149,9 +153,13 @@ extern void world_destroy( World *wld )
 {
 	int i;
 
+	/* Clear the client FD. */
+	world_set_clientfd( wld, -1 );
+
 	/* Essentials */
 	free( wld->name );
 	free( wld->configfile );
+	free( wld->lockfile );
 
 	/* Destination */
 	free( wld->dest_host );
@@ -222,6 +230,14 @@ extern void world_destroy( World *wld )
 
 	/* The world itself */
 	free( wld );
+}
+
+
+
+extern void world_set_clientfd( World *wld, int fd )
+{
+	wld->client_fd = fd;
+	panic_clientfd = fd;
 }
 
 

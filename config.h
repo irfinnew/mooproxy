@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,17 @@
 
 
 
+/* Collection of settings from the commandline. */
+typedef struct _Config Config;
+struct _Config
+{
+	int action;
+	char *worldname;
+	int no_daemon;
+
+	char *error;
+};
+
 /* Return values for parse_command_line_options.
  * Indicates what action to take. */
 #define PARSEOPTS_START 0
@@ -47,18 +58,14 @@
 
 
 
-/* This function parses the commandline options (argc and argv), and
- * acts accordingly. It places the name of the world in the third arg.
- * On failure, it returns non-zero and places the error in the last arg. */
 /* Parse the commandline arguments, extracting options and actions.
  * argc, argv:  Arguments from main().
- * worldname:   Should point to NULL. If a world name is provided on the
- *              commandline, it will be set to point to a string containing
- *              the world name. The string should be free()d.
- * err:         On PARSEOPTS_ERROR, will contain the error. Should be free()d.
+ * config:      Config struct. All members of this struct will be set.
+ *              If config->action is PARSEOPTS_ERROR, config->error
+ *              will contain an error. config and its members should be
+ *              freed.
  */
-extern int parse_command_line_options( int argc, char **argv,
-		char **worldname, char **err );
+extern void parse_command_line_options( int argc, char **argv, Config *config );
 
 /* Attempts to load the configuration file for this world.
  * On succes, returns 0.

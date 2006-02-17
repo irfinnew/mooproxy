@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,12 +20,30 @@
 #include <signal.h>
 #include <string.h>
 #include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/file.h>
+#include <ctype.h>
 
 #include "daemon.h"
+#include "misc.h"
+#include "panic.h"
+
+
+
+/* Can hold a 64 bit decimal number. Should be enough for pids. */
+#define MAX_PIDDIGITS 22
 
 
 
 static time_t program_start_time = 0;
+
+
+
+static char *pid_from_pidfile( int fd );
 
 
 
@@ -43,9 +61,16 @@ extern void set_up_signal_handlers( void )
 	 * We want to continue running in that case. */
 	signal( SIGHUP, SIG_IGN );
 
-	/* This signal might be sent if the resolver slave exits.
-	 * We already know that through IPC. */
-	signal( SIGCHLD, SIG_IGN );
+	/* We're not interested in user signals. */
+	signal( SIGUSR1, SIG_IGN );
+	signal( SIGUSR2, SIG_IGN );
+
+	/* 'Bad' signals, indicating a mooproxy bug. Panic. */
+	signal( SIGSEGV, &panic_sighandler );
+	signal( SIGILL, &panic_sighandler );
+	signal( SIGFPE, &panic_sighandler );
+	signal( SIGBUS, &panic_sighandler );
+
 }
 
 
@@ -60,4 +85,177 @@ extern void uptime_started_now( void )
 extern time_t uptime_started_at( void )
 {
 	return program_start_time;
+}
+
+
+
+extern pid_t daemonize( char **err )
+{
+	pid_t pid;
+	int devnull;
+
+	/* We need /dev/null, so we can redirect stdio to it.
+	 * Open it now, so we can complain before the child is created. */
+	devnull = open( "/dev/null", O_RDWR );
+	if( devnull == -1 )
+	{
+		xasprintf( err, "Opening /dev/null failed: %s",
+				strerror( errno ) );
+		return -1;
+	}
+
+	/* Fork the child... */
+	pid = fork();
+	if( pid == -1 )
+	{
+		xasprintf( err, "Fork failed: %s", strerror( errno ) );
+		return -1;
+	}
+
+	/* If we're the parent, we're done now. */
+	if( pid > 0 )
+		return pid;
+
+	/* Become a session leader. */
+	setsid();
+
+	/* Don't tie up the path we're launched from. */
+	chdir( "/" );
+
+	/* Redirect stdio to /dev/null. */
+	dup2( devnull, 0 );
+	dup2( devnull, 1 );
+	dup2( devnull, 2 );
+	close( devnull );
+
+	return 0;
+}
+
+
+
+extern void launch_parent_exit( int exitval )
+{
+	_exit( exitval );
+}
+
+
+
+extern int world_acquire_lock_file( World *wld, char **err )
+{
+	char *homedir, *lockfile, *pidstr;
+	int fd, ret;
+
+	homedir = get_homedir();
+	lockfile = xmalloc( strlen( homedir ) +
+			strlen( wld->name ) + strlen( LOCKSDIR ) + 1 );
+
+	/* Lockfile = homedir + LOCKSDIR + world name */
+	strcpy( lockfile, homedir );
+	strcat( lockfile, LOCKSDIR );
+	strcat( lockfile, wld->name );
+
+	free( homedir );
+
+	/* Open lockfile. Should be non-blocking; read and write actions
+	 * are best-efford. */
+	fd = open( lockfile, O_RDWR | O_CREAT | O_NONBLOCK, S_IRUSR | S_IWUSR );
+	if( fd < 0 )
+	{
+		xasprintf( err, "Error opening lockfile %s: %s", lockfile,
+				strerror( errno ) );
+		free( lockfile );
+		return 1;
+	}
+
+	/* Acquire a lock on the file. */
+	ret = flock( fd, LOCK_EX | LOCK_NB );
+
+	/* Some other process already has a lock. We assume it's another
+	 * instance of mooproxy. */
+	if( ret < 0 && errno == EWOULDBLOCK )
+	{
+		pidstr = pid_from_pidfile( fd );
+		xasprintf( err, "Mooproxy instance for world %s already "
+				"running (PID %s).", wld->name, pidstr );
+		free( lockfile );
+		free( pidstr );
+		close( fd );
+		return 1;
+	}
+
+	/* Some other error. */
+	if( ret < 0 )
+	{
+		xasprintf( err, "Error locking lockfile %s: %s", lockfile,
+				strerror( errno ) );
+		free( lockfile );
+		close( fd );
+		return 1;
+	}
+
+	/* Everything appears OK. Store info, return. */
+	wld->lockfile = lockfile;
+	wld->lockfile_fd = fd;
+	return 0;
+}
+
+
+
+static char *pid_from_pidfile( int fd )
+{
+	char *pidstr;
+	int len, i;
+
+	pidstr = xmalloc( MAX_PIDDIGITS + 1 );
+	len = read( fd, pidstr, MAX_PIDDIGITS + 1 );
+
+	/* If len < 0, there was an error. If len == 0, the file was empty. */
+	if( len < 1 || len > MAX_PIDDIGITS )
+	{
+		free( pidstr );
+		return xstrdup( "unknown" );
+	}
+
+	/* NUL-terminate the string. */
+	pidstr[len] = '\0';
+
+	/* Strip any trailing \n */
+	if( pidstr[len - 1] == '\n' )
+		pidstr[--len] = '\0';
+
+	/* Any non-digits in the string? Bail out. */
+	for( i = 0; i < len; i++ )
+		if( !isdigit( pidstr[i] ) )
+		{
+			free( pidstr );
+			return xstrdup( "unknown" );
+		}
+
+	return pidstr;
+}
+
+
+
+extern void world_write_pid_to_file( World *wld, pid_t pid )
+{
+	char *pidstr;
+
+	xasprintf( &pidstr, "%li\n", (long) pid );
+
+	ftruncate( wld->lockfile_fd, 0 );
+	write( wld->lockfile_fd, pidstr, strlen( pidstr ) );
+
+	free( pidstr );
+}
+
+
+
+extern void world_remove_lockfile( World *wld )
+{
+	close( wld->lockfile_fd );
+	wld->lockfile_fd = -1;
+
+	unlink( wld->lockfile );
+	free( wld->lockfile );
+	wld->lockfile = NULL;
 }

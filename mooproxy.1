@@ -1,0 +1,65 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH MOOPROXY 1 "February 13, 2006"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+mooproxy \- a buffering proxy for moo-connections
+.SH SYNOPSIS
+.B mooproxy
+.RI [ options ]
+.SH DESCRIPTION
+.PP
+.B mooproxy
+is a buffering proxy for MOO's (a class of text-based RPG's, descending from
+MUDs). The MOO client connects to mooproxy, and mooproxy connects to the MOO
+server.
+.PP
+Mooproxy keeps you connected to the MOO server if your MOO client crashes,
+or when you're experiencing network problems (between the client and the
+proxy). Mooproxy also provides centralised logging, buffers text when
+you're not connected, and provides context when you do connect.
+.PP
+.SH OPTIONS
+This program follows the usual GNU command line syntax, with long
+options starting with two dashes (`-').
+A summary of options is included below.
+.TP
+.B \-h, \-\-help
+Show summary of options and exit.
+.TP
+.B \-V, \-\-version
+Show version information and exit.
+.TP
+.B \-L, \-\-license
+Show licensing information and exit.
+.TP
+.B \-w, \-\-world \fIworldname\fR
+Specify the world file to load.
+.TP
+.B \-d, \-\-no-daemon
+Do not daemonize; stay in the foreground instead.
+.TP
+.B \-m, \-\-md5crypt
+Prompt for a string, and create and show an MD5 hash of this string.
+.SH COPYRIGHT
+Mooproxy is copyright Marcel Moreaux <marcelm@luon.net>
+.SH SEE ALSO
+.PP
+More comprehensive information about mooproxy can be found in
+/usr/share/doc/mooproxy/README.
+.PP
+See /usr/share/doc/mooproxy/ExampleConfig for an example configuration
+file.

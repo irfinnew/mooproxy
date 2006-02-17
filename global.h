@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,12 +22,13 @@
 
 
 /* Mooproxy version */
-#define VERSIONSTR "0.0.7.1"
+#define VERSIONSTR "0.1.0"
 
 /* Configuration dirnames */
 #define CONFIGDIR ".mooproxy/"
 #define WORLDSDIR ".mooproxy/worlds/"
 #define LOGSDIR ".mooproxy/logs/"
+#define LOCKSDIR ".mooproxy/locks/"
 
 /* Some default option values */
 #define DEFAULT_AUTOLOGIN 0
@@ -54,6 +55,11 @@
 /* The minimum number of seconds between two identical complaints about
  * the logfiles */
 #define LOG_MSGINTERVAL 3600
+/* When malloc() fails, mooproxy will sleep for a bit and then try again.
+ * This setting determines how often mooproxy will try before giving up. */
+#define XMALLOC_OOM_RETRIES 0
+/* The name of the panic file, which will be placed in ~. */
+#define PANIC_FILE "mooproxy.crashed"
 
 
 

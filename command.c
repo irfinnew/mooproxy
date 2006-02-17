@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ static char *help_text[] = {
 "Commands:",
 "  help                       Show this help message.",
 "  quit                       Disconnect from mooproxy.",
-"  shutdown                   Shut down the mooproxy.",
+"  shutdown [-f]              Shut down mooproxy. ",
 "  connect [<host> [<port>]]  Connect to the server. Arguments",
 "                             override configuration, if given.",
 "  disconnect                 Disconnect from the server.",
@@ -211,12 +211,45 @@ static void command_quit( World *wld, char *cmd, char *args )
 
 
 
-/* Shut mooproxy down. No arguments. */
+/* Shut mooproxy down (forcibly on -f). Arguments: [-f] */
 static void command_shutdown( World *wld, char *cmd, char *args )
 {
-	if( refuse_arguments( wld, cmd, args ) )
-		return;
+	long unlogged;
+	char *tmp;
 
+	tmp = get_one_word( &args );
+
+	/* Garbage arguments? */
+	if( tmp != NULL && strcmp( tmp, "-f" ) )
+	{
+		world_msg_client( wld, "Unrecognised argument: `%s'", tmp );
+		return;
+	}
+
+	/* (tmp != NULL) => (tmp == "-f"). Ergo, forced shutdown. */
+	if( tmp != NULL )
+	{
+		world_msg_client( wld, "Shutting down forcibly." );
+		wld->flags |= WLD_SHUTDOWN;
+		return;
+	}
+
+	/* If we got here, there were no arguments. */
+
+	unlogged = wld->log_queue->length + wld->log_current->length +
+		wld->log_bfull;
+
+	/* Unlogged data? Refuse. */
+	if( unlogged > 0 )
+	{
+		world_msg_client( wld, "There are approximately %li bytes not "
+				"yet logged to disk. ", unlogged );
+		world_msg_client( wld, "Refusing to shut down. "
+				"Use /shutdown -f to override." );
+		return;
+	}
+
+	/* We're good, proceed. */
 	world_msg_client( wld, "Shutting down." );
 	wld->flags |= WLD_SHUTDOWN;
 }
@@ -463,7 +496,7 @@ static void command_setopt( World *wld, char *cmd, char *args )
 		return;
 	}
 
-	if( ret ==  SET_KEY_BAD )
+	if( ret == SET_KEY_BAD )
 	{
 		world_msg_client( wld, "%s", err );
 		free( err );

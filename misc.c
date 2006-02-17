@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 #include "global.h"
 #include "misc.h"
 #include "line.h"
+#include "panic.h"
 
 
 
@@ -45,46 +46,76 @@ static long current_daynum = 0;
 extern void *xmalloc( size_t size )
 {
 	void *ptr;
+	int i;
 
 	ptr = malloc( size );
 
-	if( ptr == NULL )
+	if( ptr != NULL )
+		return ptr;
+
+	/* Allocation failed. Retry a few times. */
+	for( i = 0; i < XMALLOC_OOM_RETRIES; i++ )
 	{
-		printf( "Failed to malloc() %li bytes!\n", (long) size );
-		exit( EXIT_FAILURE );
+		sleep( 1 );
+		ptr = malloc( size );
+		if( ptr != NULL )
+			return ptr;
 	}
 
-	return ptr;
+	/* Still failed, give up. */
+	panic( PANIC_MALLOC, (unsigned long) size );
+	return NULL;
 }
 
 
 
 extern void *xrealloc( void *ptr, size_t size )
 {
+	int i;
+
 	ptr = realloc( ptr, size );
 
-	if( ptr == NULL )
+	if( ptr != NULL )
+		return ptr;
+
+	/* Reallocation failed. Retry a few times. */
+	for( i = 0; i < XMALLOC_OOM_RETRIES; i++ )
 	{
-		printf( "Failed to realloc() %li bytes!\n", (long) size );
-		exit( EXIT_FAILURE );
+		sleep( 1 );
+		ptr = realloc( ptr, size );
+		if( ptr != NULL )
+			return ptr;
 	}
 
-	return ptr;
+	/* Still failed, give up. */
+	panic( PANIC_REALLOC, (unsigned long) size );
+	return NULL;
 }
 
 
 
 extern char *xstrdup( const char *s )
 {
-	char *str = strdup( s );
+	char *str;
+	int i;
 
-	if( str == NULL )
+	str = strdup( s );
+
+	if( str != NULL )
+		return str;
+
+	/* Strdup failed. Retry a few times. */
+	for( i = 0; i < XMALLOC_OOM_RETRIES; i++ )
 	{
-		printf( "Failed to strdup() %li bytes!\n", (long) strlen( s ) );
-		exit( EXIT_FAILURE );
+		sleep( 1 );
+		str = strdup( s );
+		if( str != NULL )
+			return str;
 	}
 
-	return str;
+	/* Still failed, give up. */
+	panic( PANIC_STRDUP, (unsigned long) strlen( s ) );
+	return NULL;
 }
 
 
@@ -105,17 +136,25 @@ extern int xasprintf( char **strp, const char *fmt, ... )
 
 extern int xvasprintf( char **strp, const char *fmt, va_list argp )
 {
-	int i;
+	int i, r;
 
-	i = vasprintf( strp, fmt, argp );
+	r = vasprintf( strp, fmt, argp );
 
-	if( i == -1 )
+	if( r >= 0 )
+		return r;
+
+	/* Vasprintf failed. Retry a few times. */
+	for( i = 0; i < XMALLOC_OOM_RETRIES; i++ )
 	{
-		printf( "xvasprintf() failed because of lack of memory!\n" );
-		exit( EXIT_FAILURE );
+		sleep( 1 );
+		r = vasprintf( strp, fmt, argp );
+		if( r >= 0 )
+			return r;
 	}
 
-	return i;
+	/* Still failed, give up. */
+	panic( PANIC_VASPRINTF, 0 );
+	return 0;
 }
 
 

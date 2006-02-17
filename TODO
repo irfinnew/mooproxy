@@ -1,24 +1,33 @@
-* Rewrite the MCP code, please.
+* Make functions return list-of-strings, instead of having them printf()ing themselves (network.c, crypt.c)
+
+* Improve the manpage
+* Better long description for debian package
+* Improve /help, allow /help <cmd>.
 * Allow special sequences in infostring that will be replaced with ANSI (eg %[red] -> ^]]1m)?
 * Make /listopts fill 80 chars minus length of infostring (ignoring ANSI sequences!)
-* Make mooproxy refuse shutdown if there are unlogged lines. Add override too
-* Log into a structured tree of directories (e.g. logs/world/month/world - date.log)?
-* Make mooproxy a real daemon (add option to stay in foreground).
-* Add logging framework which logs to file if mooproxy is running as daemon.
-* The accessor functions are mostly just dumb wrappers. Can't this be done using less code?
+* Implement autoreconnect? (but not too hammering)
+* Rewrite config file loading code
 * Add option for timestamping lines in logfiles?
-* Have mooproxy convert received text to the right charset for logging?
-* Make mooproxy close the current port, and bind to the new one if listenport is changed?
-* Make prefixes for infomessages and checkpoint messages different?
 * Allow /recall to do timestamp based selection?
 * Make mooproxy provide more context lines if the connection to client was lost, not closed?
 * Make some heuristics (possibly time-based) to calculate the amount of context lines to give?
-* Print date/time on mooproxy messages?
 * Allow /recall to recall last x lines that match a certain string (or regexp)?
-* Improve /help, allow /help <cmd>.
-* Disallow the proxy to connect to itself (how?)?
-* Implement autoreconnect?
-* Set socket options to make proxy-client connections time out more quickly? The quicker mooproxy knows the connection is dead, the less lines will be sent into the void.
 * Provide more and better documentation.
-* Implement some MCP userlist in mooproxy?
+* Limit the amount of memory spent on log buffer if mooproxy cannot write to disk
+* Latency tunen met TCP_NODELAY?
+* Add logging framework which logs to file if mooproxy is running as daemon.
+* Remove OOM detection in xmalloc() etc? Under Linux, the process seems to get SIGKILLed anyway.
+
+* Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable
+* Rewrite the MCP code, please.
+* Log into a structured tree of directories (e.g. logs/world/month/world - date.log)?
+* The accessor functions are mostly just dumb wrappers. Can't this be done using less code?
+* Make prefixes for infomessages and checkpoint messages different?
+* Print date/time on mooproxy messages?
+* Disallow the proxy to connect to itself (how?)?
 * Add SSL support (both ways)?
+
+* Make mooproxy close the current port, and bind to the new one if listenport is changed?
+* Implement some MCP userlist in mooproxy?
+* Set socket options to make proxy-client connections time out more quickly? The quicker mooproxy knows the connection is dead, the less lines will be sent into the void.
+* Have mooproxy convert received text to the right charset for logging?

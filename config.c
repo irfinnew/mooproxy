@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -106,22 +106,27 @@ static const struct
 };
 
 /* Command line options. */
-static const char short_opts[] = ":hVLw:m";
+static const char short_opts[] = ":hVLw:md";
 static const struct option long_opts[] = {
 	{ "help", 0, NULL, 'h' },
 	{ "version", 0, NULL, 'V' },
 	{ "license", 0, NULL, 'L' },
 	{ "world", 1, NULL, 'w' },
 	{ "md5crypt", 0, NULL, 'm' },
+	{ "no-daemon", 0, NULL, 'd' },
 	{ NULL, 0, NULL, 0 }
 };
 
 
 
-extern int parse_command_line_options( int argc, char **argv,
-		char **worldname, char **err )
+extern void parse_command_line_options( int argc, char **argv, Config *config )
 {
 	int result;
+
+	config->action = 0;
+	config->worldname = NULL;
+	config->no_daemon = 0;
+	config->error = NULL;
 
 	opterr = 0;
 
@@ -132,28 +137,33 @@ extern int parse_command_line_options( int argc, char **argv,
 		{
 		/* -h, --help */
 		case 'h':
-		return PARSEOPTS_HELP;
-		break;
+		config->action = PARSEOPTS_HELP;
+		return;
 
 		/* -L, --license */
 		case 'L':
-		return PARSEOPTS_LICENSE;
-		break;
+		config->action = PARSEOPTS_LICENSE;
+		return;
 
 		/* -V, --version */
 		case 'V':
-		return PARSEOPTS_VERSION;
-		break;
+		config->action = PARSEOPTS_VERSION;
+		return;
 
 		/* -m, --md5crypt */
 		case 'm':
-		return PARSEOPTS_MD5CRYPT;
-		break;
+		config->action = PARSEOPTS_MD5CRYPT;
+		return;
 
 		/* -w, --world */
 		case 'w':
-		free( *worldname );
-		*worldname = xstrdup( optarg );
+		free( config->worldname );
+		config->worldname = xstrdup( optarg );
+		break;
+
+		/* -d, --no-daemon */
+		case 'd':
+		config->no_daemon = 1;
 		break;
 
 		/* Unrecognised */
@@ -163,20 +173,20 @@ extern int parse_command_line_options( int argc, char **argv,
 		 * contains the number of the unrecognized argument.
 		 * Sigh... */
 		if( optopt == 0 )
-			xasprintf( err, "Unrecognized option: `%s'. Use "
-					"--help for help.", argv[optind - 1] );
+			xasprintf( &config->error, "Unrecognized option: `%s'"
+				". Use --help for help.", argv[optind - 1] );
 		else
-			xasprintf( err, "Unrecognized option: `-%c'. Use "
-					"--help for help.", optopt );
-		return PARSEOPTS_ERROR;
-		break;
+			xasprintf( &config->error, "Unrecognized option: `-%c'"
+				". Use --help for help.", optopt );
+		config->action = PARSEOPTS_ERROR;
+		return;
 
 		/* Option without required argument. */
 		case ':':
-		xasprintf( err, "Option `%s' expects an argument.",
+		xasprintf( &config->error, "Option `%s' expects an argument.",
 				argv[optind - 1] );
-		return PARSEOPTS_ERROR;
-		break;
+		config->action = PARSEOPTS_ERROR;
+		return;
 
 		/* We shouldn't get here */
 		default:
@@ -187,12 +197,11 @@ extern int parse_command_line_options( int argc, char **argv,
 	/* Any non-options left? */
 	if( optind < argc )
 	{
-		xasprintf( err, "Unexpected argument: `%s'. Use --help for "
-				"help.", argv[optind] );
-		return PARSEOPTS_ERROR;
+		xasprintf( &config->error, "Unexpected argument: `%s'. "
+				"Use --help for help.", argv[optind] );
+		config->action = PARSEOPTS_ERROR;
+		return;
 	}
-
-	return PARSEOPTS_START;
 }
 
 
@@ -424,6 +433,8 @@ extern int create_configdirs( char **err )
 	if( attempt_createdir( WORLDSDIR, err ) != 0 )
 		return 1;
 	if( attempt_createdir( LOGSDIR, err ) != 0 )
+		return 1;
+	if( attempt_createdir( LOCKSDIR, err ) != 0 )
 		return 1;
 
 	return 0;

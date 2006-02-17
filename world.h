@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,14 +30,14 @@
 
 
 /* Action flags */
-#define WLD_SHUTDOWN 0x00000001
-#define WLD_CLIENTQUIT 0x00000002
-#define WLD_SERVERQUIT 0x00000004
-#define WLD_SERVERRESOLVE 0x00000008
-#define WLD_SERVERCONNECT 0x00000010
+#define WLD_SHUTDOWN		0x00000001
+#define WLD_CLIENTQUIT		0x00000002
+#define WLD_SERVERQUIT		0x00000004
+#define WLD_SERVERRESOLVE	0x00000008
+#define WLD_SERVERCONNECT	0x00000010
 
 /* Status flags */
-#define WLD_NOTCONNECTED 0x00010000
+#define WLD_NOTCONNECTED	0x00010000
 
 /* Server statuses */
 #define ST_DISCONNECTED 1
@@ -56,6 +56,8 @@ struct _World
 	char *name;
 	char *configfile;       
 	unsigned long flags;
+	char *lockfile;
+	int lockfile_fd;
 
 	/* Destination */
 	char *dest_host;
@@ -157,6 +159,10 @@ extern World *world_create( char *wldname );
 /* Free all memory allocated for this world, close all FD's, and then free
  * the world itself. */
 extern void world_destroy( World *wld );
+
+/* Set wld's client FD to fd.
+ * Do not assign wld->client_fd directly; use this function instead. */
+extern void world_set_clientfd( World *wld, int fd );
 
 /* Construct the path of the configuration file, based on wld->name, and put
  * it in wld->configfile. */

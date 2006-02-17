@@ -1,3 +1,18 @@
+16-02-2006  -  0.1.0
+--------------------
+* Mooproxy is now also packaged as a Debian package
+* Mooproxy has become an actual daemon, backgrounding itself
+* New commandline option: -d forces mooproxy to stay on the foreground
+* Create and check for lockfiles, so only one instance can run for each world
+* SIGSEGV, SIGFPE, SIGILL, SIGBUS are now caught
+* On crash, mooproxy creates a crash notice (~/mooproxy.crashed)
+* Mooproxy sends this crash notice to the client and to stderr as well
+* SIGUSR1 and SIGUSR2 are now ignored
+* /shutdown now refuses to shut down if not all loggable data could be written
+  to disk. -f overrides this
+
+
+
 12-12-2005  -  0.0.7.1
 ----------------------
 * Fixed a bug where recalled lines would go in the history again, leading to

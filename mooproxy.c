@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,55 +47,56 @@ static void print_license_text( void );
 
 int main( int argc, char **argv )
 {
+	Config *config = NULL;
 	World *world = NULL;
-	char *err, *worldname = NULL;
+	char *err = NULL;
+	pid_t pid;
 
-	/* Extract the desired action and/or world name from the
-	 * command ine arguments, and act upon them. */
-	switch( parse_command_line_options( argc, argv, &worldname, &err ) )
+	config = xmalloc( sizeof( Config ) );
+
+	parse_command_line_options( argc, argv, config );
+
+	switch( config->action )
 	{
 		case PARSEOPTS_ERROR:
-		die( world, err );
-		break;
-
+			die( world, config->error );
+			exit( EXIT_SUCCESS );
 		case PARSEOPTS_HELP:
-		print_help_text();
-		exit( EXIT_SUCCESS );
-		break;
-
+			print_help_text();
+			exit( EXIT_SUCCESS );
 		case PARSEOPTS_VERSION:
-		print_version_text();
-		exit( EXIT_SUCCESS );
-		break;
-
+			print_version_text();
+			exit( EXIT_SUCCESS );
 		case PARSEOPTS_LICENSE:
-		print_license_text();
-		exit( EXIT_SUCCESS );
-		break;
-
+			print_license_text();
+			exit( EXIT_SUCCESS );
 		case PARSEOPTS_MD5CRYPT:
-		prompt_to_md5hash();
-		exit( EXIT_SUCCESS );
-		break;
+			prompt_to_md5hash();
+			exit( EXIT_SUCCESS );
 	}
+
+	if( config->worldname == NULL || config->worldname[0] == '\0' )
+		die( world, xstrdup( "You must supply a world name." ) );
 
 	printf( "Starting mooproxy " VERSIONSTR " at %s.\n",
 			time_string( time( NULL ), FULL_TIME ) );
+
 	uptime_started_now();
 
 	set_up_signal_handlers();
 
-	if( worldname == NULL || worldname[0] == '\0' )
-		die( world, xstrdup( "You must supply a world name." ) );
+	world = world_create( config->worldname );
 
-	world = world_create( worldname );
+	if( world_acquire_lock_file( world, &err ) )
+		die( world, err );
 
 	world_configfile_from_name( world );
 
 	if( create_configdirs( &err ) != 0 )
 		die( world, err );
 
-	printf( "Loading config...\n" );
+	printf( "Opening world %s.\n", config->worldname );
+
 	if( world_load_config( world, &err ) != 0 )
 		die( world, err );
 
@@ -107,11 +108,32 @@ int main( int argc, char **argv )
 	if( world_bind_port( world, &err ) != 0 )
 		die( world, err );
 
-	printf( "opened world %s\n", world->name );
+	if( config->no_daemon )
+	{
+		printf( "Mooproxy succesfully started. Staying in "
+				"foreground.\n" );
+	} else {
+		/* Daemonize */
+		pid = daemonize( &err );
+		if( pid == -1 )
+			die( world, err );
+
+		if( pid > 0 )
+		{
+			world_write_pid_to_file( world, pid );
+			printf( "Mooproxy succesfully started in PID %li.\n",
+					(long) pid );
+			launch_parent_exit( EXIT_SUCCESS );
+		}
+	}
 
 	mainloop( world );
 
+	world_remove_lockfile( world );
+
 	world_destroy( world );
+
+	free( config );
 
 	exit( EXIT_SUCCESS );
 }
@@ -275,7 +297,7 @@ static void handle_flags( World *wld )
 static void print_help_text( void )
 {
 	printf( "Mooproxy - a buffering proxy for moo-connections\n"
-	"Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>\n"
+	"Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>\n"
 	"\n"
 	"usage: mooproxy [options]\n"
 	"\n"
@@ -283,6 +305,7 @@ static void print_help_text( void )
 	"  -V, --version     shows version information and exits\n"
 	"  -L, --license     shows licensing information and exits\n"
 	"  -w, --world       world to load\n"
+	"  -d, --no-daemon   forces mooproxy to stay in the foreground\n"
 	"  -m, --md5crypt    prompts for a string to create an md5 hash of\n"
 	"\n"
 	"released under the GPL 2, report bugs to <marcelm@luon.net>\n"
@@ -296,7 +319,7 @@ static void print_help_text( void )
 static void print_version_text( void )
 {
 	printf( "Mooproxy version " VERSIONSTR
-			". Copyright (C) 2001-2005 Marcel L Moreaux\n" );
+			". Copyright (C) 2001-2006 Marcel L Moreaux\n" );
 }
 
 
@@ -305,7 +328,7 @@ static void print_version_text( void )
 static void print_license_text( void )
 {
 	printf( "Mooproxy - a buffering proxy for moo-connections\n"
-	"Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>\n"
+	"Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>\n"
 	"\n"
 	"This program is free software; you can redistribute it and/or modify\n"
 	"it under the terms of the GNU General Public License as published by\n"

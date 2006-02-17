@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -78,6 +78,10 @@ extern void prompt_to_md5hash( void )
 	salt[10] = seedchars[tv2.tv_usec % 64];
 
 	printf( "MD5 hash: %s\n", crypt( password, salt ) );
+
+	if( !strcmp( password, "" ) )
+		printf( "Note: this is a hash of an empty string; "
+				"it will be refused by mooproxy.\n" );
 
 	free( password );
 	free( password2 );

@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2005 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@ extern void world_start_server_resolve( World *wld )
 	{
 		close( filedes[0] );
 		slave_main( wld, filedes[1] );
-		exit( 0 );
+		_exit( 0 );
 	}
 
 	/* We're the parent. */
