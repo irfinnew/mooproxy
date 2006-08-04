@@ -63,7 +63,7 @@ extern void *xmalloc( size_t size )
 	}
 
 	/* Still failed, give up. */
-	panic( PANIC_MALLOC, (unsigned long) size );
+	panic( PANIC_MALLOC, 0, (unsigned long) size );
 	return NULL;
 }
 
@@ -75,7 +75,7 @@ extern void *xrealloc( void *ptr, size_t size )
 
 	ptr = realloc( ptr, size );
 
-	if( ptr != NULL )
+	if( ptr != NULL || size == 0 )
 		return ptr;
 
 	/* Reallocation failed. Retry a few times. */
@@ -88,7 +88,7 @@ extern void *xrealloc( void *ptr, size_t size )
 	}
 
 	/* Still failed, give up. */
-	panic( PANIC_REALLOC, (unsigned long) size );
+	panic( PANIC_REALLOC, 0, (unsigned long) size );
 	return NULL;
 }
 
@@ -114,7 +114,7 @@ extern char *xstrdup( const char *s )
 	}
 
 	/* Still failed, give up. */
-	panic( PANIC_STRDUP, (unsigned long) strlen( s ) );
+	panic( PANIC_STRDUP, 0, (unsigned long) strlen( s ) );
 	return NULL;
 }
 
@@ -153,7 +153,7 @@ extern int xvasprintf( char **strp, const char *fmt, va_list argp )
 	}
 
 	/* Still failed, give up. */
-	panic( PANIC_VASPRINTF, 0 );
+	panic( PANIC_VASPRINTF, 0, 0 );
 	return 0;
 }
 
@@ -379,10 +379,13 @@ extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q )
 	 * start:  start of the current line
 	 * end:    end of the current line */
 
+	/* Place the sentinel \n at the end of the buffer. */
+	*eob = '\n';
+
 	while( end < eob )
 	{
-		/* Search for \n or \0 */
-		while( end < eob && *end != '\n' && *end != '\0' )
+		/* Search for \n using linear search with sentinel. */
+		while( *end != '\n' )
 			end++;
 
 		/* We reached the end of buffer without hitting a newline,
@@ -398,7 +401,7 @@ extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q )
 		if( end == eob && start != buffer )
 			break;
 
-		/* If we got here, either we hit a \n or \0, or the buffer is
+		/* If we got here, either we hit a \n, or the buffer is
 		 * filled entirely with one big line. Either way: process it */
 
 		/* Chop leading \r */
@@ -422,6 +425,7 @@ extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q )
 		 * so it points beyond the \n. */
 		if( end < eob )
 			end++;
+
 		start = end;
 	}
 
@@ -482,7 +486,7 @@ extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
 			*bffl = bfull;
 			if( errnum != NULL )
 				*errnum = errno;
-			return ( wr == 0 )? 1 : 2;
+			return ( wr == 0 ) ? 1 : 2;
 		}
 
 		/* If only part of the buffer was written, move the unwritten

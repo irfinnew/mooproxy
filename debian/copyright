@@ -1,6 +1,6 @@
 Program:
 
-   Mooproxy 0.1.0
+   Mooproxy
 
 Original version available at:
 
@@ -14,7 +14,7 @@ This Debian package created by:
 
    Marcel Moreaux <marcelm@luon.net>
 
-Date of packaging:
+Date of initial packaging:
 
    Thu, 16 Feb 2006 22:22:22 +0100
 

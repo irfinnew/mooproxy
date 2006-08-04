@@ -22,7 +22,7 @@
 
 
 /* Mooproxy version */
-#define VERSIONSTR "0.1.0"
+#define VERSIONSTR "0.1.1"
 
 /* Configuration dirnames */
 #define CONFIGDIR ".mooproxy/"
@@ -47,7 +47,7 @@
 #define NET_MAXAUTHLEN 128
 /* Size of blocks-to-lines buffer in bytes.
  * Note that this limits the maximum line length. */
-#define NET_BBUFFER_LEN 16384
+#define NET_BBUFFER_LEN 65536
 /* String to be appended to mooproxy messages */
 #define MESSAGE_TERMINATOR "[0m"
 /* The strftime() format for full date and time. */
@@ -57,9 +57,11 @@
 #define LOG_MSGINTERVAL 3600
 /* When malloc() fails, mooproxy will sleep for a bit and then try again.
  * This setting determines how often mooproxy will try before giving up. */
-#define XMALLOC_OOM_RETRIES 0
+#define XMALLOC_OOM_RETRIES 4
 /* The name of the panic file, which will be placed in ~. */
 #define PANIC_FILE "mooproxy.crashed"
+/* The maximum allowed length of the config file, in KB. */
+#define CONFIG_MAXLENGTH 128UL
 
 
 

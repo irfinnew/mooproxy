@@ -23,14 +23,16 @@ mooproxy \- a buffering proxy for moo-connections
 .SH DESCRIPTION
 .PP
 .B mooproxy
-is a buffering proxy for MOO's (a class of text-based RPG's, descending from
+is a buffering proxy for MOOs (a class of text-based RPGs, descending from
 MUDs). The MOO client connects to mooproxy, and mooproxy connects to the MOO
 server.
 .PP
-Mooproxy keeps you connected to the MOO server if your MOO client crashes,
-or when you're experiencing network problems (between the client and the
-proxy). Mooproxy also provides centralised logging, buffers text when
-you're not connected, and provides context when you do connect.
+Mooproxy keeps you connected to the MOO server if the client disconnects
+(voluntarily, because of network problems, because the client crashes,
+because of a power outage, etc).
+.PP
+Mooproxy also provides centralised logging, buffers text when the client
+isn't connected, and provides context when the client does connect.
 .PP
 .SH OPTIONS
 This program follows the usual GNU command line syntax, with long
@@ -55,7 +57,7 @@ Do not daemonize; stay in the foreground instead.
 .B \-m, \-\-md5crypt
 Prompt for a string, and create and show an MD5 hash of this string.
 .SH COPYRIGHT
-Mooproxy is copyright Marcel Moreaux <marcelm@luon.net>
+Mooproxy is copyright (C) 2001-2006 Marcel Moreaux <marcelm@luon.net>
 .SH SEE ALSO
 .PP
 More comprehensive information about mooproxy can be found in

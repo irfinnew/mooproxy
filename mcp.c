@@ -14,15 +14,12 @@
  *
  */
 
-
-
-/* FIXME: This code is not very elegant. It should be rewritten.
- * Many eery interdependancies, arbitrary limits and unreadable or
- * unmaintanable code. Comments are also lacking. */
+/*
+ * For some more information about MCP, see the README.
+ */
 
 
 
-#include <stdio.h>  /* FIXME: remove */
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -33,27 +30,10 @@
 
 
 
-/* FIXME: Don't arbitrarily limit the number of key-value pairs. */
-#define MAX_KEYVALS 32
-
-enum mcp_types { MCP_NORMAL, MCP_MULTI, MCP_MULTI_END };
-
-
-typedef struct _MCPmsg MCPmsg;
-struct _MCPmsg
-{
-	int type;
-	char *name;
-	char *key;
-	int nkv;
-	char *keys[MAX_KEYVALS];
-	char *vals[MAX_KEYVALS];
-};
-
-
-
-static MCPmsg *factor_mcp_msg( char *, long );
-static int factor_mcp_get_keyval( char **, char **, char ** );
+static int mcp_is_init( Line *line );
+static int mcp_is_negotiate_can( Line *line );
+static char *extract_mcpkey( Line *line );
+static char *skip_mcp_value( char *str );
 
 
 
@@ -66,294 +46,258 @@ extern int world_is_mcp( char *line )
 
 extern void world_do_mcp_client( World *wld, Line *line )
 {
-	char *str, *tmp;
-	long len, i;
-	MCPmsg *msg;
+	char *mcpkey = NULL, *tmp;
+	Line *servermsg;
 
-	/* Ugly hack: append a space to the string, the parsing code expects
-	 * something bogus or whitespace before \0...
-	 * This really needs to be re-written. */
-	str = xmalloc( line->len + 2 );
-	strcpy( str, line->str );
-	strcat( str, " " );
-	len = line->len + 1;
-
+	/* First of all, pass the line on to the server. */
+	line->flags = LINE_MCP;
 	linequeue_append( wld->server_toqueue, line );
 
-	msg = factor_mcp_msg( str, len );
-
-	if( !msg || msg->type != MCP_NORMAL )
-	{
-		free( msg );
-		free( str );
+	/* If we're already negotiated, we're done. */
+	if( wld->mcp_negotiated )
 		return;
+
+	/* Check if it's the "mcp" message. */
+	if( mcp_is_init( line ) )
+	{
+		mcpkey = extract_mcpkey( line );
+
+		/* If the returned key is NULL, don't kill any existing key. */
+		if( mcpkey != NULL )
+		{
+			free( wld->mcp_key );
+			wld->mcp_key = mcpkey;
+		}
 	}
 
-	/* Check for key */
-	if( !wld->mcp_negotiated && !strcmp( msg->name, "mcp" ) )
-		for( i = 0; i < msg->nkv; i++ )
-			if( !strcmp( msg->keys[i], "authentication-key" ) )
-			{
-				free( wld->mcp_key );
-				wld->mcp_key = xstrdup( msg->vals[i] );
-			}
-
-	/* Check for negotiate-can */
-	if( !wld->mcp_negotiated && !strcmp( msg->name, "mcp-negotiate-can" ) )
+	/* Check if it's the mcp-negotiate-can message. */
+	if( mcp_is_negotiate_can( line ) && wld->mcp_key != NULL )
 	{
 		wld->mcp_negotiated = 1;
 
+		/* Insert a client->server mcp-negotiate-can stating the
+		 * client can do mcpreset. This is necessary so the server
+		 * will listen for mcpreset commands. */
 		xasprintf( &tmp, "#$#mcp-negotiate-can %s package: "
 				"dns-nl-icecrew-mcpreset min-version: 1.0 "
 				"max-version: 1.0", wld->mcp_key );
-		linequeue_append( wld->server_toqueue, line_create( tmp, -1 ) );
+		servermsg = line_create( tmp, -1 );
+		servermsg->flags = LINE_MCP;
+		linequeue_append( wld->server_toqueue, servermsg );
 	}
-
-	free( str );
-	free( msg );
 }
 
 
 
 extern void world_do_mcp_server( World *wld, Line *line )
 {
+	/* Flag the line as MCP, and pass it on. */
 	line->flags = LINE_MCP;
 	linequeue_append( wld->client_toqueue, line );
+
+	/* Now, if we don't have an initmsg yet, and this is the "mcp"
+	 * message, save this line for later. */
+	if( wld->mcp_initmsg == NULL && mcp_is_init( line ) )
+		wld->mcp_initmsg = xstrdup( line->str );
 }
 
 
 
-/* Assumes that the line starts with #$#
- * The string will be garbage afterwards, even on failure
- * Returns 0 if it could not parse the MCP line */
-static MCPmsg *factor_mcp_msg( char *line, long len )
+extern void world_mcp_server_connect( World *wld )
 {
-	MCPmsg *msg = xmalloc( sizeof( MCPmsg ) );
-	int i;
-
-	/* We assume it starts with #$# */
-	line += 3;
-
-	/* Get the MCP command name */
-	for( i = 0; line[i] != ' '; i++ )
-	{
-		if( line[i] == '\0' )
-		{
-			free( msg );
-			return NULL;
-		}
-		line[i] = tolower( line[i] );
-	}
-
-	msg->name = line;
-	line += i;
-	*line++ = '\0';
-
-	/* If the message name is "mcp", it's the keyless handshake */
-	if( strcmp( msg->name, "mcp" ) )
-	{
-		/* Skip whitespace */
-		while( *line == ' ' )
-			line++;
-
-		/* Get the MCP key */
-		for( i = 0; line[i] != '\0' && line[i] != ' '; i++ )
-			;
-
-		msg->key = line;
-		line += i;
-		*line++ = '\0';
-	}
-	else
-	{
-		msg->key = line - 1;
-	}
-
-	/* If the name is ':', it's a multiline end */
-	if( msg->name[0] == ':' && msg->name[1] == '\0' )
-	{
-		msg->type = MCP_MULTI_END;
-		msg->nkv = 0;
-		return msg;
-	}
-
-	/* If the name is '*', it's a multiline */
-	if( msg->name[0] == '*' && msg->name[1] == '\0' )
-	{
-		msg->type = MCP_MULTI;
-
-		/* Get the key name */
-		for( i = 0; line[i] != ' '; i++ )
-		{
-			if( line[i] == '\0' )
-			{
-				free( msg );
-				return NULL;
-			}
-			line[i] = tolower( line[i] );
-		}
-
-		/* The key should really end with ':' */
-		if( i < 1 || line[i - 1] != ':' )
-		{
-			free( msg );
-			return NULL;
-		}
-
-		msg->keys[0] = line;
-		line += i;
-		*(line++ - 1) = '\0';
-
-		/* Get the value */
-		msg->vals[0] = line;
-
-		msg->nkv = 1;
-		return msg;
-	}
-
-	/* Well, it must be a normal msg */
-	msg->type = MCP_NORMAL;
-	msg->nkv = 0;
-
-	for(;;)
-	{
-		switch( factor_mcp_get_keyval( &line, msg->keys + msg->nkv,
-					msg->vals + msg->nkv ) )
-		{
-		case 0:
-			/* Success; We have another keyval */
-			msg->nkv++;
-			break;
-		case 1:
-			/* EOL, we're done */
-			return msg;
-			break;
-		case 2:
-			/* Parse error; clean up and return */
-			free( msg );
-			return NULL;
-			break;
-		}
-
-		if( msg->nkv == MAX_KEYVALS )
-		{
-			/* Ugh. FIXME */
-			/* printf( "Maximum number of key-value pairs for a "
-					"MCP message exceeded!\n" ); */
-			free( msg );
-			return NULL;
-		}
-	}
-}
-
-
-
-/* Returns 0 on succes, 1 on valid eol, 2 on parse error.
- * key and val are filled on success, garbage otherwise */
-static int factor_mcp_get_keyval( char **linep, char **key, char **val )
-{
-	int i, quote = 0;
-	char *line = *linep;
-
-	/* Skip whitespace */
-	while( line[0] == ' ' )
-		line++;
-
-	/* EOL? */
-	if( line[0] == '\0' )
-		return 1;
-
-	/* Get the key */
-	for( i = 0; line[i] != ' '; i++ )
-	{
-		if( line[i] == '\0' )
-			return 2;
-		line[i] = tolower( line[i] );
-	}
-
-	if( i < 1 || line[i - 1] != ':' )
-		return 2;
-
-	*key = line;
-	line += i;
-	*(line++ - 1) = '\0';
-
-	/* Skip whitespace */
-	while( line[0] == ' ' )
-		line++;
-
-	if( line[0] == '\0' )
-		return 2;
-
-	/* Value, unquoted string */
-	if( line[0] != '"' )
-	{
-		for( i = 0; line[i] != '\0' && line[i] != ' '; i++ )
-			;
-
-		*val = line;
-		line += i;
-		*line++ = '\0';
-
-		*linep = line;
-		return 0;
-	}
-
-	/* Value, quoted string */
-	line++;
-
-	for( i = 0; line[i] != '\0'; i++ )
-	{
-		if( line[i] == '\\' )
-			quote = 1 - quote;
-		if( line[i] == '"' && quote == 0 )
-			break;
-		if( line[i] == '"' && quote == 1 )
-			quote = 0;
-	}
-
-	/* Did we find a closing quote ? */
-	if( line[i] == '\0' )
-		return 2;
-
-	/* Save the key */
-
-	*val = line;
-	line += i;
-	*line++ = '\0';
-
-	*linep = line;
-	return 0;
-}
-
-
-
-extern void world_send_mcp_reset( World *wld )
-{
-	char *str;
-
-	/* If the MCP negotiation has not taken place, do it now. */
-	if( !wld->mcp_negotiated )
-	{
-		str = xstrdup( "#$#mcp authentication-key: mehkey version: "
-				"1.0 to: 2.1" );
-		linequeue_append( wld->server_toqueue, line_create( str, -1 ) );
-		str = xstrdup( "#$#mcp-negotiate-can mehkey package: "
-				"dns-nl-icecrew-mcpreset min-version: 1.0 "
-				"max-version: 1.0" );
-		linequeue_append( wld->server_toqueue, line_create( str, -1 ) );
-		str = xstrdup( "#$#mcp-negotiate-end mehkey" );
-		linequeue_append( wld->server_toqueue, line_create( str, -1 ) );
-
-		free( wld->mcp_key );
-		wld->mcp_key = xstrdup( "mehkey" );
-	}
-
-	/* Send the MCP reset */
-	xasprintf( &str, "#$#dns-nl-icecrew-mcpreset-reset %s",wld->mcp_key );
-	linequeue_append( wld->server_toqueue, line_create( str, -1 ) );
+	/* We just connected to the server, all MCP administration should be
+	 * erased. */
+	wld->mcp_negotiated = 0;
 
 	free( wld->mcp_key );
 	wld->mcp_key = NULL;
-	wld->mcp_negotiated = 0;
+
+	free( wld->mcp_initmsg );
+	wld->mcp_initmsg = NULL;
+}
+
+
+
+extern void world_mcp_client_connect( World *wld )
+{
+	char *str;
+	Line *line;
+
+	/* If we don't have an MCP key, the best we can do is relay the MCP
+	 * handshake from the server to the client. The client should then
+	 * react (if it supports MCP) to get the whole thing going. */
+	if( wld->mcp_key == NULL )
+	{
+		/* If we have not captured a handshake msg from the server,
+		 * either the server does not support MCP, or something's
+		 * screwed. */
+		if( wld->mcp_initmsg != NULL )
+		{
+			line = line_create( xstrdup( wld->mcp_initmsg ), -1 );
+			line->flags = LINE_MCP;
+			linequeue_append( wld->client_toqueue, line );
+		}
+	}
+
+	/* If we have a key, but we're not negotiated, negotiate now. */
+	if( wld->mcp_key != NULL && !wld->mcp_negotiated )
+	{
+		xasprintf( &str, "#$#mcp-negotiate-can %s package: "
+				"dns-nl-icecrew-mcpreset min-version: 1.0 "
+				"max-version: 1.0", wld->mcp_key );
+		line = line_create( str, -1 );
+		line->flags = LINE_MCP;
+		linequeue_append( wld->server_toqueue, line );
+		xasprintf( &str, "#$#mcp-negotiate-end %s", wld->mcp_key );
+		line = line_create( str, -1 );
+		line->flags = LINE_MCP;
+		linequeue_append( wld->server_toqueue, line );
+		wld->mcp_negotiated = 1;
+	}
+
+	/* If we have a key and we're negotiated, do the mcp reset. */
+	if( wld->mcp_key != NULL && wld->mcp_negotiated )
+	{
+		/* Send the mcp reset. */
+		xasprintf( &str, "#$#dns-nl-icecrew-mcpreset-reset %s",
+				wld->mcp_key );
+		line = line_create( str, -1 );
+		line->flags = LINE_MCP;
+		linequeue_append( wld->server_toqueue, line );
+
+		/* We're not negotiated anymore. */
+		wld->mcp_negotiated = 0;
+
+		/* Any old key is now invalid. */
+		free( wld->mcp_key );
+		wld->mcp_key = NULL;
+
+		/* We'll receive a new "mcp" message. */
+		free( wld->mcp_initmsg );
+		wld->mcp_initmsg = NULL;
+	}
+}
+
+
+
+/* Check if this is the "mcp" message. Returns a boolean. */
+static int mcp_is_init( Line *line )
+{
+	return !strncasecmp( line->str, "#$#mcp ", 7 );
+}
+
+
+
+/* Check if this is the "mcp-negotiate-can" message. Returns a boolean. */
+static int mcp_is_negotiate_can( Line *line )
+{
+	/* Note that we do _not_ check the MCP key on this message.
+	 * We only check the mcp-negotiate-can from the client, which is
+	 * assumed to be trusted. */
+	return !strncasecmp( line->str, "#$#mcp-negotiate-can ", 21 );
+}
+
+
+
+/* Attempts to extract the value associated with the "authentication-key"
+ * key from this message. The message should be a "mcp" message.
+ * Returns a copy of the authentication key (which should be freed), or
+ * NULL on failure. */
+static char *extract_mcpkey( Line *line )
+{
+	char *str = line->str, *end, *mcpkey;
+	int foundkey;
+
+	/* If this is not a "mcp" message, we can't parse it. */
+	if( strncasecmp( str, "#$#mcp ", 7 ) )
+		return NULL;
+
+	/* Skip past the first part of the string, we parsed that. */
+	str += 6;
+
+	for(;;)
+	{
+		/* Skip whitespace */
+		while( *str == ' ' )
+			str++;
+
+		/* End of string, we fail. */
+		if( *str == '\0' )
+			return NULL;
+
+		/* See if the current key is "authentication-key", and
+		 * remember that for later. */
+		foundkey = !strncasecmp( str, "authentication-key: ", 20 );
+
+		/* Skip over the key. */
+		while( *str != ':' && *str != ' ' && *str != '\0' )
+			str++;
+
+		/* A key should really be followed by ':'. */
+		if( *str != ':' )
+			return NULL;
+
+		str++;
+		/* Skip whitespace. */
+		while( *str == ' ' )
+			str++;
+
+		/* If the key was not the one we're looking for, just skip
+		 * over the value and continue. */
+		if( !foundkey )
+		{
+			str = skip_mcp_value( str );
+			/* Fail on error. */
+			if( str == NULL )
+				return NULL;
+			continue;
+		}
+
+		/* The key was the one we're looking for!
+		 * First, find the end of the value. */
+		end = str;
+		while( *end != ' ' && *end != '\0' )
+			end++;
+
+		/* Duplicate it, and return it (stripping off quotes). */
+		mcpkey = xmalloc( end - str + 1 );
+		strncpy( mcpkey, str, end - str );
+		mcpkey[end - str] = '\0';
+		return remove_enclosing_quotes( mcpkey );
+	}
+}
+
+
+
+static char *skip_mcp_value( char *str )
+{
+	/* If the value does not start with ", it's a simple value.
+	 * Just skip until the first space. */
+	if( *str != '"' )
+	{
+		while( *str != ' ' && *str != '\0' )
+			str++;
+
+		return str;
+	}
+
+	/* It starts with ", so it's a quoted value. First, skip over the ". */
+	str++;
+
+	/* Scan until a " or end of string. */
+	while( *str != '"' && *str != '\0' )
+	{
+		/* If we encounter a \, the following character is escaped,
+		 * so we skip the next character. */
+		if( *str == '\\' && str[1] != '\0' )
+			str++;
+
+		str++;
+	}
+
+	/* It's a parse error if we hit the end of the string. */
+	if( *str != '"' )
+		return NULL;
+
+	return str + 1;
 }

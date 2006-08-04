@@ -62,7 +62,8 @@ extern int aset_auth_md5hash( World *wld, char *key, char *value,
 	 * Also, get the rest of the string (the old literal if coming from
 	 * the user, empty if coming from file) in oldliteral */
 	origval = val = xstrdup( value );
-	newhash = xstrdup( get_one_word( &val ) );
+	newhash = get_one_word( &val );
+	newhash = xstrdup( ( newhash != NULL ) ? newhash : "" );
 	val = trim_whitespace( val );
 	val = remove_enclosing_quotes( val );
 	oldliteral = xstrdup( val );

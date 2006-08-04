@@ -18,7 +18,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <errno.h>
@@ -36,16 +35,17 @@
 
 
 /* The separator for keys and values in the configfile. */
-#define SEPARATOR '='
-/* The maximum length of the configuration file, in bytes. */
-#define MAX_CONFIG_LENGTH (32 * 1024)
+#define SEPARATOR_CHAR '='
+#define COMMENT_CHAR '#'
 
 
 
-static int set_key_value( World *, char *, char *, char ** );
-static int set_key_internal( World *, char *, char *, int, char ** );
-static int get_key_internal( World *, char *, char **, int );
-static int attempt_createdir( char *, char ** );
+static int read_configfile( char *file, char **contents, char **err );
+static int set_key_value( World *wld, char *key, char *value, char **err );
+static int set_key_internal( World *wld, char *key, char *value, int src,
+		char **err );
+static int get_key_internal( World *wld, char *key, char **value, int src );
+static int attempt_createdir( char *dirname, char **err );
 
 
 
@@ -206,132 +206,158 @@ extern void parse_command_line_options( int argc, char **argv, Config *config )
 
 
 
-/* FIXME: this isn't pretty. Rewrite some time. */
 extern int world_load_config( World *wld, char **err )
 {
-	int fd, i;
-	char *line, *key, *value, *s, *contents, *cnt, *tmp;
-	long wline;
-	size_t l;
+	char *config, *cfg, *line, *sep, *key, *value, *seterr;
+	long lineno = 0;
 
-	/* We need this to be NULL or valid error later on. */
-	*err = NULL;
-
-	if( wld->configfile == NULL )
-	{
-		xasprintf( err, "Could not open (null).\nNo such world, `%s'",
-				wld->name );
+	if( read_configfile( wld->configfile, &config, err ) )
 		return 1;
-	}
 
-	fd = open( wld->configfile, O_RDONLY );
-	if( fd == -1 )
+	/* We use and modify cfg. Config is used to free the block later. */
+	cfg = config;
+
+	for(;;)
 	{
-		xasprintf( err, "Error opening `%s': %s\nNo such world, `%s'",
-			wld->configfile, strerror( errno ), wld->name );
-		return 1;
-	}
+		/* We read a line */
+		line = read_one_line( &cfg );
+		lineno++;
 
-	/* We read the entire configuration file in one go, and then parse
-	 * everything in memory. */
-	contents = cnt = xmalloc( MAX_CONFIG_LENGTH + 1 );
-	i = read( fd, contents, MAX_CONFIG_LENGTH );
+		/* No more lines? Done */
+		if( !line )
+			break;
 
-	/* Error! */
-	if( i == - 1 )
-	{
-		xasprintf( err, "Error reading from `%s': %s\nNo such world, "
-			"`%s'", wld->configfile, strerror( errno ), wld->name );
-		free( contents );
-		return 1;
-	}
-
-	/* If the file is longer than we can read, refuse as well. */
-	if( i == MAX_CONFIG_LENGTH )
-	{
-		xasprintf( err, "Error: `%s' is greater than %li bytes.",
-				wld->configfile, MAX_CONFIG_LENGTH );
-		free( contents );
-		return 1;
-	}
-
-	/* NUL-terminate the string. */
-	contents[i] = '\0';
-	close( fd );
-
-	for( wline = 1; ( line = read_one_line( &cnt ) ); wline++ )
-	{
-		/* Get a line, trim the whitespace, and parse. */
+		/* Is the line only whitespace or comment? Skip it */
 		line = trim_whitespace( line );
-
-		/* If the line is empty, or starts with #, ignore */
-		if( line[0] == '\0' || line[0] == '#' )
-			;
-		else if( ( s = strchr( line, SEPARATOR ) ) )
+		if( line[0] == '\0' || line[0] == COMMENT_CHAR )
 		{
-			/* Isolate the key and value */
-			key = xmalloc( ( l = s - line ) + 1 );
-			strncpy( key, line, l );
-			key[l] = '\0';
-			value = xmalloc( ( l = strlen( line ) - l - 1 ) + 1 );
-			strncpy( value, ++s, l );
-			value[l] = '\0';
-
-			/* Trim key and value */
-			key = trim_whitespace( key );
-			value = trim_whitespace( value );
-
-			/* Strip off a single leading and trailing quote */
-			value = remove_enclosing_quotes( value );
-
-			/* Try and set the key */
-			switch( set_key_value( wld, key, value, err ) )
-			{
-				case SET_KEY_NF:
-				xasprintf( err, "%s: line %li: unknown key `%s'"
-					, wld->configfile, wline, key );
-				break;
-
-				case SET_KEY_PERM:
-				xasprintf( err, "%s: line %li: setting key `%s'"
-					" not allowed.", wld->configfile,
-					wline, key );
-				break;
-
-				case SET_KEY_BAD:
-				tmp = *err;
-				xasprintf( err, "%s: line %li: setting key `%s'"
-					": %s", wld->configfile, wline,
-					key, tmp );
-				free( tmp );
-				break;
-			}
-
-			/* Clean up */
-			free( key );
-			free( value );
-
-			if( *err )
-			{
-				free( contents );
-				free( line );
-				return 1;
-			}
-		}
-		else
-		{
-			/* We don't understand that! */
-			xasprintf( err, "%s: line %li, parse error: `%s'", 
-				wld->configfile, wline, line );
-			free( contents );
 			free( line );
+			continue;
+		}
+
+		/* Search for the separator character */
+		sep = strchr( line, SEPARATOR_CHAR );
+		if( sep == NULL )
+		{
+			/* No separator character? We don't understand */
+			xasprintf( err, "%s: line %li, parse error: `%s'", 
+				wld->configfile, lineno, line );
+			free( line );
+			free( config );
 			return 1;
 		}
 
+		/* Split the line in two strings, and extract key and value */
+		*sep = '\0';
+		key = xstrdup( line );
+		value = xstrdup( sep + 1 );
+
+		/* Clean up key and value */
+		key = trim_whitespace( key );
+		value = trim_whitespace( value );
+		value = remove_enclosing_quotes( value );
+
+		/* We use err to test if an error occured. */
+		*err = NULL;
+
+		/* Try and set the key */
+		switch( set_key_value( wld, key, value, &seterr ) )
+		{
+			case SET_KEY_NF:
+			xasprintf( err, "%s: line %li: unknown key `%s'",
+					wld->configfile, lineno, key );
+			break;
+
+			case SET_KEY_PERM:
+			xasprintf( err, "%s: line %li: setting key `%s' not "
+					"allowed.", wld->configfile,
+					lineno, key );
+			break;
+
+			case SET_KEY_BAD:
+			xasprintf( err, "%s: line %li: setting key `%s': %s",
+					wld->configfile, lineno, key, seterr );
+			free( seterr );
+			break;
+		}
+
+		/* Clean up */
+		free( key );
+		free( value );
 		free( line );
+
+		/* If there was an error, abort */
+		if( *err )
+		{
+			free( config );
+			return 1;
+		}
 	}
 
-	free( contents );
+	/* We're done! */
+	free( config );
+	return 0;
+}
+
+
+
+/* Read file (with max length CONFIG_MAXLENGTH KB) in a block of memory,
+ * and put the address of this block in contents. The block should be freed.
+ * On succes, return 0.
+ * On error, no block is places in contents, an error is placed in err, and
+ * 1 is returned. */
+static int read_configfile( char *file, char **contentp, char **err )
+{
+	int fd, r;
+	off_t size;
+	char *contents;
+
+	if( file == NULL )
+	{
+		*err = xstrdup( "No configuration file defined." );
+		return 1;
+	}
+
+	/* Open the file, and bail out on error */
+	fd = open( file, O_RDONLY );
+	if( fd == -1 )
+	{
+		xasprintf( err, "Error opening `%s': %s",
+				file, strerror( errno ) );
+		return 1;
+	}
+
+	/* Check the length of the file */
+	size = lseek( fd, 0, SEEK_END );
+	if( size > CONFIG_MAXLENGTH * 1024 )
+	{
+		xasprintf( err, "Error: `%s' is larger than %lu kilobytes.",
+				file, CONFIG_MAXLENGTH );
+		close( fd );
+		return 1;
+	}
+
+	/* Reset the offset to the start of file */
+	lseek( fd, 0, SEEK_SET );
+
+	/* Allocate memory, and read file contents */
+	contents = xmalloc( size + 1 );
+	r = read( fd, contents, size );
+	if( r == -1 )
+	{
+		xasprintf( err, "Error reading from `%s': %s\n",
+				file, strerror( errno ) );
+		free( contents );
+		close( fd );
+		return 1;
+	}
+
+	/* Nul-terminate the string */
+	contents[size] = '\0';
+
+	/* Clean up, and done */
+	close( fd );
+	*contentp = contents;
 	return 0;
 }
 
@@ -491,3 +517,4 @@ static int attempt_createdir( char *dirname, char **err )
 	free( path );
 	return 0;
 }
+

@@ -39,6 +39,7 @@
 #include "timer.h"
 #include "resolve.h"
 #include "crypt.h"
+#include "panic.h"
 
 
 
@@ -92,8 +93,8 @@ extern void wait_for_network( World *wld )
 	tv.tv_usec = 0;
 
 	if( select( high + 1, &rset, &wset, NULL, &tv ) < 0 )
-		/* FIXME: This shouldn't happen. Should this be reported? */
-		return;
+		/* None of select()s errors should occur. */
+		panic( PANIC_SELECT, errno, 0 );
 
 	/* Check all of the monitored FD's, and handle them appropriately. */
 
@@ -200,11 +201,16 @@ static int create_fdset( World *wld, fd_set *rset, fd_set *wset )
 
 
 
-extern int world_bind_port( World *wld, char **err )
+extern void world_bind_port( World *wld )
 {
 	struct addrinfo hints, *ailist, *ai;
-	int numfds = 0, fd, yes = 1, ret, i;
-	char hostbuf[NI_MAXHOST + 1], port[NI_MAXSERV + 1];
+	int current = -1, successful = 0, fd, yes = 1, ret, i;
+	char hostbuf[NI_MAXHOST + 1], port[NI_MAXSERV + 1], **currentmsg;
+	BindResult *result = wld->bindresult;
+
+	/* Clean up any previous BindResult */
+	world_bindresult_free( result );
+	world_bindresult_init( result );
 
 	/* Clean up existing listen FDs. */
 	if( wld->listen_fds != NULL )
@@ -219,8 +225,8 @@ extern int world_bind_port( World *wld, char **err )
 
 	if( wld->listenport == -1 )
 	{
-		xasprintf( err, "No port defined to listen on." );
-		return 1;
+		xasprintf( &result->fatal, "No port defined to listen on." );
+		return;
 	}
 
 	/* Specify the socket addresses we want. Any AF the system supports,
@@ -236,23 +242,35 @@ extern int world_bind_port( World *wld, char **err )
 	ret = getaddrinfo( NULL, port, &hints, &ailist );
 	if( ret != 0 )
 	{
-		xasprintf( err, "Getting address information failed: %s",
-				gai_strerror( ret ) );
-		return 1;
+		xasprintf( &result->fatal, "Getting address information "
+				"failed: %s", gai_strerror( ret ) );
+		return;
 	}
+
+	/* Loop over the socket addresses, to count them. */
+	for( ai = ailist; ai != NULL; ai = ai->ai_next )
+		result->af_count++;
+
+	/* Allocate result arrays */
+	result->af_success = malloc( result->af_count * sizeof( int ) );
+	result->af_msg = malloc( result->af_count * sizeof( char * ) );
 
 	/* Loop over the socket addresses, and attempt to create, bind(),
 	 * and listen() them all. */
 	for( ai = ailist; ai != NULL; ai = ai->ai_next )
 	{
+		current++;
+		currentmsg = &( result->af_msg[current] );
+		result->af_success[current] = 0;
+
 		/* Get the numeric representation of this address
 		 * (e.g. "0.0.0.0" or "::") */
 		ret = getnameinfo( ai->ai_addr, ai->ai_addrlen, hostbuf,
 				NI_MAXHOST, NULL, 0, NI_NUMERICHOST );
 		if( ret != 0 )
 		{
-			printf( "Getting name information failed: %s\n",
-					gai_strerror( ret ) );
+			xasprintf( currentmsg, "Getting name information "
+					"failed: %s", gai_strerror( ret ) );
 			continue;
 		}
 
@@ -284,33 +302,40 @@ extern int world_bind_port( World *wld, char **err )
 		if( listen( fd, NET_BACKLOG ) < 0 )
 			goto world_bind_port_warn;
 
-		/* Report succes, and add the FD to the list */
-		printf( "Listening on %s port %s.\n", hostbuf, port );
+		/* Report success, and add the FD to the list */
+		result->af_success[current] = 1;
+		xasprintf( currentmsg, "Listening on %s port %s.",
+				hostbuf, port );
+
+		/* Add the FD to the list */
 		wld->listen_fds = xrealloc( wld->listen_fds,
-				sizeof( int ) * ( numfds + 2 ) );
-		wld->listen_fds[numfds++] = fd;
-		wld->listen_fds[numfds] = -1;
+				sizeof( int ) * ( successful + 2 ) );
+		wld->listen_fds[successful++] = fd;
+		wld->listen_fds[successful] = -1;
 		continue;
 
+	/* Single error handling and cleanup point */
 	world_bind_port_warn:
-		/* Single error handling and cleanup point */
-		printf( "Listening on %s port %s failed: %s\n", hostbuf,
-				port, strerror( errno ) );
+		xasprintf( currentmsg, "Listening on %s port %s failed: %s",
+				hostbuf, port, strerror( errno ) );
 		if( fd > -1 )
 			close( fd );
 	}
 
 	freeaddrinfo( ailist );
 
-	/* We need at least one FD, otherwise we're not listening on a port */
-	if( numfds == 0 )
-	{
-		xasprintf( err, "Listening on port %s failed for all "
-				"protocol families.", port );
-		return 1;
-	}
+	/* Write conclusion to BindResult */
+	if( successful > 0 )
+		xasprintf( &( result->conclusion ), "Listening on port %s "
+				"for %i protocol famil%s.", port, successful,
+				( successful == 1 ) ? "y" : "ies" );
+	else
+		xasprintf( &( result->conclusion ), "Listening on port %s "
+				"failed for all protocol families.", port );
 
-	return 0;
+	result->af_success_count = successful;
+
+	return;
 }
 
 
@@ -419,7 +444,7 @@ static void handle_connecting_fd( World *wld )
 	if( so_err != 0 )
 		return server_connect_error( wld, fd, strerror( so_err ) );
 
-	/* Connecting succesful, we have a FD. Now make it non-blocking. */
+	/* Connecting successful, we have a FD. Now make it non-blocking. */
 	if( fcntl( fd, F_SETFL, O_NONBLOCK ) < 0 )
 		return server_connect_error( wld, fd, strerror( errno ) );
 
@@ -436,6 +461,9 @@ static void handle_connecting_fd( World *wld )
 
 	world_msg_client( wld, "      Succes." );
 	world_msg_client( wld, "Connected to world %s.", wld->name );
+
+	/* Inform the MCP layer that we just connected to the server. */
+	world_mcp_server_connect( wld );
 
 	/* Auto-login */
 	world_login_server( wld, 0 );
@@ -495,8 +523,6 @@ extern void world_disconnect_server( World *wld )
 	free( wld->server_address );
 	wld->server_address = NULL;
 
-	wld->mcp_negotiated = 0;
-
 	wld->server_status = ST_DISCONNECTED;
 }
 
@@ -513,7 +539,7 @@ extern void world_disconnect_client( World *wld )
 
 	wld->client_last_connected = current_time();
 
-	world_set_clientfd( wld, -1 );
+	wld->client_fd = -1;
 	wld->client_txfull = 0;
 	wld->client_rxfull = 0;
 
@@ -533,11 +559,14 @@ static void handle_listen_fd( World *wld, int which )
 
 	/* Accept the new connection */
 	newfd = accept( wld->listen_fds[which], (struct sockaddr *) &sa, &sal );
-	if( newfd == -1 )
-	{
-		/* FIXME: This shouldn't happen. Should this be reported? */
+
+	if( newfd == -1 && errno == ECONNABORTED )
+		/* No connection after all? Ok. */
 		return;
-	}
+
+	if( newfd == -1 )
+		/* Other accept() errors shouldn't happen */
+		panic( PANIC_ACCEPT, errno, 0 );
 
 	/* Who's connecting to us? If getting the address fails, abort */
 	ret = getnameinfo( (struct sockaddr *) &sa, sal, hostbuf, NI_MAXHOST,
@@ -765,7 +794,7 @@ static void promote_auth_connection( World *wld, int wa )
 	wld->client_status = ST_CONNECTED;
 
 	/* Transfer connection */
-	world_set_clientfd( wld, wld->auth_fd[wa] );
+	wld->client_fd = wld->auth_fd[wa];
 	wld->auth_fd[wa] = -1;
 	wld->client_address = wld->auth_address[wa];
 	wld->auth_address[wa] = NULL;
@@ -773,7 +802,7 @@ static void promote_auth_connection( World *wld, int wa )
 	/* In order to copy anything left in the authbuffer to the rxbuffer,
 	 * the rxbuffer must be large enough. */
 	#if (NET_BBUFFER_LEN < NET_MAXAUTHLEN)
-	  #error NET_BBUFFER_LEN < NET_MAXAUTHLEN
+	  #error NET_BBUFFER_LEN is smaller than NET_MAXAUTHLEN
 	#endif
 
 	/* Copy anything left in the authbuf to client buffer, and process */
@@ -785,7 +814,7 @@ static void promote_auth_connection( World *wld, int wa )
 	remove_auth_connection( wld, wa, 0 );
 
 	/* Confirm the connection to the authenticating client */
-	world_msg_client( wld, "Authentication succesful, welcome." );
+	world_msg_client( wld, "Authentication successful, welcome." );
 	if( wld->client_prev_address != NULL )
 	{
 		world_msg_client( wld, "Last connected at %s, from %s.",
@@ -796,15 +825,13 @@ static void promote_auth_connection( World *wld, int wa )
 	/* Show context history and pass buffered text */
 	world_recall_and_pass( wld );
 
-	/* Do the MCP reset, so MCP is set up correctly */
+	/* Inform the MCP layer that a client just connected. */
 	if( wld->server_fd != -1 )
-		world_send_mcp_reset( wld );
+		world_mcp_client_connect( wld );
 }
 
 
 
-/* FIXME: handle_client_fd() and handle_server_fd() have duplicate code.
- * Perhaps merge them? */
 /* Handles any waiting data on the client FD. Read data, parse in to lines,
  * append to RX queue. If the connection died, close FD. */
 static void handle_client_fd( World *wld )
@@ -819,7 +846,7 @@ static void handle_client_fd( World *wld )
 	if( n == -1 && ( errno == EINTR || errno == EAGAIN ) )
 		return;
 
-	if( n == 0 || n == -1 )
+	if( n < 1 )
 	{
 		/* Ok, the connection dropped dead */
 		world_disconnect_client( wld );
@@ -855,7 +882,7 @@ static void handle_server_fd( World *wld )
 
 		/* Notify the client */
 		world_msg_client( wld, "Connection to server lost (%s).",
-				n ? strerror( err ) : "connection closed" );
+			( n < 0 ) ? strerror( err ) : "connection closed" );
 
 		return;
 	}

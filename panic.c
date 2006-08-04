@@ -27,106 +27,178 @@
 #include <fcntl.h>
 
 #include "panic.h"
+#include "world.h"
 #include "misc.h"
 #include "global.h"
 
 
 
-int panic_clientfd = -1;
-
-
-
-static void panicreason_to_string( int reason, char *error, unsigned long extra );
+static void panicreason_to_string( char *str, int reason, long extra,
+		unsigned long uextra );
+static void worldlist_to_string( char *str, int wldcount, World **worlds );
 
 
 
 extern void panic_sighandler( int sig )
 {
-	panic( PANIC_SIGNAL, (unsigned long) sig );
+	panic( PANIC_SIGNAL, sig, 0 );
 }
 
 
 
-extern void panic( int reason, unsigned long extra )
+extern void panic( int reason, long extra, unsigned long uextra)
 {
-	static char *timestamp, error[128], panicstr[256], panicfile[4096];
-	static int panicfd;
+	char *timestamp, panicstr[1024], panicfile[4096];
+	int panicfd, wldcount, i;
+	World **worlds;
 
-	/* Create the panicfile filename */
+	/* First of all, set the signal handlers to default actions.
+	 * We don't want to cause an endless loop by SEGVing in here. */
+	signal( SIGSEGV, SIG_DFL );
+	signal( SIGILL, SIG_DFL );
+	signal( SIGFPE, SIG_DFL );
+	signal( SIGBUS, SIG_DFL );
+
+	/* Get list of worlds */
+	world_get_list( &wldcount, &worlds );
+
+	/* Create the panicfile */
 	strcpy( panicfile, getenv( "HOME" ) );
 	strcat( panicfile, "/" PANIC_FILE );
+	panicfd = open( panicfile, O_WRONLY | O_CREAT | O_APPEND,
+			S_IRUSR | S_IWUSR );
 
-	/* Create the timestamp and error message */
+	/* Create the timestamp and panic message */
 	timestamp = time_string( time( NULL ), "%F %T" );
-	panicreason_to_string( reason, error, extra );
+	sprintf( panicstr, "%s mooproxy (PID %li) crashed!\n",
+			timestamp, (long) getpid() );
 
-	/* Construct the panic message */
-	sprintf( panicstr, "[%s] Mooproxy crashed: %s!\n", timestamp, error );
-
-	/* Open the panicfile */
-	panicfd = open( panicfile, O_WRONLY | O_CREAT | O_APPEND );
-
-	/* Write to stderr */
-	write( 2, panicstr, strlen( panicstr ) );
-	/* Write to panicfile */
+	/* Write it to all destinations */ 
+	write( STDERR_FILENO, panicstr, strlen( panicstr ) );
 	write( panicfd, panicstr, strlen( panicstr ) );
-	/* Write to client */
-	write( panic_clientfd, "\r\n", sizeof( "\r\n" ) - 1 );
-	write( panic_clientfd, panicstr, strlen( panicstr ) );
+	for( i = 0; i < wldcount; i++ )
+	{
+		if( worlds[i]->client_fd < 0 )
+			continue;
+		write( worlds[i]->client_fd, "\r\n", sizeof( "\r\n" ) - 1 );
+		write( worlds[i]->client_fd, panicstr, strlen( panicstr ) );
+	}
 
-	/* Bye! */
+
+	/* Formulate the reason of the crash */
+	panicreason_to_string( panicstr, reason, extra, uextra );
+
+	/* And write it to all destinations */
+	write( STDERR_FILENO, panicstr, strlen( panicstr ) );
+	write( panicfd, panicstr, strlen( panicstr ) );
+	for( i = 0; i < wldcount; i++ )
+	{
+		if( worlds[i]->client_fd < 0 )
+			continue;
+		write( worlds[i]->client_fd, panicstr, strlen( panicstr ) );
+	}
+
+
+	/* Formulate the list of worlds */
+	worldlist_to_string( panicstr, wldcount, worlds );
+
+	/* And write it to all destinations */
+	write( STDERR_FILENO, panicstr, strlen( panicstr ) );
+	write( panicfd, panicstr, strlen( panicstr ) );
+	for( i = 0; i < wldcount; i++ )
+	{
+		if( worlds[i]->client_fd < 0 )
+			continue;
+		write( worlds[i]->client_fd, panicstr, strlen( panicstr ) );
+	}
+
+
+	/* Bail out */
 	_exit( 0 );
 }
 
 
 
-static void panicreason_to_string( int reason, char *error, unsigned long extra )
+static void panicreason_to_string( char *str, int reason, long extra,
+		unsigned long uextra )
 {
+	/* Make the string begin with two spaces */
+	strcpy( str, "  " );
+	str += 2;
+
 	switch( reason )
 	{
 		case PANIC_SIGNAL:
 		switch( extra )
 		{
 			case SIGSEGV:
-			strcpy( error, "Segmentation fault" );
+			strcpy( str, "Segmentation fault" );
 			break;
 
 			case SIGILL:
-			strcpy( error, "Illegal instruction" );
+			strcpy( str, "Illegal instruction" );
 			break;
 
 			case SIGFPE:
-			strcpy( error, "Floating point exception" );
+			strcpy( str, "Floating point exception" );
 			break;
 
 			case SIGBUS:
-			strcpy( error, "Bus error" );
+			strcpy( str, "Bus error" );
 			break;
 
 			default:
-			strcpy( error, "Caught unknown signal" );
+			strcpy( str, "Caught unknown signal" );
 			break;
 		}
 		break;
 
 		case PANIC_MALLOC:
-		sprintf( error, "Failed to malloc() %lu bytes", extra );
+		sprintf( str, "Failed to malloc() %lu bytes", uextra );
 		break;
 
 		case PANIC_REALLOC:
-		sprintf( error, "Failed to realloc() %lu bytes", extra );
+		sprintf( str, "Failed to realloc() %lu bytes", uextra );
 		break;
 
 		case PANIC_STRDUP:
-		sprintf( error, "Failed to strdup() %lu bytes", extra );
+		sprintf( str, "Failed to strdup() %lu bytes", uextra );
 		break;
 
 		case PANIC_VASPRINTF:
-		strcpy( error, "vasprintf() failed (lack of memory?)" );
+		strcpy( str, "vasprintf() failed (lack of memory?)" );
+		break;
+
+		case PANIC_SELECT:
+		sprintf( str, "select() failed: %s", strerror( extra ) );
+		break;
+
+		case PANIC_ACCEPT:
+		sprintf( str, "accept() failed: %s", strerror( extra ) );
 		break;
 
 		default:
-		strcpy( error, "Unknown error" );
+		strcpy( str, "Unknown error" );
 		break;
 	}
+
+	strcat( str, "\n" );
+}
+
+
+
+static void worldlist_to_string( char *str, int wldcount, World **worlds )
+{
+	int i;
+
+	strcpy( str, "  open worlds:" );
+
+	for( i = 0; i < wldcount; i++ )
+	{
+		strcat( str, " [" );
+		strcat( str, worlds[i]->name );
+		strcat( str, "]" );
+	}
+
+	strcat( str, "\n" );
 }

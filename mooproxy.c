@@ -18,6 +18,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <time.h>
 
 #include "global.h"
@@ -47,20 +49,21 @@ static void print_license_text( void );
 
 int main( int argc, char **argv )
 {
-	Config *config = NULL;
+	Config config;
 	World *world = NULL;
 	char *err = NULL;
 	pid_t pid;
+	int i;
 
-	config = xmalloc( sizeof( Config ) );
+	/* Parse commandline options */
+	parse_command_line_options( argc, argv, &config );
 
-	parse_command_line_options( argc, argv, config );
-
-	switch( config->action )
+	/* Ok, what is it the user wants us to do? */
+	switch( config.action )
 	{
 		case PARSEOPTS_ERROR:
-			die( world, config->error );
-			exit( EXIT_SUCCESS );
+			die( world, config.error );
+			exit( EXIT_FAILURE );
 		case PARSEOPTS_HELP:
 			print_help_text();
 			exit( EXIT_SUCCESS );
@@ -75,27 +78,29 @@ int main( int argc, char **argv )
 			exit( EXIT_SUCCESS );
 	}
 
-	if( config->worldname == NULL || config->worldname[0] == '\0' )
+	/* Check if we received a world name. */
+	if( config.worldname == NULL || config.worldname[0] == '\0' )
 		die( world, xstrdup( "You must supply a world name." ) );
 
 	printf( "Starting mooproxy " VERSIONSTR " at %s.\n",
 			time_string( time( NULL ), FULL_TIME ) );
 
+	/* Do all kinds of initialization stuff. */
 	uptime_started_now();
 
 	set_up_signal_handlers();
 
-	world = world_create( config->worldname );
-
-	if( world_acquire_lock_file( world, &err ) )
-		die( world, err );
+	world = world_create( config.worldname );
 
 	world_configfile_from_name( world );
 
 	if( create_configdirs( &err ) != 0 )
 		die( world, err );
 
-	printf( "Opening world %s.\n", config->worldname );
+	if( world_acquire_lock_file( world, &err ) )
+		die( world, err );
+
+	printf( "Opening world %s.\n", config.worldname );
 
 	if( world_load_config( world, &err ) != 0 )
 		die( world, err );
@@ -105,15 +110,29 @@ int main( int argc, char **argv )
 		die( world, xstrdup( "No authentication string given in "
 				"configuration file. Refusing to start." ) );
 
-	if( world_bind_port( world, &err ) != 0 )
-		die( world, err );
+	/* Bind to network port */
+	printf( "Binding to port.\n" );
+	world_bind_port( world );
+	if( world->bindresult->fatal )
+		die( world, xstrdup( world->bindresult->fatal ) );
 
-	if( config->no_daemon )
+	for( i = 0; i < world->bindresult->af_count; i++ )
+		printf( "  %s %s\n", world->bindresult->af_success[i] ?
+				" " : "!", world->bindresult->af_msg[i] );
+
+	if( world->bindresult->af_success_count == 0 )
+		die( world, xstrdup( world->bindresult->conclusion ) );
+
+	printf( "%s\n", world->bindresult->conclusion );
+
+	/* Stay on foreground, or daemonize. */
+	if( config.no_daemon )
 	{
+		pid = getpid();
+		world_write_pid_to_file( world, pid );
 		printf( "Mooproxy succesfully started. Staying in "
-				"foreground.\n" );
+				"foreground (pid %li).\n", (long) pid );
 	} else {
-		/* Daemonize */
 		pid = daemonize( &err );
 		if( pid == -1 )
 			die( world, err );
@@ -127,13 +146,12 @@ int main( int argc, char **argv )
 		}
 	}
 
+	/* Initialization done, enter the main loop. */
 	mainloop( world );
 
+	/* Clean up a bit. */
 	world_remove_lockfile( world );
-
 	world_destroy( world );
-
-	free( config );
 
 	exit( EXIT_SUCCESS );
 }

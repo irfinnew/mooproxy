@@ -24,9 +24,15 @@
 #include <sys/time.h>
 #include <time.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <termios.h>
 
 #include "crypt.h"
 #include "misc.h"
+
+
+
+static char *prompt_for_password( char *msg );
 
 
 
@@ -44,10 +50,9 @@ extern void prompt_to_md5hash( void )
 	char salt[] = "$1$........";
 	char *password, *password2;
 
-	/* FIXME: remove use of getpass() */
 	gettimeofday( &tv1, NULL );
-	password = xstrdup( getpass( "Authentication string: " ) );
-	password2 = xstrdup( getpass( "Re-type authentication string: " ) );
+	password = prompt_for_password( "Authentication string: " );
+	password2 = prompt_for_password( "Re-type authentication string: " );
 	gettimeofday( &tv2, NULL );
 
 	printf( "\n" );
@@ -90,6 +95,73 @@ extern void prompt_to_md5hash( void )
 
 
 
+/* Print msg to stdout, disable terminal input echo, and read password from 
+ * stdin. */
+char *prompt_for_password( char *msg )
+{
+	struct termios tio_orig, tio_new;
+	int n;
+	char *password = malloc( NET_MAXAUTHLEN + 1 );
+
+	/* Check if we're connected to a terminal. */
+	if( !isatty( 0 ) )
+	{
+		fprintf( stderr, "Password prompting requires a terminal.\n" );
+		exit( EXIT_FAILURE );
+	}
+
+	/* Get terminal settings. */
+	if( tcgetattr( 0, &tio_orig ) != 0 )
+	{
+		fprintf( stderr, "Failed to disable terminal echo "
+				"(tcgetattr said %s).", strerror( errno ) );
+		exit( EXIT_FAILURE );
+	}
+
+	/* Disable terminal input echo. */
+	memcpy( &tio_new, &tio_orig, sizeof( struct termios ) );
+	tio_new.c_lflag &= ~ECHO;
+	if( tcsetattr( 0, TCSAFLUSH, &tio_new) != 0 )
+	{
+		fprintf( stderr, "Failed to disable terminal echo "
+				"(tcsetattr said %s).", strerror( errno ) );
+		exit( EXIT_FAILURE );
+	}
+
+	/* Write the prompt. */
+	write( 0, msg, strlen( msg ) );
+
+	/* Read the password (and bail out if something fails ). */
+	n = read( 0, password, NET_MAXAUTHLEN );
+	if( n < 0 )
+	{
+		fprintf( stderr, "Failed to read password from terminal "
+				"(read said %s).", strerror( errno ) );
+		exit( EXIT_FAILURE );
+	}
+
+	/* nul-terminate the read password. */
+	password[n] = '\0';
+
+	/* Strip off any trailing \n. */
+	if( n >= 1 && password[n - 1] == '\n' )
+		password[n - 1] = '\0';
+
+	/* Strip off any trailing \r. */
+	if( n >= 2 && password[n - 2] == '\r' )
+		password[n - 2] = '\0';
+
+	/* Restore terminal settings. */
+	tcsetattr( 0, TCSAFLUSH, &tio_orig );
+
+	/* Write a newline to the terminal. */
+	write( 0, "\n", sizeof( "\n" ) - 1 );
+
+	return password;
+}
+
+
+
 /* An MD5 hash looks like $1$ssssssss$hhhhhhhhhhhhhhhhhhhhhh,
  * where 's' are salt characters, and 'h' hash characters. */
 extern int looks_like_md5hash( char *str )
@@ -109,7 +181,7 @@ extern int looks_like_md5hash( char *str )
 		if( strchr( seedchars, str[i] ) == NULL )
 			return 0;
 
-	/* The has should contain only valid characters. */
+	/* The hash should contain only valid characters. */
 	for( i = 12; i < 34; i++ )
 		if( strchr( seedchars, str[i] ) == NULL )
 			return 0;

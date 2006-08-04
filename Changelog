@@ -1,3 +1,20 @@
+04-08-2006  -  0.1.1
+--------------------
+* Fixed a bug where mooproxy won't start if ~/.mooproxy/locks/ doesn't exist.
+* Fixed a bug where mooproxy will crash if there's no auth_md5hash defined in
+  the configuration file or the user does /set auth_md5hash "".
+* Fixed a bug where mooproxy did not save its PID in the pidfile if it was run
+  in the foreground (instead of as a daemon).
+* Configuration loading code rewritten.
+* MCP code rewritten (less intrusive for non MCP capable clients now).
+* The maximum linelength has been increased from 16kb to 64kb
+* Improved the crashlog layout, and included a bit more information.
+* The README now contains a bit of information about MCP.
+* Cleaned up several parts of code, adding comments and improving efficiency
+  or robustness in a few places.
+  
+
+
 16-02-2006  -  0.1.0
 --------------------
 * Mooproxy is now also packaged as a Debian package

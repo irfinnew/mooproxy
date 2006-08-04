@@ -31,9 +31,8 @@
 extern void wait_for_network( World *wld );
 
 /* Open wld->listenport on the local machine, and start listening on it.
- * On failure, return non-zero and write an error string in err.
- * On succes, return zero. */
-extern int world_bind_port( World *wld, char **err );
+ * The returned BindResult does not need to be free'd. */
+extern void world_bind_port( World *wld );
 
 /* Take the first address in wld->server_addresslist, start a non-blocking
  * connect to that address, and sets wld->server_status to ST_CONNECTING. */

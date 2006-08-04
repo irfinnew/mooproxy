@@ -31,6 +31,16 @@
 
 
 
+static int worlds_count = 0;
+static World **worlds_list = NULL;
+
+
+
+static void register_world( World *wld );
+static void unregister_world( World *wld );
+
+
+
 extern World *world_create( char *wldname )
 {
 	int i;
@@ -52,6 +62,8 @@ extern World *world_create( char *wldname )
 	/* Listening connection */
 	wld->listenport = -1;
 	wld->listen_fds = NULL;
+	wld->bindresult = xmalloc( sizeof( BindResult ) );
+	world_bindresult_init( wld->bindresult );
 
 	/* Authentication related stuff */
 	wld->auth_md5hash = NULL;
@@ -79,7 +91,7 @@ extern World *world_create( char *wldname )
 	wld->server_rxqueue = linequeue_create();
 	wld->server_toqueue = linequeue_create();
 	wld->server_txqueue = linequeue_create();
-	wld->server_rxbuffer = xmalloc( NET_BBUFFER_LEN );
+	wld->server_rxbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
 	wld->server_rxfull = 0;
 	wld->server_txbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
 	wld->server_txfull = 0;
@@ -94,7 +106,7 @@ extern World *world_create( char *wldname )
 	wld->client_rxqueue = linequeue_create();
 	wld->client_toqueue = linequeue_create();
 	wld->client_txqueue = linequeue_create();
-	wld->client_rxbuffer = xmalloc( NET_BBUFFER_LEN );
+	wld->client_rxbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
 	wld->client_rxfull = 0;
 	wld->client_txbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
 	wld->client_txfull = 0;
@@ -125,6 +137,7 @@ extern World *world_create( char *wldname )
 	/* MCP stuff */
 	wld->mcp_negotiated = 0;
 	wld->mcp_key = NULL;
+	wld->mcp_initmsg = NULL;
 
 	/* Options */
 	wld->logging_enabled = DEFAULT_LOGENABLE;
@@ -136,15 +149,20 @@ extern World *world_create( char *wldname )
 	wld->max_history_size = DEFAULT_MAXHISTORY;
 	wld->strict_commands = DEFAULT_STRICTCMDS;
 
+	/* Add to the list of worlds */
+	register_world( wld );
+
 	return wld;
 
 	/* (1) comment for allocations of several buffers:
 	 * 
-	 * The network TX buffers and the log write buffer must be a little
-	 * longer than the RX buffers, so that mooproxy can append a newline
-	 * (\n or \r\n) to the line written into the buffer, even if the
-	 * line is as long as the (RX) buffer itself.
-	 * 4 bytes is a bit much perhaps, but oh well. */
+	 * The TX buffers must be a little larger than specified, so that
+	 * flush_buffer() can append a newline (\n or \r\n) to the line written
+	 * in the buffer, even if the buffer is completely filled with lines.
+	 *
+	 * The RX buffers must be larger so that buffer_to_lines() can append
+	 * a sentinal for its linear search.
+	 */
 }
 
 
@@ -153,8 +171,8 @@ extern void world_destroy( World *wld )
 {
 	int i;
 
-	/* Clear the client FD. */
-	world_set_clientfd( wld, -1 );
+	/* Remove the world from the worldlist. */
+	unregister_world( wld );
 
 	/* Essentials */
 	free( wld->name );
@@ -166,6 +184,8 @@ extern void world_destroy( World *wld )
 
 	/* Listening connection */
 	free( wld->listen_fds );
+	world_bindresult_free( wld->bindresult );
+	free( wld->bindresult );
 
 	/* Authentication related stuff */
 	free( wld->auth_md5hash );
@@ -223,6 +243,7 @@ extern void world_destroy( World *wld )
 
 	/* MCP stuff */
 	free( wld->mcp_key );
+	free( wld->mcp_initmsg );
 
 	/* Options */
 	free( wld->commandstring );
@@ -234,10 +255,73 @@ extern void world_destroy( World *wld )
 
 
 
-extern void world_set_clientfd( World *wld, int fd )
+extern void world_get_list( int *count, World ***wldlist )
 {
-	wld->client_fd = fd;
-	panic_clientfd = fd;
+	*count = worlds_count;
+	*wldlist = worlds_list;
+}
+
+
+
+/* Add a world to the global list of worlds. */
+static void register_world( World *wld )
+{
+	worlds_list = xrealloc( worlds_list,
+			( worlds_count + 1 ) * sizeof( World * ) );
+
+	worlds_list[worlds_count] = wld;
+	worlds_count++;
+}
+
+
+
+/* Remove a world from the global list of worlds. */
+static void unregister_world( World *wld )
+{
+	int i = 0;
+
+	/* Search for the world in the list */
+	while( i < worlds_count && worlds_list[i] != wld )
+		i++;
+
+	/* Is the world not in the list? */
+	if( i == worlds_count )
+		/* FIXME: this shouldn't happen. Report? */
+		return;
+
+	/* At this point, worlds_list[i] is our world */
+	for( i++; i < worlds_count; i++ )
+		worlds_list[i - 1] = worlds_list[i];
+
+	worlds_list = xrealloc( worlds_list,
+			( worlds_count - 1 ) * sizeof( World * ) );
+	worlds_count--;
+}
+
+
+
+extern void world_bindresult_init( BindResult *bindresult )
+{
+	bindresult->fatal = NULL;
+	bindresult->af_count = 0;
+	bindresult->af_success_count = 0;
+	bindresult->af_success = NULL;
+	bindresult->af_msg = NULL;
+	bindresult->conclusion = NULL;
+}
+
+
+
+extern void world_bindresult_free( BindResult *bindresult )
+{
+	int i;
+
+	free( bindresult->fatal );
+	free( bindresult->af_success );
+	for( i = 0; i < bindresult->af_count; i++ )
+		free( bindresult->af_msg[i] );
+	free( bindresult->af_msg );
+	free( bindresult->conclusion );
 }
 
 
@@ -334,7 +418,7 @@ extern void world_recall_and_pass( World *wld )
 	/* Inform about the context lines, if any. */
 	if( hlines > 0 )
 		world_msg_client( wld, "Passing %li line%s of context history.",
-				hlines, hlines == 1 ? "" : "s" );
+				hlines, ( hlines == 1 ) ? "" : "s" );
 
 	/* Append context lines. */
 	world_recall_history_lines( wld, hlines );
@@ -343,8 +427,8 @@ extern void world_recall_and_pass( World *wld )
 	if( blines > 0 )
 		world_msg_client( wld, "%s context lines. Passing %li buffered"
 			" line%s (buffer %.1f%% full).",
-			hlines > 0 ? "End" : "No", blines,
-			blines == 1 ? "" : "s", bfull );
+			( hlines > 0 ) ? "End" : "No", blines,
+			( blines == 1 ) ? "" : "s", bfull );
 	else
 		world_msg_client( wld, "End context. No buffered lines." );
 
@@ -352,7 +436,7 @@ extern void world_recall_and_pass( World *wld )
 	if( dropped > 0 )
 		world_msg_client( wld, "WARNING: %li buffered line%s dropped "
 				"due to low buffer space.", dropped,
-				dropped == 1 ? "" : "s" );
+				( dropped == 1 ) ? "" : "s" );
 	wld->buffer_dropped_lines = 0;
 
 	/* Append the buffered lines. */

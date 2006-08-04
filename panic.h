@@ -26,12 +26,8 @@
 #define PANIC_REALLOC 3
 #define PANIC_STRDUP 4
 #define PANIC_VASPRINTF 5
-
-
-
-/* The FD of the client, so we can try and inform the user. */
-/* Note: Currently, this would only allow one world. */
-extern int panic_clientfd;
+#define PANIC_SELECT 6
+#define PANIC_ACCEPT 7
 
 
 
@@ -40,10 +36,9 @@ extern void panic_sighandler( int sig );
 
 /* Panic. Try to write a helpful message to stderr, crash-file, and any
  * connected client. After that, terminate.
- * Reason holds the reason, extra holds extra information. For PANIC_OOM,
- * extra is the amount of bytes that was attempted to allocate. For
- * PANIC_SIGNAL, it's the signal number. */
-extern void panic( int reason, unsigned long extra );
+ * Reason holds the reason, (u)extra holds extra information specific to
+ * the panic cause specified in reason. */
+extern void panic( int reason, long extra, unsigned long uextra );
 
 
 

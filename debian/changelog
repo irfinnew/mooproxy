@@ -1,4 +1,10 @@
-mooproxy (0.1.0-1) unstable; urgency=low
+mooproxy (0.1.1-1) luon-sarge; urgency=low
+
+  * New upstream version.
+
+ -- Marcel Moreaux <marcelm@luon.net>  Fri,  4 Aug 2006 22:28:30 +0200
+
+mooproxy (0.1.0-1) luon-sarge; urgency=low
 
   * Initial release.
 

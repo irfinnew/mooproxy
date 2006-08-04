@@ -23,8 +23,9 @@ GNU General Public License for more details.
   4. Creating a Debian package
   5. Using
   6. Authentication
-  7. Portability
-  8. Authors and thanks
+  7. MCP
+  8. Portability
+  9. Authors and thanks
 
 
 
@@ -120,9 +121,6 @@ configuration file. The ExampleConfig file contains all configurable
 options, and the settings in ExampleConfig are exactly the same as the
 builtin defaults in mooproxy.
 
-Note: currently, mooproxy cannot run as a daemon in the background. If you
-want it to run in the background, use nohup and &, or screen.
-
 Mooproxy accepts commands to change a lot of its behaviour run-time.
 When connected to mooproxy, do /help for a brief list of commands.
 
@@ -163,7 +161,7 @@ Now, run the following command:
     mooproxy --md5crypt
 
 When mooproxy asks for your authentication string (it will ask twice, to
-save you from typo's), you should enter:
+save you from typos), you should enter:
 
     connect Gandalf Shire
 
@@ -215,7 +213,52 @@ Therefore, autologin will not work until you re-authenticate to mooproxy
 
 
 
-  7. Portability
+  7. MCP
+  ------
+
+Moo servers and clients may use the MOO Client Protocol (MCP) to exchange
+some information out-of-band. Common uses include periodically showing a
+tip or something else in a status bar, or maintaining a userlist on the
+client. For more information, see http://www.moo.mud.org/mcp/index.html .
+
+MCP is a stateful protocol; it has to be initialised and maintained properly.
+When a MOO client connects to the MOO server, it expects to setup a MCP
+session. Consider the following scenario:
+
+ - Mooproxy is started
+ - The client connects to mooproxy
+ - Mooproxy connects to the MOO server
+ - The MOO server sends MCP handshake. The client replies, and a MCP session
+   is set up. Mooprox relays all MCP messages.
+ - The client disconnects
+ - The client connects again
+
+Now, from the perspective of the MOO server, a MCP session still exists,
+but the client cannot continue this old session (due to a lack of information
+on the client). So the MCP session needs to be torn down and rebuilt.
+
+Because Standard MCP doesn't provide a mechanism to re-initialise the MCP
+session, a MCP package has been created for this purpose. The package is
+called dns-nl-icecrew-mcpreset. More information can be found on
+http://www.icecrew.nl/software/mcp/p_mcpreset.xhtml .
+
+Mooproxy uses the server MCP reset. When a client connects to mooproxy,
+and mooproxy is already connected to a MOO server, mooproxy sends a MCP
+reset command to the MOO server:
+
+  #$#dns-nl-icecrew-mcpreset-reset <mcpkey>
+
+When the MOO server receives this message, it should terminate the current
+MCP session for the client, and start a new one by sending the MCP handshake.
+Mooproxy then relays this handshake to the newly connected client, which
+will respond, and a new MCP session will be set up.
+
+If working MCP is desired, mooproxy can only be used with MOO servers that
+support dns-nl-icecrew-mcpreset-reset.
+
+
+
+  8. Portability
   --------------
 
 Mooproxy is designed to run on modern Unices, most notably GNU/Linux and
@@ -223,8 +266,7 @@ the open source BSD variants. Mooproxy is written in ANSI C, using mostly
 POSIX-defined systemcalls. This section documents the additional requirements
 for mooproxy.
 
-As of this writing, mooproxy is tested on Debian Unstable with Linux 2.6,
-and FreeBSD 5.4.
+As of this writing, mooproxy is tested on Debian Unstable with Linux 2.6.
 
 Portability pitfalls:
 
@@ -247,7 +289,7 @@ Portability pitfalls:
 
 
 
-  8. Authors and thanks
+  9. Authors and thanks
   ---------------------
 
 The sole author of mooproxy is:

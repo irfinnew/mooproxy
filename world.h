@@ -47,6 +47,28 @@
 
 
 
+/* BindResult struct. Contains the result of the attempt to bind on a port. */
+typedef struct _BindResult BindResult;
+struct _BindResult
+{
+	/* Contains error msg if a fatal init error occurred. Otherwise NULL. */
+	char *fatal;
+
+	/* Number of address families we tried to bind for */
+	int af_count;
+	/* Number of address families we succesfully bound for */
+	int af_success_count;
+	/* Array of booleans indicating each AF's succes or failure */
+	int *af_success;
+	/* Human-readable message for each AF */
+	char **af_msg;
+
+	/* Human-readable conclusion */
+	char *conclusion;
+};
+
+
+
 /* The World struct. Contains all configuration and state information for a
  * world. */
 typedef struct _World World;
@@ -66,6 +88,7 @@ struct _World
 	/* Listening connection */
 	long listenport;
 	int *listen_fds;
+	BindResult *bindresult;
 
 	/* Authentication related stuff */
 	char *auth_md5hash;
@@ -138,6 +161,7 @@ struct _World
 	/* MCP stuff */
 	int mcp_negotiated;
 	char *mcp_key;
+	char *mcp_initmsg;
 
 	/* Options */
 	int logging_enabled;
@@ -160,9 +184,16 @@ extern World *world_create( char *wldname );
  * the world itself. */
 extern void world_destroy( World *wld );
 
-/* Set wld's client FD to fd.
- * Do not assign wld->client_fd directly; use this function instead. */
-extern void world_set_clientfd( World *wld, int fd );
+/* Get a list of all World objects. The number of worlds will be placed in
+ * count, and an array of pointers to Worlds in wldlist.
+ * Neither the array nor the World objects should be freed. */
+extern void world_get_list( int *count, World ***wldlist );
+
+/* Initialize a BindResult object to empty/zeroes. */
+extern void world_bindresult_init( BindResult *bindresult );
+
+/* Free all allocated resources in a BindResult object. */
+extern void world_bindresult_free( BindResult *bindresult );
 
 /* Construct the path of the configuration file, based on wld->name, and put
  * it in wld->configfile. */

@@ -28,7 +28,7 @@
 /* Line flags */
 #define LINE_DONTLOG 0x00000001 /* Don't log the line. */
 #define LINE_DONTBUF 0x00000002 /* Don't buffer the line. */
-#define LINE_NOHIST 0x00000004  /* Don't put the line in history. */
+#define LINE_NOHIST  0x00000004 /* Don't put the line in history. */
 
 /* Regular server->client or client->server lines. */
 #define LINE_REGULAR ( 0 )

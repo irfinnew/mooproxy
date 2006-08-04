@@ -35,8 +35,11 @@ extern void world_do_mcp_client( World *wld, Line *line );
 /* Handle a MCP line from the server. line is consumed. */
 extern void world_do_mcp_server( World *wld, Line *line );
 
-/* Send MCP reset to the server. */
-extern void world_send_mcp_reset( World *wld );
+/* Call when we just connected to the server, to handle MCP administration. */
+extern void world_mcp_server_connect( World *wld );
+
+/* Call when the client connected, to handle MCP administration */
+extern void world_mcp_client_connect( World *wld );
 
 
 

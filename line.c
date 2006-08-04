@@ -26,7 +26,7 @@
 
 /* The estimated memory cost of a line object: the size of the object itself,
  * and some random guess at memory management overhead */
-#define LINE_BYTE_COST ( sizeof( Line ) + sizeof( void * ) + 8 )
+#define LINE_BYTE_COST ( sizeof( Line ) + sizeof( void * ) * 2 + 8 )
 
 
 
@@ -36,7 +36,7 @@ extern Line *line_create( char *str, long len )
 
 	line = xmalloc( sizeof( Line ) );
 	line->str = str;
-	line->len = len == -1 ? strlen( str ) : len;
+	line->len = ( len == -1 ) ? strlen( str ) : len;
 	line->flags = LINE_REGULAR;
 	line->prev = NULL;
 	line->next = NULL;

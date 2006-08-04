@@ -530,7 +530,7 @@ static void command_recall( World *wld, char *cmd, char *args )
 	{
 		world_msg_client( wld, "%li line%s in history (buffer %.1f%% "
 				"full).", wld->history_lines->count,
-				( wld->history_lines->count == 1 )? "" : "s",
+				( wld->history_lines->count == 1 ) ? "" : "s",
 				wld->history_lines->length / 10.24 /
 				wld->max_history_size );
 		return;
