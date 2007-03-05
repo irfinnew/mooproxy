@@ -2,8 +2,8 @@
 # It contains all configurable options, all set to the same defaults that are
 # hardcoded into mooproxy.
 #
-# You need to change at least listenport, authstring, host and port before
-# you can use mooproxy.
+# You need to change at least listenport and auth_md5hash before you can
+# use mooproxy.
 
 
 
@@ -24,9 +24,15 @@ autologin = false
 
 # Lines starting with this string are interpreted as commands
 commandstring = "/"
-# Messages from mooproxy are prefixed by this (ANSI sequences allowed)
-# If you don't want the "% " to be cyan, try:   infostring = "% "
-infostring = "[0m[36m% [0m[37m"
+# Messages from mooproxy are prefixed by this string. In the string the
+# following sequences have special meaning:
+#     %b  ->  blue                %m  ->  magenta
+#     %c  ->  cyan                %r  ->  red
+#     %g  ->  green               %w  ->  white
+#     %k  ->  black               %y  ->  yellow
+# Use uppercase to get the bold/bright variant (e.g., %B is bold/bright blue).
+# Use %% to get a literal %.
+infostring = "%c%% "
 
 # Log output from the server to the client?
 logging_enabled = true
@@ -34,13 +40,16 @@ logging_enabled = true
 # When a client connects, mooproxy can reproduce lines from history to
 # the client, in order to provide the user with context.
 # This setting sets the number of recalled lines.
-context_on_connect = 50
-# Lines received from the server when the client is not connected are
-# buffered. This setting limits the number of KB devoted to this.
-max_buffered_size = 2048
-# Lines transmitted to the client are kept around for use as history.
-# This setting limits the number of KB devoted to this.
-max_history_size = 256
+context_on_connect = 100
+
+# The maximum amount of memory in KB used to hold history lines (lines you have
+# already read) and new lines (lines you have not yet read).
+max_buffer_size = 4096
+# The maximum amount of memory in KB used to hold loggable lines that have not
+# yet been written to disk. If your disk space runs out, and the amount of
+# unlogged lines exceed this amount of memory, new lines will NOT be logged.
+# Therefore, it's recommended to keep this value large-ish.
+max_logbuffer_size = 4096
 
 # If mooproxy receives a string from the client that starts with the
 # commandstring, but is not a valid command, this setting says what to do.
@@ -48,3 +57,7 @@ max_history_size = 256
 # If it's set to false, mooproxy will send the string to the server as
 # if it was a regular line.
 strict_commands = true
+
+# If set to true, all lines written to the logfiles are prepended with a
+# timestamp of the form [HH:MM:SS].
+timestamped_logs = true

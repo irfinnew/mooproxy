@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -881,8 +881,12 @@ static void handle_server_fd( World *wld )
 		world_disconnect_server( wld );
 
 		/* Notify the client */
-		world_msg_client( wld, "Connection to server lost (%s).",
-			( n < 0 ) ? strerror( err ) : "connection closed" );
+		if( n < 0 )
+			world_msg_client( wld, "Connection to server "
+					"lost (%s).", strerror( err ) );
+		else
+			world_msg_client( wld,
+					"The server closed the connection." );
 
 		return;
 	}
@@ -902,7 +906,7 @@ extern void world_flush_client_txbuf( World *wld )
 
 	flush_buffer( wld->client_fd, wld->client_txbuffer,
 			&( wld->client_txfull ), wld->client_txqueue, 
-			wld->history_lines, 1, NULL );
+			wld->inactive_lines, 1, NULL );
 }
 
 

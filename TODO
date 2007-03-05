@@ -1,49 +1,36 @@
-* Fix wat FIXME's
-
-* Rewrite the MCP code, please.
-* Better MCP key
-* Catch MCP (and other?) failures?
-
-
 Probably's:
- * Add 'connection taken over from' ?
- * Double commandstring is escape? E.g, if commandstring is '/', sending '//something' will send '/something' to the moo.
- * Symlink today -> <todays logfile> ? Yesterday -> <yesterdays logfile>?
- * Improve /help, allow /help <cmd>.
- * Allow special sequences in infostring that will be replaced with ANSI (eg %[red] -> ^]]1m)
- * Make /listopts fill 80 chars minus length of infostring (ignoring ANSI sequences!)
  * Implement autoreconnect (but not too hammering)
- * Add option for timestamping lines in logfiles ? [from: bram]
- * Allow /recall to do timestamp based selection ? [from: admar?]
- * Make mooproxy provide more context lines if the connection to client was lost, not closed ? [from: paul?]
- * Make some heuristics (possibly time-based) to calculate the amount of context lines to give ?
- * Allow /recall to recall last x lines that match a certain string (or regexp) ? [from: bram]
- * Provide more and better documentation.
- * Limit the amount of memory spent on log buffer if mooproxy cannot write to disk
- * Add option to ignore lockfile ?
- * Add option to use different dir (than ~/.mooproxy) for configuration ?
- * Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable [from: bram]
- * Log into a structured tree of directories (e.g. logs/world/month/world - date.log) ?
  * Make mooproxy close the current port, and bind to the new one if listenport is changed ?
+ * Access / recall logs from within mooproxy? [from: paul]
+ * Option for verbose MCP, to ease MCP weirdness debugging?
+ * Improve /help, allow /help <cmd>.
+ * Improve /listopts output.
+ * Provide more and better documentation.
+ * Add option to use different dir (instead of ~/.mooproxy) for configuration ?
+ * Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable [from: bram]
+ * Throttle client read() when server_txqueue is too full. (and vice versa)
+ * Remove ASCII bell from history lines?
 
 
 Maybe's:
- * Support connect from a specific IP (for machines that have multiple IPs)? [from: cipri]
+ * Option to force IPv4 or IPv6? [from: bram]
  * Config file reloading on the fly? [from: cipri]
  * Support to listen on specific interfaces or addresses? [from: cipri]
  * Remove OOM detection in xmalloc() etc ? [Under Linux, the process seems to get SIGKILLed anyway]
  * Add logging framework which logs to file if mooproxy is running as daemon ?
  * Fix panic.c not to use sprintf()?
+ * Add option to ignore lockfile ?
  * Implement some MCP userlist in mooproxy?
  * Make prefixes for infomessages and checkpoint messages different?
  * Print date/time on mooproxy messages?
  * Add SSL support (both ways)?
- * Set socket options to make proxy-client connections time out more quickly? The sooner mpxy knows the connection is dead, the less data is lost.
- * Option for verbose MCP, to ease MCP weirdness debugging?
  * Latency tunen met TCP_NODELAY ?
+ * Offer option for keeping logfiles synchronised to disk? (fdatasync())
 
 
 Probably not's:
  * Disallow the proxy to connect to itself (how?)?  [seems impossible to do in a sane way]
  * Have mooproxy convert received text to the right charset for logging?  [too complex; mooproxy can't know the charsets]
  * The accessor functions are mostly just dumb wrappers. Can't this be done using less code?  [probably not worth the effort]
+ * Commandstring escaping (to be able to send something starting with the cmdstring to the MOO)? [little enthusiasm from users]
+ * Allow /recall to match timestamps and/or strings? [apparantly little enthusiasm from users]

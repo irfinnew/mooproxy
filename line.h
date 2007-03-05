@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -98,10 +98,15 @@ extern void linequeue_clear( Linequeue *queue );
 /* Append line to the end of queue */
 extern void linequeue_append( Linequeue *line, Line *queue );
 
-/* Return the first line at the beginning of queue.
+/* Return the first line at the beginning of the queue.
  * If queue is empty, it returns NULL.
  * The next/prev fields of the returned line should be considered garbage. */
 extern Line* linequeue_pop( Linequeue *queue );
+
+/* Return the last line at the end of the queue.
+ * If queue is empty, it returns NULL.
+ * The next/prev fields of the returned line should be considered garbage. */
+extern Line* linequeue_popend( Linequeue *queue );
 
 /* Merge two queues. The contents of queue two is appended to queue one,
  * leaving the second one empty. */

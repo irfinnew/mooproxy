@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -121,7 +121,7 @@ char *prompt_for_password( char *msg )
 	/* Disable terminal input echo. */
 	memcpy( &tio_new, &tio_orig, sizeof( struct termios ) );
 	tio_new.c_lflag &= ~ECHO;
-	if( tcsetattr( 0, TCSAFLUSH, &tio_new) != 0 )
+	if( tcsetattr( 0, TCSAFLUSH, &tio_new ) != 0 )
 	{
 		fprintf( stderr, "Failed to disable terminal echo "
 				"(tcsetattr said %s).", strerror( errno ) );

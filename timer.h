@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,11 @@
 #include <time.h>
 
 
+
+/* Update the current time administration to the supplied time, but do not
+ * run periodic or scheduled events. This function should be called at least
+ * once before calling world_timer_tick(). */
+extern void world_timer_init( World *wld, time_t t );
 
 /* Update current time administration, and execute periodic or scheduled
  * events. This function should be called regularly (preferably once each

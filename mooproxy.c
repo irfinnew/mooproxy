@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ int main( int argc, char **argv )
 {
 	Config config;
 	World *world = NULL;
-	char *err = NULL;
+	char *err = NULL, *warn = NULL;
 	pid_t pid;
 	int i;
 
@@ -78,30 +78,41 @@ int main( int argc, char **argv )
 			exit( EXIT_SUCCESS );
 	}
 
+	/* Create the configuration dir hierarchy. */
+	if( create_configdirs( &err ) != 0 )
+		die( world, err );
+
 	/* Check if we received a world name. */
 	if( config.worldname == NULL || config.worldname[0] == '\0' )
 		die( world, xstrdup( "You must supply a world name." ) );
 
+	/* Announce that we are starting up. */
 	printf( "Starting mooproxy " VERSIONSTR " at %s.\n",
 			time_string( time( NULL ), FULL_TIME ) );
 
-	/* Do all kinds of initialization stuff. */
+	/* Register startup time. */
 	uptime_started_now();
 
+	/* Register the signal handlers (duh). */
 	set_up_signal_handlers();
 
+	/* Create the uninitialized world now. */
 	world = world_create( config.worldname );
-
 	world_configfile_from_name( world );
 
-	if( create_configdirs( &err ) != 0 )
+	/* Check the permissions on the configuration dirs/files, and
+	 * warn the user if they're too weak. */
+	if( check_configdir_perms( &warn, &err ) != 0 )
 		die( world, err );
+	if( warn )
+		printf( "%s", warn );
 
+	/* Make sure this world isn't open yet. */
 	if( world_acquire_lock_file( world, &err ) )
 		die( world, err );
 
+	/* Load the world's configuration. */
 	printf( "Opening world %s.\n", config.worldname );
-
 	if( world_load_config( world, &err ) != 0 )
 		die( world, err );
 
@@ -134,9 +145,11 @@ int main( int argc, char **argv )
 				"foreground (pid %li).\n", (long) pid );
 	} else {
 		pid = daemonize( &err );
+		/* Handle errors. */
 		if( pid == -1 )
 			die( world, err );
 
+		/* If pid > 0, we're the parent. Say goodbye to the user! */
 		if( pid > 0 )
 		{
 			world_write_pid_to_file( world, pid );
@@ -144,6 +157,8 @@ int main( int argc, char **argv )
 					(long) pid );
 			launch_parent_exit( EXIT_SUCCESS );
 		}
+
+		/* If pid == 0, we continue as the child. */
 	}
 
 	/* Initialization done, enter the main loop. */
@@ -151,6 +166,8 @@ int main( int argc, char **argv )
 
 	/* Clean up a bit. */
 	world_remove_lockfile( world );
+	world_sync_logdata( world );
+	world_log_link_remove( world );
 	world_destroy( world );
 
 	exit( EXIT_SUCCESS );
@@ -161,7 +178,10 @@ int main( int argc, char **argv )
 /* If wld is not NULL, destroy it. Print err. Terminate with failure. */
 static void die( World *wld, char *err )
 {
-	if( wld )
+	if( wld != NULL && wld->lockfile != NULL )
+		world_remove_lockfile( wld );
+
+	if( wld != NULL )
 		world_destroy( wld );
 
 	fprintf( stderr, "%s\n", err );
@@ -177,6 +197,10 @@ static void mainloop( World *wld )
 {
 	time_t last_checked = time( NULL ), ltime;
 	Line *line;
+
+	/* Initialize the time administration. */
+	world_timer_init( wld, last_checked );
+	set_current_time( last_checked );
 
 	/* Loop forever. */
 	for(;;)
@@ -209,15 +233,17 @@ static void mainloop( World *wld )
 	{
 		if( world_do_command( wld, line->str ) )
 		{
-			/* Command */
+			/* Command (those are activating). */
+			wld->flags |= WLD_ACTIVATED;
 			free( line );
 		}
 		else if( world_is_mcp( line->str ) )
 		{
-			/* MCP */
+			/* MCP. */
 			world_do_mcp_client( wld, line );
 		} else {
-			/* Regular */
+			/* Regular lines are always 'activating'. */
+			wld->flags |= WLD_ACTIVATED;
 			linequeue_append( wld->server_toqueue, line );
 		}
 	}
@@ -272,6 +298,14 @@ static void mainloop( World *wld )
 static void handle_flags( World *wld )
 {
 	/* React to status flags */
+	if( wld->flags & WLD_ACTIVATED )
+	{
+		wld->flags &= ~WLD_ACTIVATED;
+		linequeue_merge( wld->history_lines, wld->inactive_lines );
+	}
+
+	if( current_time() < wld->client_last_notconnmsg + NOTCONN_MSGINTERVAL )
+		wld->flags &= ~WLD_NOTCONNECTED;
 	if( wld->flags & WLD_NOTCONNECTED )
 	{
 		wld->flags &= ~WLD_NOTCONNECTED;
@@ -281,6 +315,8 @@ static void handle_flags( World *wld )
 		else
 			world_msg_client( wld, "Connection attempt (to %s) "
 				"still in progress!", wld->server_host );
+
+		wld->client_last_notconnmsg = current_time();
 	}
 
 	/* React to action flags */
@@ -307,6 +343,12 @@ static void handle_flags( World *wld )
 		wld->flags &= ~WLD_SERVERCONNECT;
 		world_start_server_connect( wld );
 	}
+
+	if( wld->flags & WLD_LOGLINKUPDATE )
+	{
+		wld->flags &= ~WLD_LOGLINKUPDATE;
+		world_log_link_update( wld );
+	}
 }
 
 
@@ -315,7 +357,7 @@ static void handle_flags( World *wld )
 static void print_help_text( void )
 {
 	printf( "Mooproxy - a buffering proxy for moo-connections\n"
-	"Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>\n"
+	"Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>\n"
 	"\n"
 	"usage: mooproxy [options]\n"
 	"\n"
@@ -337,7 +379,7 @@ static void print_help_text( void )
 static void print_version_text( void )
 {
 	printf( "Mooproxy version " VERSIONSTR
-			". Copyright (C) 2001-2006 Marcel L Moreaux\n" );
+			". Copyright (C) 2001-2007 Marcel L Moreaux\n" );
 }
 
 
@@ -346,7 +388,7 @@ static void print_version_text( void )
 static void print_license_text( void )
 {
 	printf( "Mooproxy - a buffering proxy for moo-connections\n"
-	"Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>\n"
+	"Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>\n"
 	"\n"
 	"This program is free software; you can redistribute it and/or modify\n"
 	"it under the terms of the GNU General Public License as published by\n"

@@ -1,7 +1,7 @@
 
 
                Mooproxy - a buffering proxy for moo-connections
-         Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+         Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
 
 
 
@@ -17,15 +17,16 @@ GNU General Public License for more details.
 
 
 
-  1. About
-  2. Manual compiling and installing
-  3. Installing the Debian package
-  4. Creating a Debian package
-  5. Using
-  6. Authentication
-  7. MCP
-  8. Portability
-  9. Authors and thanks
+  1.  About
+  2.  Manual compiling and installing
+  3.  Installing the Debian package
+  4.  Creating a Debian package
+  5.  Using
+  6.  Authentication
+  7.  MCP
+  8.  Portability
+  9.  Important notes
+  10. Authors and thanks
 
 
 
@@ -45,7 +46,7 @@ multiple MOO clients.
 
 Mooproxy is still under development; bug reports and other feedback is
 appreciated. If you really want to help, run it in valgrind (with 
---leak-check=full and --show-reachable=yes), and report any crashes or
+--leak-check=full --show-reachable=yes), and report any crashes or
 memleaks you get (Please report the full valgrind output, and the version
 of mooproxy you're using).
 
@@ -205,7 +206,7 @@ You can then set the new hash like this:
 
     /set auth_md5hash $1$PzGmXA.I$qmZomnNK2gBW6tR8iTJLA/ "connect Gandalf Shire"
 
-The MD5 hash should not be enclosed in quotes. It is recommended to enclose
+The MD5 hash should _not_ be enclosed in quotes. It is recommended to enclose
 the old literal in quotes, to remove ambiguity. After changing auth_md5hash
 from within mooproxy, mooproxy no longer has a literal authentication string.
 Therefore, autologin will not work until you re-authenticate to mooproxy
@@ -287,12 +288,55 @@ Portability pitfalls:
    crypt() is defined in POSIX, but MD5 hashing is a GNU extension that is
    also implemented in the BSDs.
 
+ * Mooproxy uses the S_ISLNK() macro, which is mandated in POSIX POSIX.1-2001
+   but not in earlier versions.
 
 
-  9. Authors and thanks
-  ---------------------
 
-The sole author of mooproxy is:
+  9. Important notes
+  ------------------
+
+ * In mooproxy 0.1.2, the logging was changed to log into a nested hierarchy
+   of directories, instead of all files in a single directory.
+
+   Mooproxy versions older than 0.1.2 log like this:
+
+     logs
+     |-- world one - 2007-01-01.log
+     |-- world one - 2007-02-01.log
+     |-- world two - 2007-02-01.log
+     |-- world two - 2007-03-01.log
+     |-- world two - 2007-03-02.log
+     `-- world two - 2007-03-03.log
+
+   Mooproxy 0.1.2 and later log like this:
+
+     logs
+     |-- world one
+     |   |-- 2007-01
+     |   |   `-- world one - 2007-01-01.log
+     |   `-- 2007-02
+     |       `-- world one - 2007-02-01.log
+     `-- world two
+         |-- 2007-02
+         |   `-- world two - 2007-02-01.log
+         `-- 2007-03
+             |-- world two - 2007-03-01.log
+             |-- world two - 2007-03-02.log
+             `-- world two - 2007-03-03.log
+
+   To move any existing logs from the old layout to the new layout,
+   use the update-logs.sh that's provided with mooproxy 0.1.2 (in the Debian
+   package, the shell script resides in /usr/share/doc/mooproxy).
+
+   Please make a backup of your current logfiles before running this script.
+
+
+
+  10. Authors and thanks
+  ----------------------
+
+The author of mooproxy is:
 
   Marcel L. Moreaux <marcelm@luon.net>
 

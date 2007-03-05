@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,14 @@
 
 
 
+/* Maximum length of the string to be returned by time_string() */
+#define TIMESTR_MAXLEN 256
+/* Maximum number of time_string() results that may be used simultaneously.
+ * Additional calls to time_string() will overwrite older returned strings. */
+#define TIMESTR_MAXSIMULT 4
+
+
+
 /* Wrappers for malloc(), realloc(), strdup(), xasprintf(), and xvasprintf() 
  * These wrappers check for and abort on memory allocation failure.
  * Otherwise, they behave identical to the original functions. */
@@ -52,8 +60,8 @@ extern void set_current_day( long day );
 /* Get the current day, as set by set_current_day(). */
 extern long current_day( void );
 
-/* Returns a string containing the users homedir. The string should be free()d.
- * The string will euther be empty, or be /-terminated */
+/* Returns a string containing the users homedir.
+ * The string should not be freed or manipulated. */
 extern char *get_homedir( void );
 
 /* Extract the first line from str.
@@ -81,8 +89,8 @@ extern char *trim_whitespace( char *line );
 extern char *remove_enclosing_quotes( char *str );
 
 /* Determines if str says true or false (case insensitive).
- * If the string is "true", "yes", or "on", return 1.
- * If the string is "false", "no", or "off", return 0.
+ * If the string is "true", "yes", "on", or "1", return 1.
+ * If the string is "false", "no", "off", or "0", return 0.
  * If the string is not recognized, return -1. */
 extern int true_or_false( const char *str );
 
@@ -90,7 +98,8 @@ extern int true_or_false( const char *str );
  * For the format, see strftime (3).
  * Returns a pointer to a statically allocated buffer.
  * The buffer should not be free()d, and will be overwritten by subsequent
- * calls to time_string(). */
+ * later calls to time_string().
+ * See the TIMESTR_ defines earlier in this file. */
 extern char *time_string( time_t t, const char *fmt );
 
 /* Process buffer into lines. Start scanning at offset, scan only read bytes.
@@ -110,10 +119,22 @@ extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q );
  *   errnum:  Modified to contain error code on error.
  * Return value:
  *   0 on succes (everything in buffer and queue was written without error)
- *   1 on congestion (the FD could take no more)
+ *   1 on congestion (the FD could take no more, not everything was written)
  *   2 on error (errnum is set) */
 extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
 		Linequeue *tohist, int nnl, int *errnum );
+
+/* Return a copy of str (which must be freed manually) in which all occurrences
+ * of colortags (like %R) are replaced by their corresponding ANSI sequence
+ * (like ^[[1,31m). */
+extern char *parse_ansi_tags( char *str );
+
+/* Attempts to create dirname (but not parent dirs).
+ * On succes, return 0.
+ * On failure, return non-zero, and put error in err (err should be freed).
+ * Err will contain just a brief error message (often strerror output),
+ * more formatting should be done by the caller. */
+extern int attempt_createdir( char *dirname, char **err );
 
 
 

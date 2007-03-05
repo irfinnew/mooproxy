@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,15 +35,17 @@
 #define WLD_SERVERQUIT		0x00000004
 #define WLD_SERVERRESOLVE	0x00000008
 #define WLD_SERVERCONNECT	0x00000010
+#define WLD_LOGLINKUPDATE	0x00000020
 
 /* Status flags */
 #define WLD_NOTCONNECTED	0x00010000
+#define WLD_ACTIVATED		0x00020000
 
 /* Server statuses */
-#define ST_DISCONNECTED 1
-#define ST_RESOLVING 2
-#define ST_CONNECTING 3
-#define ST_CONNECTED 4
+#define ST_DISCONNECTED		1
+#define ST_RESOLVING		2
+#define ST_CONNECTING		3
+#define ST_CONNECTED		4
 
 
 
@@ -126,6 +128,7 @@ struct _World
 	char *client_address;
 	char *client_prev_address;
 	time_t client_last_connected;
+	time_t client_last_notconnmsg;
 
 	Linequeue *client_rxqueue;
 	Linequeue *client_toqueue;
@@ -137,8 +140,10 @@ struct _World
 
 	/* Miscellaneous */
 	Linequeue *buffered_lines;
+	Linequeue *inactive_lines;
 	Linequeue *history_lines;
-	long buffer_dropped_lines;
+	long dropped_inactive_lines;
+	long dropped_buffered_lines;
 
 	/* Timer stuff */
 	int timer_prev_sec;
@@ -151,7 +156,10 @@ struct _World
 	/* Logging */
 	Linequeue *log_queue;
 	Linequeue *log_current;
+	long dropped_loggable_lines;
 	long log_currentday;
+	time_t log_currenttime;
+	char *log_currenttimestr;
 	int log_fd;
 	char *log_buffer;
 	long log_bfull;
@@ -168,10 +176,12 @@ struct _World
 	int autologin;
 	char *commandstring;
 	char *infostring;
+	char *infostring_parsed;
 	long context_on_connect;
-	long max_buffered_size;
-	long max_history_size;
+	long max_buffer_size;
+	long max_logbuffer_size;
 	int strict_commands;
+	int log_timestamps;
 };
 
 
@@ -214,8 +224,9 @@ extern void world_trim_dynamic_queues( World *wld );
  * the newly connected client, and then pass all buffered lines. */
 extern void world_recall_and_pass( World *wld );
 
-/* Duplicate the last <lines> lines from the history queue to the client. */
-extern void world_recall_history_lines( World *wld, int lines );
+/* Duplicate the last <hlc> lines from the history queue, and the last 
+ * <ilc> lines from the inactive queue to the client. */
+extern void world_recall_history_lines( World *wld, int hlc, int ilc );
 
 /* (Auto-)login to the server. If autologin is enabled, log in.
  * If autologin is disabled, only log in if override is non-zero. */

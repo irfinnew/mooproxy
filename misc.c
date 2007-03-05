@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "global.h"
 #include "misc.h"
@@ -33,13 +35,22 @@
 
 
 
-/* The maximum length of the string returned by time_string() */
-#define MAX_TIMESTR_LEN 128
-
-
-
 static time_t current_second = 0;
 static long current_daynum = 0;
+static char *empty_homedir = "";
+
+/* Lookup table for the translation of codes like %W to ANSI sequences. */
+static const char *ansi_sequences[] = {
+	"", "\x1B[1;34m", "\x1B[1;36m", "", "", "", "\x1B[1;32m", "", "", "",
+	"\x1B[1;30m", "", "\x1B[1;35m", "", "", "", "", "\x1B[1;31m", "", "",
+	"", "", "\x1B[1;37m", "", "\x1B[1;33m",
+	
+	"", "", "", "", "", "", "",
+
+	"", "\x1B[0;34m", "\x1B[0;36m", "", "", "", "\x1B[0;32m", "", "", "",
+	"\x1B[0;30m", "", "\x1B[0;35m", "", "", "", "", "\x1B[0;31m", "", "",
+	"", "", "\x1B[0;37m", "", "\x1B[0;33m", ""
+};
 
 
 
@@ -192,18 +203,10 @@ extern char *get_homedir( void )
 	char *tmp;
 
 	tmp = getenv( "HOME" );
-	if( tmp == NULL )
-		return xstrdup( "" );
+	if( tmp )
+		return tmp;
 
-	/* Duplicate, and append / if necessary. */
-	tmp = xstrdup( tmp );
-	if( tmp[strlen( tmp ) - 1] != '/' )
-	{
-		tmp = xrealloc( tmp, strlen( tmp ) + 2 );
-		strcat( tmp, "/" );
-	}
-
-	return tmp;
+	return empty_homedir;
 }
 
 
@@ -349,6 +352,10 @@ extern int true_or_false( const char *str )
 		return 1;
 	if( !strcasecmp( str, "off" ) )
 		return 0;
+	if( !strcasecmp( str, "1" ) )
+		return 1;
+	if( !strcasecmp( str, "0" ) )
+		return 0;
 
 	return( -1 );
 }
@@ -357,13 +364,20 @@ extern int true_or_false( const char *str )
 
 extern char *time_string( time_t t, const char *fmt )
 {
-	static char timestr_buf[MAX_TIMESTR_LEN];
+	static char timestr_buf[TIMESTR_MAXSIMULT][TIMESTR_MAXLEN];
+	static int current_buf = TIMESTR_MAXSIMULT;
 	struct tm *tms;
 
-	tms = localtime( &t );
-	strftime( timestr_buf, MAX_TIMESTR_LEN, fmt, tms );
+	current_buf++;
+	if( current_buf >= TIMESTR_MAXSIMULT )
+		current_buf = 0;
 
-	return timestr_buf;
+	timestr_buf[current_buf][0] = '\0';
+
+	tms = localtime( &t );
+	strftime( timestr_buf[current_buf], TIMESTR_MAXLEN, fmt, tms );
+
+	return timestr_buf[current_buf];
 }
 
 
@@ -486,7 +500,10 @@ extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
 			*bffl = bfull;
 			if( errnum != NULL )
 				*errnum = errno;
-			return ( wr == 0 ) ? 1 : 2;
+			if( wr == -1 )
+				return 2;
+			else
+				return 1;
 		}
 
 		/* If only part of the buffer was written, move the unwritten
@@ -498,5 +515,95 @@ extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
 	}
 
 	*bffl = bfull;
+	return 0;
+}
+
+
+
+extern char *parse_ansi_tags( char *str )
+{
+	char *parsed, *parsedstart;
+
+	if( str == NULL )
+		return NULL;
+
+	/* We allocate plenty, to make sure the parsed string fits. */
+	parsed = xmalloc( strlen( str ) * 8 + 8 );
+	parsedstart = parsed;
+
+	while( *str != '\0' )
+	{
+		if( *str != '%' )
+		{
+			/* Don't copy control chars. */
+			if( *str < 32 )
+				str++;
+			else
+				*parsed++ = *str++;
+			continue;
+		}
+
+		str++;
+
+		if( *str == '\0' )
+			break;
+
+		if( *str == '%' )
+		{
+			*parsed++ = *str++;
+			continue;
+		}
+
+		if( *str >= 'A' && *str <= 'z' )
+		{
+			strcpy( parsed, ansi_sequences[*str - 'A'] );
+			parsed += strlen( ansi_sequences[*str - 'A'] );
+			str++;
+			continue;
+		}
+
+		str++;
+	}
+
+	*parsed = '\0';
+	parsed = xrealloc( parsedstart, strlen( parsedstart ) + 1 );
+
+	return parsed;
+}
+
+
+
+extern int attempt_createdir( char *dirname, char **err )
+{
+	struct stat fileinfo;
+
+	if( mkdir( dirname, S_IRUSR | S_IWUSR | S_IXUSR ) == 0 )
+		return 0;
+
+	/* If there was an error other than "already exists", complain */
+	if( errno != EEXIST )
+	{
+		*err = xstrdup( strerror( errno ) );
+		return 1;
+	}
+
+	/* The directory already existed. But is it really a dir? */
+	if( stat( dirname, &fileinfo ) == -1 )
+	{
+		if( errno == ENOTDIR )
+			*err = xstrdup( "File exists" );
+		else
+			*err = xstrdup( strerror( errno ) );
+
+		return 1;
+	}
+	
+	/* Is it? */
+	if( !S_ISDIR( fileinfo.st_mode ) )
+	{
+		*err = xstrdup( "File exists" );
+		return 1;
+	}
+
 	return 0;
 }

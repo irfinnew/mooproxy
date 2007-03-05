@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -155,6 +155,9 @@ extern int aset_commandstring( World *wld, char *key, char *value,
 extern int aset_infostring( World *wld, char *key, char *value,
 		int src, char **err )
 {
+	free( wld->infostring_parsed );
+	wld->infostring_parsed = parse_ansi_tags( value );
+
 	return set_string( value, &wld->infostring, err );
 }
 
@@ -163,6 +166,8 @@ extern int aset_infostring( World *wld, char *key, char *value,
 extern int aset_logging_enabled( World *wld, char *key, char *value,
 		int src, char **err )
 {
+	wld->flags |= WLD_LOGLINKUPDATE;
+
 	return set_bool( value, &wld->logging_enabled, err );
 }
 
@@ -177,20 +182,20 @@ extern int aset_context_on_connect( World *wld, char *key, char *value,
 
 
 
-extern int aset_max_buffered_size( World *wld, char *key, char *value,
+extern int aset_max_buffer_size( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_long_ranged( value, &wld->max_buffered_size, err, 0,
-			LONG_MAX / 1024, "Max buffered size" );
+	return set_long_ranged( value, &wld->max_buffer_size, err, 0,
+			LONG_MAX / 1024, "Max buffer size" );
 }
 
 
 
-extern int aset_max_history_size( World *wld, char *key, char *value,
+extern int aset_max_logbuffer_size( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_long_ranged( value, &wld->max_history_size, err, 0,
-			LONG_MAX / 1024, "Max history size" );
+	return set_long_ranged( value, &wld->max_logbuffer_size, err, 0,
+			LONG_MAX / 1024, "Max logbuffer size" );
 }
 
 
@@ -199,6 +204,14 @@ extern int aset_strict_commands( World *wld, char *key, char *value,
 		int src, char **err )
 {
 	return set_bool( value, &wld->strict_commands, err );
+}
+
+
+
+extern int aset_timestamped_logs( World *wld, char *key, char *value,
+		int src, char **err )
+{
+	return set_bool( value, &wld->log_timestamps, err );
 }
 
 
@@ -275,17 +288,18 @@ extern int aget_context_on_connect( World *wld, char *key, char **value,
 
 
 
-extern int aget_max_buffered_size( World *wld, char *key, char **value,
+extern int aget_max_buffer_size( World *wld, char *key, char **value,
 		int src )
 {
-	return get_long( wld->max_buffered_size, value );
+	return get_long( wld->max_buffer_size, value );
 }
 
 
 
-extern int aget_max_history_size( World *wld, char *key, char **value, int src )
+extern int aget_max_logbuffer_size( World *wld,
+		char *key, char **value, int src )
 {
-	return get_long( wld->max_history_size, value );
+	return get_long( wld->max_logbuffer_size, value );
 }
 
 
@@ -293,6 +307,13 @@ extern int aget_max_history_size( World *wld, char *key, char **value, int src )
 extern int aget_strict_commands( World *wld, char *key, char **value, int src )
 {
 	return get_bool( wld->strict_commands, value );
+}
+
+
+
+extern int aget_timestamped_logs( World *wld, char *key, char **value, int src )
+{
+	return get_bool( wld->log_timestamps, value );
 }
 
 

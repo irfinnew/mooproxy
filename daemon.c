@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,8 +34,8 @@
 
 
 
-/* Can hold a 64 bit decimal number. Should be enough for pids. */
-#define MAX_PIDDIGITS 22
+/* Can hold a 128 bit number in decimal. Should be enough for pids. */
+#define MAX_PIDDIGITS 42
 
 
 
@@ -70,7 +70,6 @@ extern void set_up_signal_handlers( void )
 	signal( SIGILL, &panic_sighandler );
 	signal( SIGFPE, &panic_sighandler );
 	signal( SIGBUS, &panic_sighandler );
-
 }
 
 
@@ -142,19 +141,12 @@ extern void launch_parent_exit( int exitval )
 
 extern int world_acquire_lock_file( World *wld, char **err )
 {
-	char *homedir, *lockfile, *pidstr;
+	char *lockfile, *pidstr;
 	int fd, ret;
 
-	homedir = get_homedir();
-	lockfile = xmalloc( strlen( homedir ) +
-			strlen( wld->name ) + strlen( LOCKSDIR ) + 1 );
-
-	/* Lockfile = homedir + LOCKSDIR + world name */
-	strcpy( lockfile, homedir );
-	strcat( lockfile, LOCKSDIR );
-	strcat( lockfile, wld->name );
-
-	free( homedir );
+	/* Lockfile = ~/CONFIGDIR/LOCKSDIR/worldname */
+	xasprintf( &lockfile, "%s/%s/%s/%s", get_homedir(), CONFIGDIR,
+			LOCKSDIR, wld->name );
 
 	/* Open lockfile. Should be non-blocking; read and write actions
 	 * are best-efford. */

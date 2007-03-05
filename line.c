@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -160,12 +160,39 @@ extern Line* linequeue_pop( Linequeue *queue )
 	/* The next line becomes the head. */
 	queue->head = line->next;
 
-	/* Did we just pop the last line? Tail should be zero too! */
+	/* Did we just pop the last line? Tail should be NULL too! */
 	if( !queue->head )
 		queue->tail = NULL;
 	else
 		/* The new head has no previous. */
 		queue->head->prev = NULL;
+
+	queue->count--;
+	queue->length -= line->len + LINE_BYTE_COST;
+
+	return line;
+}
+
+
+
+extern Line* linequeue_popend( Linequeue *queue )
+{
+	Line *line;
+
+	line = queue->tail;
+
+	if( !line )
+		return NULL;
+
+	/* The previous line becomes the tail. */
+	queue->tail = line->prev;
+
+	/* Did we just pop the first line? Head should be NULL too! */
+	if( !queue->tail )
+		queue->head = NULL;
+	else
+		/* The new tail has no next. */
+		queue->tail->next = NULL;
 
 	queue->count--;
 	queue->length -= line->len + LINE_BYTE_COST;

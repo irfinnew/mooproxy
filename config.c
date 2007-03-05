@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,7 +45,6 @@ static int set_key_value( World *wld, char *key, char *value, char **err );
 static int set_key_internal( World *wld, char *key, char *value, int src,
 		char **err );
 static int get_key_internal( World *wld, char *key, char **value, int src );
-static int attempt_createdir( char *dirname, char **err );
 
 
 
@@ -58,8 +57,8 @@ static const struct
 	char *keyname;
 	int (*setter)( World *, char *, char *, int, char ** );
 	int (*getter)( World *, char *, char **, int );
-} key_db[] = {
-
+} key_db[] =
+{
 	{ 0, "listenport",
 		&aset_listenport,
 		&aget_listenport },
@@ -91,16 +90,20 @@ static const struct
 	{ 0, "context_on_connect",
 		&aset_context_on_connect,
 		&aget_context_on_connect },
-	{ 0, "max_buffered_size",
-		&aset_max_buffered_size,
-		&aget_max_buffered_size },
-	{ 0, "max_history_size",
-		&aset_max_history_size,
-		&aget_max_history_size },
+	{ 0, "max_buffer_size",
+		&aset_max_buffer_size,
+		&aget_max_buffer_size },
+	{ 0, "max_logbuffer_size",
+		&aset_max_logbuffer_size,
+		&aget_max_logbuffer_size },
 
 	{ 0, "strict_commands",
 		&aset_strict_commands,
 		&aget_strict_commands },
+
+	{ 0, "timestamped_logs",
+		&aset_timestamped_logs,
+		&aget_timestamped_logs },
 
 	{ 0, NULL, NULL, NULL }
 };
@@ -240,7 +243,8 @@ extern int world_load_config( World *wld, char **err )
 		if( sep == NULL )
 		{
 			/* No separator character? We don't understand */
-			xasprintf( err, "%s: line %li, parse error: `%s'", 
+			xasprintf( err, "Error in %s, line %li,\n   "
+				"parse error: `%s'",
 				wld->configfile, lineno, line );
 			free( line );
 			free( config );
@@ -264,18 +268,20 @@ extern int world_load_config( World *wld, char **err )
 		switch( set_key_value( wld, key, value, &seterr ) )
 		{
 			case SET_KEY_NF:
-			xasprintf( err, "%s: line %li: unknown key `%s'",
+			xasprintf( err, "Error in %s, line %li,\n    "
+					"unknown key `%s'",
 					wld->configfile, lineno, key );
 			break;
 
 			case SET_KEY_PERM:
-			xasprintf( err, "%s: line %li: setting key `%s' not "
-					"allowed.", wld->configfile,
-					lineno, key );
+			xasprintf( err, "Error in %s, line %li,\n    "
+					"setting key `%s' not allowed.",
+					wld->configfile, lineno, key );
 			break;
 
 			case SET_KEY_BAD:
-			xasprintf( err, "%s: line %li: setting key `%s': %s",
+			xasprintf( err, "Error in %s, line %li,\n    "
+					"key `%s': %s",
 					wld->configfile, lineno, key, seterr );
 			free( seterr );
 			break;
@@ -322,7 +328,7 @@ static int read_configfile( char *file, char **contentp, char **err )
 	fd = open( file, O_RDONLY );
 	if( fd == -1 )
 	{
-		xasprintf( err, "Error opening `%s': %s",
+		xasprintf( err, "Error opening `%s':\n    %s",
 				file, strerror( errno ) );
 		return 1;
 	}
@@ -345,7 +351,7 @@ static int read_configfile( char *file, char **contentp, char **err )
 	r = read( fd, contents, size );
 	if( r == -1 )
 	{
-		xasprintf( err, "Error reading from `%s': %s\n",
+		xasprintf( err, "Error reading from `%s':\n    %s",
 				file, strerror( errno ) );
 		free( contents );
 		close( fd );
@@ -454,50 +460,51 @@ static int get_key_internal( World *wld, char *key, char **value, int src )
 
 extern int create_configdirs( char **err )
 {
-	if( attempt_createdir( CONFIGDIR, err ) != 0 )
-		return 1;
-	if( attempt_createdir( WORLDSDIR, err ) != 0 )
-		return 1;
-	if( attempt_createdir( LOGSDIR, err ) != 0 )
-		return 1;
-	if( attempt_createdir( LOCKSDIR, err ) != 0 )
-		return 1;
+	char *path, *errstr = NULL;
+	*err = NULL;
+
+	xasprintf( &path, "%s/%s", get_homedir(), CONFIGDIR );
+	if( attempt_createdir( path, &errstr ) )
+		goto create_failed;
+	free( path );
+
+	xasprintf( &path, "%s/%s/%s", get_homedir(), CONFIGDIR, WORLDSDIR );
+	if( attempt_createdir( path, &errstr ) )
+		goto create_failed;
+	free( path );
+
+	xasprintf( &path, "%s/%s/%s", get_homedir(), CONFIGDIR, LOGSDIR );
+	if( attempt_createdir( path, &errstr ) )
+		goto create_failed;
+	free( path );
+
+	xasprintf( &path, "%s/%s/%s", get_homedir(), CONFIGDIR, LOCKSDIR );
+	if( attempt_createdir( path, &errstr ) )
+		goto create_failed;
+	free( path );
 
 	return 0;
+
+create_failed:
+	xasprintf( err, "Error creating `%s': %s", path, errstr );
+	free( path );
+	free( errstr );
+	return 1;
 }
 
 
 
-/* Attempt to create the directory ~/dirname.
- * On succes, return 0.
- * On failure, return non-zero, and put error in err (err should be free()d) */
-static int attempt_createdir( char *dirname, char **err )
+extern int check_configdir_perms( char **warn, char **err )
 {
-	char *path, *homedir = get_homedir();
+	char *path;
 	struct stat fileinfo;
 
+	*warn = NULL;
+
 	/* Construct the path */
-	path = xmalloc( strlen( homedir ) + strlen( dirname ) + 1 );
-	strcpy( path, homedir );
-	strcat( path, dirname );
-	free( homedir );
+	xasprintf( &path, "%s/%s", get_homedir(), CONFIGDIR );
 
-	if( !mkdir( path, S_IRUSR | S_IWUSR | S_IXUSR ) )
-	{
-		free( path );
-		return 0;
-	}
-
-	/* If there was an error other than "already exists", complain */
-	if( errno != EEXIST )
-	{
-		xasprintf( err, "Could not create directory `%s': %s",
-				path, strerror( errno ) );
-		free( path );
-		return 1;
-	}
-
-	/* The directory already existed. But is it really a dir? */
+	/* Get the information. */
 	if( stat( path, &fileinfo ) == -1 )
 	{
 		xasprintf( err, "Could not stat `%s': %s",
@@ -506,15 +513,36 @@ static int attempt_createdir( char *dirname, char **err )
 		return 1;
 	}
 	
-	if( !S_ISDIR( fileinfo.st_mode ) )
+	/* Are the permissions ok? */
+	if( ( fileinfo.st_mode & ( S_IRWXG | S_IRWXO ) ) == 0 )
 	{
-		xasprintf( err, "`%s' exists, but it is not a directory.",
-				path );
 		free( path );
-		return 1;
+		return 0;
 	}
+
+	/* The permissions are not ok, construct a message.
+	 * OMG! It's the xasprintf from hell! */
+	xasprintf( warn, "\n"
+		"----------------------------------------------------------"
+		"--------------------\nWARNING! The mooproxy configuration "
+		"directory has weak permissions:\n"
+		"\n    %s%s%s%s%s%s%s%s%s %s\n\n"
+		"This means other users on your system may be able to read "
+		"your mooproxy files.\nIf this is intentional, make sure the "
+		"permissions on the files and directories\nit contains are "
+		"sufficiently strict.\n-------------------------------------"
+		"-----------------------------------------\n\n",
+		(fileinfo.st_mode & S_IRUSR ) ? "r" : "-",
+		(fileinfo.st_mode & S_IWUSR ) ? "w" : "-",
+		(fileinfo.st_mode & S_IXUSR ) ? "x" : "-",
+		(fileinfo.st_mode & S_IRGRP ) ? "R" : "-",
+		(fileinfo.st_mode & S_IWGRP ) ? "W" : "-",
+		(fileinfo.st_mode & S_IXGRP ) ? "X" : "-",
+		(fileinfo.st_mode & S_IROTH ) ? "R" : "-",
+		(fileinfo.st_mode & S_IWOTH ) ? "W" : "-",
+		(fileinfo.st_mode & S_IXOTH ) ? "X" : "-",
+		path );
 
 	free( path );
 	return 0;
 }
-

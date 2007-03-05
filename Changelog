@@ -1,3 +1,24 @@
+05-03-2007  -  0.1.2
+--------------------
+* Context/history/new lines got a makeover. On connect, the user now gets
+  context lines, possibly new lines, and certainly new lines.
+* max_buffered_size and max_history_size are replaced by max_buffer_size.
+* Logfiles are now stored in a hierarchy: logs/$worldname/YYYY-MM.
+  Use the update-logs.sh script to update your logfiles' locations.
+  Users of the Debian package can find the script in /usr/share/doc/mooproxy.
+* Mooproxy now requires colors in the infostring to be specified using
+  mooproxy color sequences (see ExampleConfig for details).
+* Added timestamped_logs option, which prepends a timestamp to logged lines.
+* Added max_logbuffer_size option, to limit the amount of unlogged lines.
+* Mooproxy now creates 'today' and 'yesterday' logfile symlinks for each world.
+* Logfiles are now synced to disk every minute.
+* The logging error-checking has been improved.
+* Mooproxy now sends mcpreset to the client on server reconnect.
+* Mooproxy now checks ~/.mooproxy permissions and warns if they're weak.
+* The "Not connected to server" message is now throttled to once every 4 sec.
+
+
+
 04-08-2006  -  0.1.1
 --------------------
 * Fixed a bug where mooproxy won't start if ~/.mooproxy/locks/ doesn't exist.

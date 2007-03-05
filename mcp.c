@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ extern int world_is_mcp( char *line )
 extern void world_do_mcp_client( World *wld, Line *line )
 {
 	char *mcpkey = NULL, *tmp;
-	Line *servermsg;
+	Line *msg;
 
 	/* First of all, pass the line on to the server. */
 	line->flags = LINE_MCP;
@@ -75,15 +75,16 @@ extern void world_do_mcp_client( World *wld, Line *line )
 	{
 		wld->mcp_negotiated = 1;
 
-		/* Insert a client->server mcp-negotiate-can stating the
-		 * client can do mcpreset. This is necessary so the server
-		 * will listen for mcpreset commands. */
+		/* Insert a client->server and server->client
+		 * mcp-negotiate-can message. This is necessary to get the
+		 * server and the client listening for mcpreset commands. */
 		xasprintf( &tmp, "#$#mcp-negotiate-can %s package: "
 				"dns-nl-icecrew-mcpreset min-version: 1.0 "
 				"max-version: 1.0", wld->mcp_key );
-		servermsg = line_create( tmp, -1 );
-		servermsg->flags = LINE_MCP;
-		linequeue_append( wld->server_toqueue, servermsg );
+		msg = line_create( tmp, -1 );
+		msg->flags = LINE_MCP;
+		linequeue_append( wld->server_toqueue, msg );
+		linequeue_append( wld->client_toqueue, line_dup( msg ) );
 	}
 }
 
@@ -105,8 +106,41 @@ extern void world_do_mcp_server( World *wld, Line *line )
 
 extern void world_mcp_server_connect( World *wld )
 {
-	/* We just connected to the server, all MCP administration should be
-	 * erased. */
+	char *str;
+	Line *line;
+
+	/* If we don't have a key, MCP is simply uninitialized. The server
+	 * should greet us with the MCP handshake, and the client should
+	 * reply, getting everything going. */
+
+	/* If we have a key, but we're not negotiated, negotiate now. */
+	if( wld->mcp_key != NULL && !wld->mcp_negotiated )
+	{
+		xasprintf( &str, "#$#mcp-negotiate-can %s package: "
+				"dns-nl-icecrew-mcpreset min-version: 1.0 "
+				"max-version: 1.0", wld->mcp_key );
+		line = line_create( str, -1 );
+		line->flags = LINE_MCP;
+		linequeue_append( wld->client_toqueue, line );
+		xasprintf( &str, "#$#mcp-negotiate-end %s", wld->mcp_key );
+		line = line_create( str, -1 );
+		line->flags = LINE_MCP;
+		linequeue_append( wld->client_toqueue, line );
+		wld->mcp_negotiated = 1;
+	}
+
+	/* If we have a key and we're negotiated, do the mcp reset. */
+	if( wld->mcp_key != NULL && wld->mcp_negotiated )
+	{
+		/* Send the mcp reset. */
+		xasprintf( &str, "#$#dns-nl-icecrew-mcpreset-reset %s",
+				wld->mcp_key );
+		line = line_create( str, -1 );
+		line->flags = LINE_MCP;
+		linequeue_append( wld->client_toqueue, line );
+	}
+
+	/* Erase all MCP administration. */
 	wld->mcp_negotiated = 0;
 
 	free( wld->mcp_key );

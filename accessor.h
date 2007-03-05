@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -58,9 +58,10 @@ extern int aset_commandstring( World *, char *, char *, int, char ** );
 extern int aset_infostring( World *, char *, char *, int, char ** );
 extern int aset_logging_enabled( World *, char *, char *, int, char ** );
 extern int aset_context_on_connect( World *, char *, char *, int, char ** );
-extern int aset_max_buffered_size( World *, char *, char *, int, char ** );
-extern int aset_max_history_size( World *, char *, char *, int, char ** );
+extern int aset_max_buffer_size( World *, char *, char *, int, char ** );
+extern int aset_max_logbuffer_size( World *, char *, char *, int, char ** );
 extern int aset_strict_commands( World *, char *, char *, int, char ** );
+extern int aset_timestamped_logs( World *, char *, char *, int, char ** );
 
 
 
@@ -90,9 +91,10 @@ extern int aget_commandstring( World *, char *, char **, int );
 extern int aget_infostring( World *, char *, char **, int );
 extern int aget_logging_enabled( World *, char *, char **, int );
 extern int aget_context_on_connect( World *, char *, char **, int );
-extern int aget_max_buffered_size( World *, char *, char **, int );
-extern int aget_max_history_size( World *, char *, char **, int );
+extern int aget_max_buffer_size( World *, char *, char **, int );
+extern int aget_max_logbuffer_size( World *, char *, char **, int );
 extern int aget_strict_commands( World *, char *, char **, int );
+extern int aget_timestamped_logs( World *, char *, char **, int );
 
 
 

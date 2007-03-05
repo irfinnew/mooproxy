@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,15 @@ extern void world_log_line( World *wld, Line *line );
 /* Attempt to flush all accumulated lines to the logfile(s).
  * Should be called regularly. */
 extern void world_flush_client_logqueue( World *wld );
+
+/* Attempt to ensure all written logdata actually ends up on disk. */
+extern void world_sync_logdata( World *wld );
+
+/* Remove the 'today' and 'yesterday' logfile symlinks. */
+extern void world_log_link_remove( World *wld );
+
+/* Update the 'today' and 'yesterday' logfile symlinks. */
+extern void world_log_link_update( World *wld );
 
 
 

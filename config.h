@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -107,6 +107,12 @@ extern int world_get_key( World *wld, char *key, char **value );
  * On failure, it returns non-zero and places the error in err (the string
  * should be free()d). */
 extern int create_configdirs( char **err );
+
+/* Check the permissions on the configuration directory. On error, returns
+ * non-zero and places the error in err (the string should be free()d).
+ * If the permissions are not satisfactory, a warning string is placed in
+ * warn (which should be free()d). Otherwise, warn is set to NULL. */
+extern int check_configdir_perms( char **warn, char **err );
 
 
 

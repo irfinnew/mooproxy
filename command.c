@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for moo-connections
- *  Copyright (C) 2001-2006 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -62,11 +62,11 @@ static char *help_text[] = {
 "  listopts                   List the available option names.",
 "  get <option>               Query the value of one option.",
 "  set <option> <value>       Set the value of one option.",
-"  recall [<count>]           Recall <count> lines or show info.",
+"  recall <count>             Recall <count> lines.",
 "  version                    Show the mooproxy version.",
 "  date                       Show the current time and date.",
 "  uptime                     Show mooproxy's starting time and uptime.",
-"  world                      Print the name of the current world.",
+"  world                      Show the name of the current world.",
 NULL
 };
 
@@ -132,7 +132,7 @@ extern int world_do_command( World *wld, char *line )
 			return 0;
 		}
 
-		/* Strict is on, complain */
+		/* Invalid command, complain */
 		world_msg_client( wld, "Invalid command: %s.", cmd );
 		free( line );
 		return 1;
@@ -214,7 +214,8 @@ static void command_quit( World *wld, char *cmd, char *args )
 /* Shut mooproxy down (forcibly on -f). Arguments: [-f] */
 static void command_shutdown( World *wld, char *cmd, char *args )
 {
-	long unlogged;
+	long unlogged_lines;
+	float unlogged_kb;
 	char *tmp;
 
 	tmp = get_one_word( &args );
@@ -236,14 +237,17 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 
 	/* If we got here, there were no arguments. */
 
-	unlogged = wld->log_queue->length + wld->log_current->length +
-		wld->log_bfull;
-
 	/* Unlogged data? Refuse. */
-	if( unlogged > 0 )
+	if( wld->log_queue->length + wld->log_current->length +
+			wld->log_bfull > 0 )
 	{
-		world_msg_client( wld, "There are approximately %li bytes not "
-				"yet logged to disk. ", unlogged );
+		unlogged_lines = wld->log_queue->count +
+				wld->log_current->count + wld->log_bfull / 100;
+		unlogged_kb = ( wld->log_bfull + wld->log_queue->length +
+				wld->log_current->length ) / 1024.0;
+		world_msg_client( wld, "There are approximately %li lines "
+				"(%.1fkb) not yet logged to disk. ",
+				unlogged_lines, unlogged_kb );
 		world_msg_client( wld, "Refusing to shut down. "
 				"Use /shutdown -f to override." );
 		return;
@@ -522,26 +526,27 @@ static void command_setopt( World *wld, char *cmd, char *args )
 static void command_recall( World *wld, char *cmd, char *args )
 {
 	int c = atoi( args );
+	int ilc, hlc;
 
 	/* If there is no argument, or it's not a valid number (or it's zero),
 	 * report how many lines there are in the history, and how full
 	 * the history is. */
 	if( c == 0 )
 	{
-		world_msg_client( wld, "%li line%s in history (buffer %.1f%% "
-				"full).", wld->history_lines->count,
-				( wld->history_lines->count == 1 ) ? "" : "s",
-				wld->history_lines->length / 10.24 /
-				wld->max_history_size );
+		world_msg_client( wld, "Use: recall <number of lines>" );
 		return;
 	}
 
-	/* If we want to recall more lines than available, reduce the number */
-	if( c > wld->history_lines->count )
-		c = wld->history_lines->count;
+	ilc = c;
+	if( ilc > wld->inactive_lines->count )
+		ilc = wld->inactive_lines->count;
 
-	world_msg_client( wld,  "Recall start (%i lines).", c );
-	world_recall_history_lines( wld, c );
+	hlc = c - ilc;
+	if( hlc > wld->history_lines->count )
+		hlc = wld->history_lines->count;
+
+	world_msg_client( wld,  "Recall start (%i lines).", hlc + ilc );
+	world_recall_history_lines( wld, hlc, ilc );
 	world_msg_client( wld, "Recall end." );
 }
 
