@@ -71,7 +71,7 @@ extern char *get_homedir( void );
  * str is modified to point to the next line. */
 extern char *read_one_line( char **str );
 
-/* Extract the first from word str.
+/* Extract the first word from str.
  * Returns a pointer to the first word of str, excluding any whitespace
  * characters. The pointer points to the word inside the (mangled) str,
  * it should not be free()d separately.
@@ -80,8 +80,14 @@ extern char *read_one_line( char **str );
  * character after the first word. */
 extern char *get_one_word( char **str );
 
+/* Extract the first word from str.
+ * Returns the first word in freshly allocated memory, which should be free()d.
+ * If there are no words left in str, the function returns NULL.
+ * str is not modified. */
+extern char *peek_one_word( char *str );
+
 /* Strips all whitespace from the start and end of line.
- * Returns line. */
+ * Returns line. Modifies line in place. */
 extern char *trim_whitespace( char *line );
 
 /* If str starts and ends with ", or starts and ends with ', modify str
@@ -135,6 +141,18 @@ extern char *parse_ansi_tags( char *str );
  * Err will contain just a brief error message (often strerror output),
  * more formatting should be done by the caller. */
 extern int attempt_createdir( char *dirname, char **err );
+
+/* Copy a character string from src to dest, like strcpy(), but skip any
+ * ANSI sequences (such as color, bold, etc) and other unprintable characters
+ * (control characters, ASCII BELL, etc).
+ * dest must point to a large enough buffer.
+ * Returns the length of the new string (excluding terminating \0). */
+extern long strcpy_noansi( char *dest, char *src );
+
+/* Copy a character string from src to dest, like strcpy(), but skip any
+ * ASCII BELL (0x07) characters. dest must point to a large enough buffer.
+ * Returns the length of the new string (excluding terminating \0). */
+extern long strcpy_nobell( char *dest, char *src );
 
 
 

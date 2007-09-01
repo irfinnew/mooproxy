@@ -46,15 +46,16 @@ struct _Config
 #define PARSEOPTS_ERROR 5
 
 /* Return values for attempting to set a key. */
-#define SET_KEY_OK 0
-#define SET_KEY_NF 1
-#define SET_KEY_PERM 2
-#define SET_KEY_BAD 3
+#define SET_KEY_OK 1
+#define SET_KEY_OKSILENT 2
+#define SET_KEY_NF 3
+#define SET_KEY_PERM 4
+#define SET_KEY_BAD 5
 
 /* Return values for attempting to query a key. */
-#define GET_KEY_OK 0
-#define GET_KEY_NF 1
-#define GET_KEY_PERM 2
+#define GET_KEY_OK 1
+#define GET_KEY_NF 2
+#define GET_KEY_PERM 3
 
 
 

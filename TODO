@@ -1,15 +1,21 @@
-Probably's:
- * Implement autoreconnect (but not too hammering)
- * Make mooproxy close the current port, and bind to the new one if listenport is changed ?
- * Access / recall logs from within mooproxy? [from: paul]
- * Option for verbose MCP, to ease MCP weirdness debugging?
+Items considered for next release:
+ * Print "Use /help" message on first connect after start?
  * Improve /help, allow /help <cmd>.
  * Improve /listopts output.
- * Provide more and better documentation.
- * Add option to use different dir (instead of ~/.mooproxy) for configuration ?
  * Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable [from: bram]
+ * More features for /recall (non-re, case sensitive, count, limit, etc)
+ * Better RE support for /recall
  * Throttle client read() when server_txqueue is too full. (and vice versa)
- * Remove ASCII bell from history lines?
+ * /lock command to disallow changing options / connecting to strange servers?
+ * Fix some FIXMEs.
+ 
+
+Probably's:
+ * Access / recall logs from within mooproxy? [from: paul]
+ * Option for verbose MCP, to ease MCP weirdness debugging?
+ * Provide more and better documentation.
+ * Remove some trivial helper functions from accessor.c?
+ * Make mooproxy not remember authstring if autologin is off. ?
 
 
 Maybe's:
@@ -24,13 +30,18 @@ Maybe's:
  * Make prefixes for infomessages and checkpoint messages different?
  * Print date/time on mooproxy messages?
  * Add SSL support (both ways)?
- * Latency tunen met TCP_NODELAY ?
- * Offer option for keeping logfiles synchronised to disk? (fdatasync())
+ * Tune Latency with TCP_NODELAY ?
+ * Add option to /connect to enable autoreconnect from the start?
 
 
 Probably not's:
- * Disallow the proxy to connect to itself (how?)?  [seems impossible to do in a sane way]
- * Have mooproxy convert received text to the right charset for logging?  [too complex; mooproxy can't know the charsets]
- * The accessor functions are mostly just dumb wrappers. Can't this be done using less code?  [probably not worth the effort]
- * Commandstring escaping (to be able to send something starting with the cmdstring to the MOO)? [little enthusiasm from users]
- * Allow /recall to match timestamps and/or strings? [apparantly little enthusiasm from users]
+ * Disallow the proxy to connect to itself (how?)?
+   - Seems impossible to do in a sane way.
+ * Have mooproxy convert received text to the right charset for logging?
+   - Too complex; mooproxy can't know the charsets.
+ * The accessor functions are mostly just dumb wrappers. Can't this be done using less code?
+   - Lots of effort, (virtually) no gain.
+ * Commandstring escaping (to be able to send something starting with the cmdstring to the MOO)?
+   - Little enthusiasm from users.
+ * Add option to use different dir (instead of ~/.mooproxy) for configuration ?
+   - Little point.

@@ -29,23 +29,24 @@
 
 
 
-/* Action flags */
-#define WLD_SHUTDOWN		0x00000001
-#define WLD_CLIENTQUIT		0x00000002
-#define WLD_SERVERQUIT		0x00000004
-#define WLD_SERVERRESOLVE	0x00000008
-#define WLD_SERVERCONNECT	0x00000010
-#define WLD_LOGLINKUPDATE	0x00000020
-
-/* Status flags */
-#define WLD_NOTCONNECTED	0x00010000
-#define WLD_ACTIVATED		0x00020000
+/* World flags */
+#define WLD_ACTIVATED		0x00000001
+#define WLD_NOTCONNECTED	0x00000002
+#define WLD_CLIENTQUIT		0x00000004
+#define WLD_SERVERQUIT		0x00000008
+#define WLD_RECONNECT		0x00000010
+#define WLD_SERVERRESOLVE	0x00000020
+#define WLD_SERVERCONNECT	0x00000040
+#define WLD_LOGLINKUPDATE	0x00000080
+#define WLD_REBINDPORT		0x00000100
+#define WLD_SHUTDOWN		0x00000200
 
 /* Server statuses */
-#define ST_DISCONNECTED		1
-#define ST_RESOLVING		2
-#define ST_CONNECTING		3
-#define ST_CONNECTED		4
+#define ST_DISCONNECTED		0x01
+#define ST_RESOLVING		0x02
+#define ST_CONNECTING		0x03
+#define ST_CONNECTED		0x04
+#define ST_RECONNECTWAIT	0x05
 
 
 
@@ -64,6 +65,9 @@ struct _BindResult
 	int *af_success;
 	/* Human-readable message for each AF */
 	char **af_msg;
+
+	/* Array of af_success_count + 1 filedescriptors. The last one is -1. */
+	int *listen_fds;
 
 	/* Human-readable conclusion */
 	char *conclusion;
@@ -89,6 +93,7 @@ struct _World
 
 	/* Listening connection */
 	long listenport;
+	long requestedlistenport;
 	int *listen_fds;
 	BindResult *bindresult;
 
@@ -113,6 +118,10 @@ struct _World
 	int server_resolver_fd;
 	char *server_addresslist;
 	int server_connecting_fd;
+
+	int reconnect_enabled;
+	int reconnect_delay;
+	time_t reconnect_at;
 
 	Linequeue *server_rxqueue;
 	Linequeue *server_toqueue;
@@ -149,7 +158,7 @@ struct _World
 	int timer_prev_sec;
 	int timer_prev_min;
 	int timer_prev_hour;
-	int timer_prev_day;
+	long timer_prev_day;
 	int timer_prev_mon;
 	int timer_prev_year;
 
@@ -174,9 +183,12 @@ struct _World
 	/* Options */
 	int logging_enabled;
 	int autologin;
+	int autoreconnect;
 	char *commandstring;
 	char *infostring;
 	char *infostring_parsed;
+	char *newinfostring;
+	char *newinfostring_parsed;
 	long context_on_connect;
 	long max_buffer_size;
 	long max_logbuffer_size;
@@ -215,6 +227,18 @@ extern void world_configfile_from_name( World *wld );
  * so the caller may frobble with line->flags or some such. */
 extern Line *world_msg_client( World *wld, const char *fmt, ... );
 
+/* Like world_msg_client(), but uses newinfostring as a prefix. */
+extern Line *world_newmsg_client( World *wld, const char *fmt, ... );
+
+/* Schedule the next reconnect attempt. */
+extern void world_schedule_reconnect( World *wld );
+
+/* Attempt to reconnect to the server. */
+extern void world_do_reconnect( World *wld );
+
+/* Decrease the delay between reconnect attempts. */
+extern void world_decrease_reconnect_delay( World *wld );
+
 /* Measure the length of dynamic queues such as buffered and history,
  * and remove the oldest lines until they are small enough.
  * This puts a limit on the amount of memory these queues will occupy. */
@@ -224,13 +248,23 @@ extern void world_trim_dynamic_queues( World *wld );
  * the newly connected client, and then pass all buffered lines. */
 extern void world_recall_and_pass( World *wld );
 
-/* Duplicate the last <hlc> lines from the history queue, and the last 
- * <ilc> lines from the inactive queue to the client. */
-extern void world_recall_history_lines( World *wld, int hlc, int ilc );
-
 /* (Auto-)login to the server. If autologin is enabled, log in.
  * If autologin is disabled, only log in if override is non-zero. */
 extern void world_login_server( World *wld, int override );
+
+/* Appends the lines in the inactive queue to the history queue, effectively
+ * remove the 'possibly new' status from these lines. */
+extern void world_inactive_to_history( World *wld );
+
+/* Recall (at most) count lines from wld->history_lines.
+ * Return a newly created Linequeue object with copies of the recalled lines.
+ * The lines have their flags set to LINE_RECALLED, and their strings
+ * have ASCII BELLs stripped out. */
+extern Linequeue *world_recall_history( World *wld, long count );
+
+/* Attempt to bind to wld->requestedlistenport. If successful, close old
+ * listen fds and install new ones. If unsuccessful, retain old fds. */
+extern void world_rebind_port( World *wld );
 
 
 

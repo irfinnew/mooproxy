@@ -22,7 +22,7 @@
 
 
 /* Mooproxy version */
-#define VERSIONSTR "0.1.2"
+#define VERSIONSTR "0.1.3"
 
 /* Configuration dirnames */
 #define CONFIGDIR ".mooproxy"
@@ -32,8 +32,10 @@
 
 /* Some default option values */
 #define DEFAULT_AUTOLOGIN 0
+#define DEFAULT_AUTORECONNECT 0
 #define DEFAULT_CMDSTRING "/"
 #define DEFAULT_INFOSTRING "%c%% "
+#define DEFAULT_NEWINFOSTRING ""
 #define DEFAULT_LOGENABLE 1
 #define DEFAULT_CONTEXTLINES 100
 #define DEFAULT_MAXBUFFERSIZE 4096

@@ -38,6 +38,8 @@
 #define LINE_CHECKPOINT ( 0 )
 /* Mooproxy normal message (e.g. /listopts output). */
 #define LINE_MESSAGE ( LINE_DONTLOG | LINE_NOHIST )
+/* Recalled lines, like context and possibly-new. */
+#define LINE_RECALLED ( LINE_DONTLOG | LINE_DONTBUF | LINE_NOHIST )
 
 
 
@@ -46,14 +48,12 @@ typedef struct _Line Line;
 struct _Line
 {
 	char *str;
-	long len;
 	Line *next;
 	Line *prev;
+	long len;
+	long day;     /* Day of the line's creation. Used in logging. */
+	time_t time;  /* Time of the line's creation. */
 	int flags;
-	/* Time of the line's creation. */
-	time_t time;
-	/* Day of the line's creation. Used in logging. */
-	long day;
 };
 
 /* Linequeue type */
@@ -62,15 +62,15 @@ struct _Linequeue
 {
 	Line *head;
 	Line *tail;
-	/* Number if lines in this queue. */
+	/* Number of lines in this queue. */
 	unsigned long count;
 	/* Total number of bytes this queue occupies. */
-	unsigned long length;
+	unsigned long size;
 };
 
 
 
-/* Create a line, set it's flags to LINE_REGULAR, and prev/next to NULL.
+/* Create a line, set its flags to LINE_REGULAR, and prev/next to NULL.
  * Time and day are set to current time/day.
  * len should contain the length of str (excluding \0), or -1, in which case
  * line_create() will calculate the length itself.
@@ -80,7 +80,7 @@ extern Line *line_create( char *str, long len );
 /* Destroy line, freeing its resources. */
 extern void line_destroy( Line *line );
 
-/* Duplicate line (and its string). All fields are equivalent, except for
+/* Duplicate line (and its string). All fields are copied, except for
  * prev and next, which are set to NULL. Returns the new line. */
 extern Line *line_dup( Line *line );
 
@@ -109,7 +109,7 @@ extern Line* linequeue_pop( Linequeue *queue );
 extern Line* linequeue_popend( Linequeue *queue );
 
 /* Merge two queues. The contents of queue two is appended to queue one,
- * leaving the second one empty. */
+ * leaving queue two empty. */
 extern void linequeue_merge( Linequeue *one, Linequeue *two );
 
 

@@ -24,9 +24,10 @@ GNU General Public License for more details.
   5.  Using
   6.  Authentication
   7.  MCP
-  8.  Portability
-  9.  Important notes
-  10. Authors and thanks
+  8.  /recall
+  9.  Logfiles change from 0.1.1 to 0.1.2
+  10. Portability
+  11. Authors and thanks
 
 
 
@@ -259,8 +260,139 @@ support dns-nl-icecrew-mcpreset-reset.
 
 
 
-  8. Portability
-  --------------
+  8. /recall
+  ----------
+
+In mooproxy 0.1.3, the recall command has received a significant update.
+If you invoke the recall command with just a number, it will recall that
+number of lines in their full glory, just like before:
+
+   /recall 50
+
+But now recall supports the following syntax as well:
+
+   /recall [from <timespec>] [to <timespec>] [search <text>]
+
+This will recall any lines matching <text> in the period from <from timespec>
+to <to timespec>. You must use at least one of from and to.
+
+A timespec is one or more of the following:
+
+   now
+      Sets the time to the current date and time.
+   today
+      Sets the time to 0:00 today.
+   yesterday
+      Sets the time to 0:00 yesterday.
+   last/next monday/tuesday/...
+      Next <weekday> sets the time to 0:00 of the first <weekday> from today.
+      Last <weekday> sets it to 0:00 of the last <weekday> before today.
+   [YY/]MM/DD
+      Set the time to 0:00 of the given day.
+      If no year is specified, use MM/DD within the current year.
+   HH:MM[:SS]
+      Set the time to HH:MM within the current day.
+      If seconds are not specified, set them to 00.
+   -/+ <number> seconds/minutes/hours/days
+      Change the time to be <number> <units> earlier or later.
+   -/+ <number> lines
+      Search in <number> lines before/after <from timespec>.
+
+Notes:
+
+   * Lines are recalled with their colours stripped.
+   * -/+ <number> lines is special. It can only be used together with 'to',
+     and when used, it must be the only timespec.
+   * If both from and to are used, from must appear before to.
+   * If search is used, it must be the last keyword.
+   * The search keyword is case insensitive. It also treats <text> as a very
+     primitive regular expression, which _only_ supports . (matches any
+     character) and .* (matches zero or more any characters).
+   * Weekdays support the usual abbreviations (mon, tue, wed, ...).
+   * The units in relative timespecs can be abbreviated too (down to individual
+     characters). +2 minutes, +2 mins, +2 min, +2 m are all equivalent.
+   * The spacing in -/+ <number> <unit> is optional. + 2 min, +2 min, +2min
+     are all equivalent.
+
+Examples. Assume the current date and time are Wed Aug 22, 20:42:11.
+
+   /recall from 10:00 to 11:00
+     Recall all lines between 10:00:00 and 11:00:00 today.
+   /recall from yesterday 10:00 to 11:00
+     Recall all lines from 10:00 to 11:00 yesterday.
+   /recall from -30 mins search yes.*play
+     Search the last half hour for any lines containing "yes" before "play".
+   /recall from 10:00 to +50 lines
+     Recall 50 lines after 10:00:00 today.
+   /recall to -80 lines
+     Recall the last 80 lines.
+   /recall from last monday to today.
+     Recall everything from Mon 20/08 00:00 to Wed 22/08 00:00.
+   /recall from last saturday to next monday
+     Recall everything from Sat 18/08 00:00 to Mon 20/08 00:00.
+   /recall from 04/22 next wed 11:35 to +1 hour
+     Recall from 11:35 to 12:35 the wednesday after 22/04 (a sunday)
+
+When you invoke recall, it will first report what it is going to recall, so
+you can check if recall will actually inspect the lines you intended it to
+inspect:
+
+   % Recalling from Wed 2007/04/25 11:35:00 to Wed 2007/04/25 12:35:00.
+
+Then it will produce the matching lines, with all colours stripped.
+Finally, it will report how many lines it considered:
+
+   % Recall end (X / Y / Z).
+
+Here, X is the number of lines mooproxy has in its history. Y is the number
+of lines that matched the time criteria (i.e. from and to). Finally, Z is the
+number of lines actually recalled (i.e. that matched the time criteria and
+search criteria).
+
+
+
+  9. Logfiles change from 0.1.1 to 0.1.2
+  --------------------------------------
+
+In mooproxy 0.1.2, the logging was changed to log into a nested hierarchy
+of directories, instead of all files in a single directory.
+
+Mooproxy versions older than 0.1.2 log like this:
+
+  logs
+  |-- world one - 2007-01-01.log
+  |-- world one - 2007-02-01.log
+  |-- world two - 2007-02-01.log
+  |-- world two - 2007-03-01.log
+  |-- world two - 2007-03-02.log
+  `-- world two - 2007-03-03.log
+
+Mooproxy 0.1.2 and later log like this:
+
+  logs
+  |-- world one
+  |   |-- 2007-01
+  |   |   `-- world one - 2007-01-01.log
+  |   `-- 2007-02
+  |       `-- world one - 2007-02-01.log
+  `-- world two
+      |-- 2007-02
+      |   `-- world two - 2007-02-01.log
+      `-- 2007-03
+          |-- world two - 2007-03-01.log
+          |-- world two - 2007-03-02.log
+          `-- world two - 2007-03-03.log
+
+To move any existing logs from the old layout to the new layout,
+use the update-logs.sh that's provided with mooproxy 0.1.2 (in the Debian
+package, the shell script resides in /usr/share/doc/mooproxy).
+
+Please make a backup of your current logfiles before running this script.
+
+
+
+  10. Portability
+  ---------------
 
 Mooproxy is designed to run on modern Unices, most notably GNU/Linux and
 the open source BSD variants. Mooproxy is written in ANSI C, using mostly
@@ -293,47 +425,7 @@ Portability pitfalls:
 
 
 
-  9. Important notes
-  ------------------
-
- * In mooproxy 0.1.2, the logging was changed to log into a nested hierarchy
-   of directories, instead of all files in a single directory.
-
-   Mooproxy versions older than 0.1.2 log like this:
-
-     logs
-     |-- world one - 2007-01-01.log
-     |-- world one - 2007-02-01.log
-     |-- world two - 2007-02-01.log
-     |-- world two - 2007-03-01.log
-     |-- world two - 2007-03-02.log
-     `-- world two - 2007-03-03.log
-
-   Mooproxy 0.1.2 and later log like this:
-
-     logs
-     |-- world one
-     |   |-- 2007-01
-     |   |   `-- world one - 2007-01-01.log
-     |   `-- 2007-02
-     |       `-- world one - 2007-02-01.log
-     `-- world two
-         |-- 2007-02
-         |   `-- world two - 2007-02-01.log
-         `-- 2007-03
-             |-- world two - 2007-03-01.log
-             |-- world two - 2007-03-02.log
-             `-- world two - 2007-03-03.log
-
-   To move any existing logs from the old layout to the new layout,
-   use the update-logs.sh that's provided with mooproxy 0.1.2 (in the Debian
-   package, the shell script resides in /usr/share/doc/mooproxy).
-
-   Please make a backup of your current logfiles before running this script.
-
-
-
-  10. Authors and thanks
+  11. Authors and thanks
   ----------------------
 
 The author of mooproxy is:

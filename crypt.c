@@ -16,7 +16,7 @@
 
 
 
-#define _XOPEN_SOURCE /* For crypt() */
+#define _XOPEN_SOURCE /* For crypt(). */
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -196,12 +196,7 @@ extern int world_match_authentication( World *wld, const char *str )
 {
 	/* A literal exists. Check against that, it's way faster. */
 	if( wld->auth_literal != NULL )
-	{
-		if( strcmp( wld->auth_literal, str ) )
-			return 0;
-
-		return 1;
-	}
+		return !strcmp( wld->auth_literal, str );
 
 	/* Match against the MD5 hash */
 	if( !match_string_md5hash( str, wld->auth_md5hash ) )

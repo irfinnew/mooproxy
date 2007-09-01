@@ -1,195 +1,217 @@
+01-09-2007  -  0.1.3
+--------------------
+ * /recall now allows users to search for specific lines by time and contents.
+   See the README for details.
+ * New option; autoreconnect will cause mooproxy to reconnect when it loses
+   the connection to the server.
+ * New option; newinfostring allows users to use a custom prefix for "New
+   lines" and all related messages. This should make it easier to spot those
+   lines when the client connects.
+ * Setting the listenport option from within mooproxy is now allowed, and
+   actually attempts to rebind to the new port.
+ * Context lines produced when connecting now have the ASCII BELL character
+   filtered from them, so you won't hear a sound from old lines.
+ * Tab characters are now included in the logs instead of being discarded.
+ * Improved logging performance.
+ * Fixed a file descriptor leak on server hostname resolve.
+ * Fixed a small bug that sometimes caused the timestamps in the logfiles to
+   be off by one second.
+ * Fixed a small bug where mooproxy would sometimes say "No new lines" instead
+   of "End of new lines".
+
+
 05-03-2007  -  0.1.2
 --------------------
-* Context/history/new lines got a makeover. On connect, the user now gets
-  context lines, possibly new lines, and certainly new lines.
-* max_buffered_size and max_history_size are replaced by max_buffer_size.
-* Logfiles are now stored in a hierarchy: logs/$worldname/YYYY-MM.
-  Use the update-logs.sh script to update your logfiles' locations.
-  Users of the Debian package can find the script in /usr/share/doc/mooproxy.
-* Mooproxy now requires colors in the infostring to be specified using
-  mooproxy color sequences (see ExampleConfig for details).
-* Added timestamped_logs option, which prepends a timestamp to logged lines.
-* Added max_logbuffer_size option, to limit the amount of unlogged lines.
-* Mooproxy now creates 'today' and 'yesterday' logfile symlinks for each world.
-* Logfiles are now synced to disk every minute.
-* The logging error-checking has been improved.
-* Mooproxy now sends mcpreset to the client on server reconnect.
-* Mooproxy now checks ~/.mooproxy permissions and warns if they're weak.
-* The "Not connected to server" message is now throttled to once every 4 sec.
+ * Context/history/new lines got a makeover. On connect, the user now gets
+   context lines, possibly new lines, and certainly new lines.
+ * max_buffered_size and max_history_size are replaced by max_buffer_size.
+ * Logfiles are now stored in a hierarchy; logs/$worldname/YYYY-MM.
+   Use the update-logs.sh script to update your logfiles' locations.
+   Users of the Debian package can find the script in /usr/share/doc/mooproxy.
+ * Mooproxy now requires colors in the infostring to be specified using
+   mooproxy color sequences (see ExampleConfig for details).
+ * Added timestamped_logs option, which prepends a timestamp to logged lines.
+ * Added max_logbuffer_size option, to limit the amount of unlogged lines.
+ * Mooproxy now creates 'today' and 'yesterday' logfile symlinks for each world.
+ * Logfiles are now synced to disk every minute.
+ * The logging error-checking has been improved.
+ * Mooproxy now sends mcpreset to the client on server reconnect.
+ * Mooproxy now checks ~/.mooproxy permissions and warns if they're weak.
+ * The "Not connected to server" message is now throttled to once every 4 sec.
 
 
 
 04-08-2006  -  0.1.1
 --------------------
-* Fixed a bug where mooproxy won't start if ~/.mooproxy/locks/ doesn't exist.
-* Fixed a bug where mooproxy will crash if there's no auth_md5hash defined in
-  the configuration file or the user does /set auth_md5hash "".
-* Fixed a bug where mooproxy did not save its PID in the pidfile if it was run
-  in the foreground (instead of as a daemon).
-* Configuration loading code rewritten.
-* MCP code rewritten (less intrusive for non MCP capable clients now).
-* The maximum linelength has been increased from 16kb to 64kb
-* Improved the crashlog layout, and included a bit more information.
-* The README now contains a bit of information about MCP.
-* Cleaned up several parts of code, adding comments and improving efficiency
-  or robustness in a few places.
-  
+ * Fixed a bug where mooproxy won't start if ~/.mooproxy/locks/ doesn't exist.
+ * Fixed a bug where mooproxy will crash if there's no auth_md5hash defined in
+   the configuration file or the user does /set auth_md5hash "".
+ * Fixed a bug where mooproxy did not save its PID in the pidfile if it was run
+   in the foreground (instead of as a daemon).
+ * Configuration loading code rewritten.
+ * MCP code rewritten (less intrusive for non MCP capable clients now).
+ * The maximum linelength has been increased from 16kb to 64kb
+ * Improved the crashlog layout, and included a bit more information.
+ * The README now contains a bit of information about MCP.
+ * Cleaned up several parts of code, adding comments and improving efficiency
+   or robustness in a few places.
+
 
 
 16-02-2006  -  0.1.0
 --------------------
-* Mooproxy is now also packaged as a Debian package
-* Mooproxy has become an actual daemon, backgrounding itself
-* New commandline option: -d forces mooproxy to stay on the foreground
-* Create and check for lockfiles, so only one instance can run for each world
-* SIGSEGV, SIGFPE, SIGILL, SIGBUS are now caught
-* On crash, mooproxy creates a crash notice (~/mooproxy.crashed)
-* Mooproxy sends this crash notice to the client and to stderr as well
-* SIGUSR1 and SIGUSR2 are now ignored
-* /shutdown now refuses to shut down if not all loggable data could be written
-  to disk. -f overrides this
+ * Mooproxy is now also packaged as a Debian package
+ * Mooproxy has become an actual daemon, backgrounding itself
+ * New commandline option; -d forces mooproxy to stay on the foreground
+ * Create and check for lockfiles, so only one instance can run for each world
+ * SIGSEGV, SIGFPE, SIGILL, SIGBUS are now caught
+ * On crash, mooproxy creates a crash notice (~/mooproxy.crashed)
+ * Mooproxy sends this crash notice to the client and to stderr as well
+ * SIGUSR1 and SIGUSR2 are now ignored
+ * /shutdown now refuses to shut down if not all loggable data could be written
+   to disk. -f overrides this
 
 
 
 12-12-2005  -  0.0.7.1
 ----------------------
-* Fixed a bug where recalled lines would go in the history again, leading to
-  duplicated lines in the history. Thanks to Admar Schoonen for reporting.
+ * Fixed a bug where recalled lines would go in the history again, leading to
+   duplicated lines in the history. Thanks to Admar Schoonen for reporting.
 
 
 
 02-09-2005  -  0.0.7
 --------------------
-* From now on, mooproxy is licensed under GPL 2, instead of "GPL 2 or later"
-* The README has gotten a major upgrade and now contains much more useful info
-* Server side now supports IPv6 (actually AF independant)
-* Client side now supports IPv6 (actually AF independant)
-* The authentication string is now MD5-hashed in the config file
-* Mooproxy accepts the --md5crypt option to generate a MD5 hash
-* /getopt and /setopt have been renamed to /get and /set
-* New option: autologin. Determines if the proxy logs in after connect
-* Logging has been improved further. On error conditions (such as lack of
-  disk space), mooproxy now buffers loggable lines in memory, and writes
-  them to log as soon as the error condition is resolved. The amount of
-  memory mooproxy may use for this is not yet limited.
-* Multiple lines are now merged in one write(), improving throughput
-* Mooproxy now always emits network newlines (\r\n)
-* On connect, mooproxy now prints when and where from you were last connected
-* On connection takeover, mooproxy now reports the IP address of the overtaking
-  client to the overtaken client.
-* The maximum authstring length has been reduced from 1024 to 128 bytes
-* The maximum linelength has been increased from 8kb to 16kb
-* Resolve of and connect to server are now nonblocking
-* /disconnect now aborts any resolving or connecting in progress
-* Mooproxy now checks every memory allocation, and aborts if one fails.
-* Mooproxy now returns EXIT_FAILURE or EXIT_SUCCESS, instead of
-  the (undocumented) list of specific exit codes
-* Mooproxy now ignores SIGURG (used in OOB TCP, which we don't use anyway)
-* Cleaned up code comments, and added lots of new ones
+ * From now on, mooproxy is licensed under GPL 2, instead of "GPL 2 or later"
+ * The README has gotten a major upgrade and now contains much more useful info
+ * Server side now supports IPv6 (actually AF independant)
+ * Client side now supports IPv6 (actually AF independant)
+ * The authentication string is now MD5-hashed in the config file
+ * Mooproxy accepts the --md5crypt option to generate a MD5 hash
+ * /getopt and /setopt have been renamed to /get and /set
+ * New option; autologin. Determines if the proxy logs in after connect
+ * Logging has been improved further. On error conditions (such as lack of
+   disk space), mooproxy now buffers loggable lines in memory, and writes
+   them to log as soon as the error condition is resolved. The amount of
+   memory mooproxy may use for this is not yet limited.
+ * Multiple lines are now merged in one write(), improving throughput
+ * Mooproxy now always emits network newlines (\r\n)
+ * On connect, mooproxy now prints when and where from you were last connected
+ * On connection takeover, mooproxy now reports the IP address of the overtaking
+   client to the overtaken client.
+ * The maximum authstring length has been reduced from 1024 to 128 bytes
+ * The maximum linelength has been increased from 8kb to 16kb
+ * Resolve of and connect to server are now nonblocking
+ * /disconnect now aborts any resolving or connecting in progress
+ * Mooproxy now checks every memory allocation, and aborts if one fails.
+ * Mooproxy now returns EXIT_FAILURE or EXIT_SUCCESS, instead of
+   the (undocumented) list of specific exit codes
+ * Mooproxy now ignores SIGURG (used in OOB TCP, which we don't use anyway)
+ * Cleaned up code comments, and added lots of new ones
 
 
 
 19-07-2005  -  0.0.6.1
 ----------------------
-* Fixed SEGV on connect with no buffered lines waiting.
-  Thanks to Bram Senders for reporting.
+ * Fixed SEGV on connect with no buffered lines waiting.
+   Thanks to Bram Senders for reporting.
 
 
 
 19-07-2005  -  0.0.6
 --------------------
-* The infrastructure and main loop architecture have gotten a major overhaul
-* Regression: the output "resolving" and "connecting" steps of the /connect
-  command now only get reported to the user simultaneously, after the process
-  has completely succeeded or completely failed.
-* Mooproxy now automatically recalls and passes on connect
-* Removed command: /pass
-* New option: strict_commands. Determines what to do with invalid commands
-* New option: context_on_connect. The number of context lines you get
-* New option: max_buffered_size. The number of KB dedicated to buffer
-* New option: max_history_size. The number of KB dedicated to history
-* New option: logging_enabled. Determines if mooproxy logs.
-* Option parsing/management has been rewritten
-* Mooproxy now displays how full the buffer was in percent on connect
-* New command: /world. Prints the name of the current world
-* New command: /uptime. Reports starting date and running time
-* The output from /listopts is now limited to roughly 72 chars
-* The maximum linelength has been decreased from 100kb to 8kb
-* Mooproxy now ignores SIGHUP (so it continues running if parent dies)
-* MCP reset is now silent
-* Config dirs are now created with mode 700 instead of 750
-* Fixed bug in logging code. Extended ASCII chars are now logged too.
+ * The infrastructure and main loop architecture have gotten a major overhaul
+ * Regression; the output "resolving" and "connecting" steps of the /connect
+   command now only get reported to the user simultaneously, after the process
+   has completely succeeded or completely failed.
+ * Mooproxy now automatically recalls and passes on connect
+ * Removed command; /pass
+ * New option; strict_commands. Determines what to do with invalid commands
+ * New option; context_on_connect. The number of context lines you get
+ * New option; max_buffered_size. The number of KB dedicated to buffer
+ * New option; max_history_size. The number of KB dedicated to history
+ * New option; logging_enabled. Determines if mooproxy logs.
+ * Option parsing/management has been rewritten
+ * Mooproxy now displays how full the buffer was in percent on connect
+ * New command; /world. Prints the name of the current world
+ * New command; /uptime. Reports starting date and running time
+ * The output from /listopts is now limited to roughly 72 chars
+ * The maximum linelength has been decreased from 100kb to 8kb
+ * Mooproxy now ignores SIGHUP (so it continues running if parent dies)
+ * MCP reset is now silent
+ * Config dirs are now created with mode 700 instead of 750
+ * Fixed bug in logging code. Extended ASCII chars are now logged too.
 
 
 
 29-04-2004  -  0.0.5
 --------------------
-* Forget MCP session on connect-to-server, so that MCP reset works properly
-  if you disconnect and reconnect to the server.
-* Authentication code cleanup/rewrite. More efficient now.
-* If all authentication connections are full and there's a new connection,
-  the oldest authentication connection gets kicked.
-* Removed commands: /time, /block, /options, /showopts
-* New commands for option management: /listopts, /getopt, /setopt
-* /connect now takes optional hostname and port
-* Improved /help
-* Day rollover notification (not generic, should be improved)
-* Logging (always on, output only, always without ansi, only 1 logfile/day.
-  Functional, but generally hackish, rewrite)
+ * Forget MCP session on connect-to-server, so that MCP reset works properly
+   if you disconnect and reconnect to the server.
+ * Authentication code cleanup/rewrite. More efficient now.
+ * If all authentication connections are full and there's a new connection,
+   the oldest authentication connection gets kicked.
+ * Removed commands; /time, /block, /options, /showopts
+ * New commands for option management; /listopts, /getopt, /setopt
+ * /connect now takes optional hostname and port
+ * Improved /help
+ * Day rollover notification (not generic, should be improved)
+ * Logging (always on, output only, always without ansi, only 1 logfile/day.
+   Functional, but generally hackish, rewrite)
 
 
 
 19-04-2004  -  0.0.4
 --------------------
-* Improved both read() and write() code. Much more robust now.
-  The tradeoff is that simultaneously received lines are no longer
-  merged into one write().
-* Fixed SEGV on resolve failure.
-* Fixed SEGV on authentication if no authstring is given in config.
-* Mooproxy now refuses to start if authstring is "" or absent.
-* MCP reset is now sent automatically on client connect.
-  The /mcpreset command is removed.
-* History implemented. Use /recall <num> to recall num lines of history.
-  Currently, mooproxy always keeps 1024 lines of history.
-* Added /version, which prints the mooproxy version.
-* Added /date, which prints the date/time. /time is an alias for /date.
-* Improved MCP parsing code. Much cleaner, and more robust.
+ * Improved both read() and write() code. Much more robust now.
+   The tradeoff is that simultaneously received lines are no longer
+   merged into one write().
+ * Fixed SEGV on resolve failure.
+ * Fixed SEGV on authentication if no authstring is given in config.
+ * Mooproxy now refuses to start if authstring is "" or absent.
+ * MCP reset is now sent automatically on client connect.
+   The /mcpreset command is removed.
+ * History implemented. Use /recall <num> to recall num lines of history.
+   Currently, mooproxy always keeps 1024 lines of history.
+ * Added /version, which prints the mooproxy version.
+ * Added /date, which prints the date/time. /time is an alias for /date.
+ * Improved MCP parsing code. Much cleaner, and more robust.
 
 
 
 15-04-2004  -  0.0.3
 --------------------
-* Oops, 0.0.2 SEGVs if the client sends multilines to the server. That's
-  fixed (well, workarounded... Improve the MCP code is on the Todo) now.
+ * Oops, 0.0.2 SEGVs if the client sends multilines to the server. That's
+   fixed (well, workarounded... Improve the MCP code is on the Todo) now.
 
 
 
 15-04-2004  -  0.0.2
 --------------------
-* Prelimary MCP support. Mooproxy understands enough MCP to inject messages
-  to the server stating it can do MCP resets.
-* New command: /mcpreset. Attempts to reset the MCP session. Use directly
-  after your client connected to mooproxy (if mooproxy is connected to the
-  server).
-* "disconnected" now goes in buffer and direct, meaning you will get the
-  message twice (eventually).
+ * Prelimary MCP support. Mooproxy understands enough MCP to inject messages
+   to the server stating it can do MCP resets.
+ * New command; /mcpreset. Attempts to reset the MCP session. Use directly
+   after your client connected to mooproxy (if mooproxy is connected to the
+   server).
+ * "disconnected" now goes in buffer and direct, meaning you will get the
+   message twice (eventually).
 
 
 
 01-04-2004  -  0.0.1
 --------------------
-First release; Basic functionality is there, but many features are lacking.
-You can connect to mooproxy, connect to the server, disconnect, reconnect,
-etc.
+ * First release; Basic functionality is there, but many features are lacking.
+   You can connect to mooproxy, connect to the server, disconnect, reconnect,
+   etc.
 
 
 
 29-01-2004  -  None
 -------------------
-Resumed coding :)
+ * Resumed coding :)
 
 
 
 27-03-2001  -  None
 -------------------
-started coding
+ * started coding

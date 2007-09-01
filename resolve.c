@@ -49,8 +49,9 @@ extern void world_start_server_resolve( World *wld )
 	int filedes[2];
 	pid_t pid;
 
-	/* If we are already resolving, ignore the request. */
-	if( wld->server_status != ST_DISCONNECTED )
+	/* We'll only start resolving if we're not busy. */
+	if( wld->server_status != ST_DISCONNECTED &&
+			wld->server_status != ST_RECONNECTWAIT )
 		return;
 
 	/* Attempt to create the comminucation pipe */
@@ -117,10 +118,11 @@ extern void world_handle_resolver_fd( World *wld )
 	 * but the slave's write() becomes unblocked, so the rest of the
 	 * data gets transferred.
 	 * If the resolver slave should write something to the socket but
-	 * not close it, we'll hang here indefinetely. */
+	 * not close it, we'll hang here indefinetely.
+	 * FIXME: make this more robust. */
 	while( i > 0 )
 	{
-		addresses = realloc( addresses, len + 1024 );
+		addresses = xrealloc( addresses, len + 1024 );
 		i = read( wld->server_resolver_fd, addresses + len, 1024 );
 
 		if( i > 0 )
@@ -128,7 +130,7 @@ extern void world_handle_resolver_fd( World *wld )
 	}
 
 	/* Make it a NUL-terminated string */
-	addresses = realloc( addresses, len + 1 );
+	addresses = xrealloc( addresses, len + 1 );
 	addresses[len++] = '\0';
 
 	/* The first character should say whether the lookup was succesful
@@ -142,6 +144,7 @@ extern void world_handle_resolver_fd( World *wld )
 
 		case RESOLVE_ERROR:
 		world_msg_client( wld, "%s", addresses + 2 );
+		wld->flags |= WLD_RECONNECT;
 		break;
 
 		/* This shouldn't happen */
@@ -152,6 +155,7 @@ extern void world_handle_resolver_fd( World *wld )
 
 	/* Clean up, kill resolver slave. */
 	free( addresses );
+	close( wld->server_resolver_fd );
 	kill( wld->server_resolver_pid, SIGKILL );
 	waitpid( wld->server_resolver_pid, NULL, 0 );
 
@@ -159,7 +163,8 @@ extern void world_handle_resolver_fd( World *wld )
 	wld->server_resolver_fd = -1;
 
 	/* We're still not connected, but not in the process of connecting
-	 * either. The wld->flags |= WLD_SERVERCONNECT will take care of that */
+	 * either. The wld->flags |= WLD_SERVERCONNECT will take care of 
+	 * setting up the connection. */
 	wld->server_status = ST_DISCONNECTED;
 }
 
@@ -203,7 +208,7 @@ static void slave_main( World* wld, int commfd  )
 			continue;
 
 		len = strlen( hostbuf );
-		msg = realloc( msg, msglen + len + 1 );
+		msg = xrealloc( msg, msglen + len + 1 );
 		strcat( msg, hostbuf );
 		strcat( msg, "\n" );
 		msglen += len + 1;

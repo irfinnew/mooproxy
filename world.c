@@ -28,6 +28,7 @@
 #include "misc.h"
 #include "line.h"
 #include "panic.h"
+#include "network.h"
 
 
 
@@ -38,6 +39,7 @@ static World **worlds_list = NULL;
 
 static void register_world( World *wld );
 static void unregister_world( World *wld );
+static Line *message_client( World *wld, char *prefix, char *str );
 
 
 
@@ -61,6 +63,7 @@ extern World *world_create( char *wldname )
 
 	/* Listening connection */
 	wld->listenport = -1;
+	wld->requestedlistenport = -1;
 	wld->listen_fds = NULL;
 	wld->bindresult = xmalloc( sizeof( BindResult ) );
 	world_bindresult_init( wld->bindresult );
@@ -87,6 +90,10 @@ extern World *world_create( char *wldname )
 	wld->server_resolver_fd = -1;
 	wld->server_addresslist = NULL;
 	wld->server_connecting_fd = -1;
+
+	wld->reconnect_enabled = 0;
+	wld->reconnect_delay = 0;
+	wld->reconnect_at = 0;
 
 	wld->server_rxqueue = linequeue_create();
 	wld->server_toqueue = linequeue_create();
@@ -148,9 +155,12 @@ extern World *world_create( char *wldname )
 	/* Options */
 	wld->logging_enabled = DEFAULT_LOGENABLE;
 	wld->autologin = DEFAULT_AUTOLOGIN;
+	wld->autoreconnect = DEFAULT_AUTORECONNECT;
 	wld->commandstring = xstrdup( DEFAULT_CMDSTRING );
 	wld->infostring = xstrdup( DEFAULT_INFOSTRING );
 	wld->infostring_parsed = parse_ansi_tags( wld->infostring );
+	wld->newinfostring = xstrdup( DEFAULT_NEWINFOSTRING );
+	wld->newinfostring_parsed = parse_ansi_tags( wld->newinfostring );
 	wld->context_on_connect = DEFAULT_CONTEXTLINES;
 	wld->max_buffer_size = DEFAULT_MAXBUFFERSIZE;
 	wld->max_logbuffer_size = DEFAULT_MAXLOGBUFFERSIZE;
@@ -260,6 +270,8 @@ extern void world_destroy( World *wld )
 	free( wld->commandstring );
 	free( wld->infostring );
 	free( wld->infostring_parsed );
+	free( wld->newinfostring );
+	free( wld->newinfostring_parsed );
 
 	/* The world itself */
 	free( wld );
@@ -319,6 +331,7 @@ extern void world_bindresult_init( BindResult *bindresult )
 	bindresult->af_success_count = 0;
 	bindresult->af_success = NULL;
 	bindresult->af_msg = NULL;
+	bindresult->listen_fds = NULL;
 	bindresult->conclusion = NULL;
 }
 
@@ -333,6 +346,10 @@ extern void world_bindresult_free( BindResult *bindresult )
 	for( i = 0; i < bindresult->af_count; i++ )
 		free( bindresult->af_msg[i] );
 	free( bindresult->af_msg );
+	if( bindresult->listen_fds != NULL )
+		for( i = 0; bindresult->listen_fds[i] != -1; i++ )
+			close( bindresult->listen_fds[i] );
+	free( bindresult->listen_fds );
 	free( bindresult->conclusion );
 }
 
@@ -350,18 +367,51 @@ extern void world_configfile_from_name( World *wld )
 extern Line *world_msg_client( World *wld, const char *fmt, ... )
 {
 	va_list argp;
-	Line *line;
-	char *str, *msg;
+	char *str;
 
 	/* Parse the arguments into a string */
 	va_start( argp, fmt );
 	xvasprintf( &str, fmt, argp );
 	va_end( argp );
 
+	/* Send the message with the infostring prefix. */
+	return message_client( wld, wld->infostring_parsed, str );
+}
+
+
+
+extern Line *world_newmsg_client( World *wld, const char *fmt, ... )
+{
+	va_list argp;
+	char *str;
+
+	/* Parse the arguments into a string */
+	va_start( argp, fmt );
+	xvasprintf( &str, fmt, argp );
+	va_end( argp );
+
+	/* Send the message with the newinfostring prefix. */
+	return message_client( wld, wld->newinfostring_parsed, str );
+}
+
+
+
+/* Send prefix + str + MESSAGE_TERMINATOR to the client.
+ * str is consumed, prefix is not.
+ * If prefix is NULL or "", use wld->infostring_parsed.
+ * Returns the line object that has been enqueued to the client. */
+static Line *message_client( World *wld, char *prefix, char *str )
+{
+	Line *line;
+	char *msg;
+
+	if( prefix == NULL || *prefix == '\0' )
+		prefix = wld->infostring_parsed;
+
 	/* Construct the message */
-	msg = xmalloc( strlen( str ) + strlen( wld->infostring_parsed )
-		+ sizeof( MESSAGE_TERMINATOR ) );
-	strcpy( msg, wld->infostring_parsed );
+	msg = xmalloc( strlen( str ) + strlen( prefix ) +
+			sizeof( MESSAGE_TERMINATOR ) );
+	strcpy( msg, prefix );
 	strcat( msg, str );
 	strcat( msg, MESSAGE_TERMINATOR );
 	free( str );
@@ -378,9 +428,9 @@ extern Line *world_msg_client( World *wld, const char *fmt, ... )
 
 extern void world_trim_dynamic_queues( World *wld )
 {
-	unsigned long *bll = &( wld->buffered_lines->length );
-	unsigned long *ill = &( wld->inactive_lines->length );
-	unsigned long *hll = &( wld->history_lines->length );
+	unsigned long *bll = &wld->buffered_lines->size;
+	unsigned long *ill = &wld->inactive_lines->size;
+	unsigned long *hll = &wld->history_lines->size;
 	unsigned long limit;
 
 	/* Trim the normal buffers. The data is distributed over
@@ -415,7 +465,7 @@ extern void world_trim_dynamic_queues( World *wld )
 
 	/* First log_queue. These are very important, so we count the number
 	 * of dropped lines. Remove newest lines. */
-	while( wld->log_queue->length + wld->log_current->length > limit &&
+	while( wld->log_queue->size + wld->log_current->size > limit &&
 			wld->log_queue->head != NULL )
 	{
 		line_destroy( linequeue_popend( wld->log_queue ) );
@@ -424,7 +474,7 @@ extern void world_trim_dynamic_queues( World *wld )
 
 	/* Next, log_current. These are very important, so we count the number
 	 * of dropped lines. Remove newest lines. */
-	while( wld->log_current->length > limit &&
+	while( wld->log_current->size > limit &&
 			wld->log_current->head != NULL )
 	{
 		line_destroy( linequeue_popend( wld->log_current ) );
@@ -438,60 +488,45 @@ extern void world_recall_and_pass( World *wld )
 {
 	Linequeue *il = wld->inactive_lines;
 	Linequeue *bl = wld->buffered_lines;
-	Line *line, *recalled, *contextstart = NULL;
-	long contextcount = 0;
-	unsigned long ilcount = il->count, blcount = bl->count;
+	Linequeue *queue;
+	Line *line, *recalled;
+	int nocontext = 0, noposnew = 0, nocernew = 0;
 
 	if( wld->context_on_connect > 0 )
 	{
-		/* First, seek back from the end of the history, to the first
-		 * line we should display. */
-		line = wld->history_lines->tail;
-		while( line != NULL && contextcount < wld->context_on_connect )
-		{
-			contextcount++;
-			contextstart = line;
-			line = line->prev;
-		}
+		/* Recall history lines. */
+		queue = world_recall_history( wld, wld->context_on_connect );
 
 		/* Inform the client of the context lines */
-		if( contextcount > 0 )
-			world_msg_client( wld, "%lu line%s of context history.",
-					contextcount,
-					( contextcount == 1 ) ? "" : "s" );
-		else
-			world_msg_client( wld, "No context lines." );
-
-		/* And pass context, starting at the line we seeked to. */
-		line = contextstart;
-		while( line != NULL )
+		if( queue->count > 0 )
 		{
-			recalled = line_dup( line );
-			recalled->flags |= LINE_NOHIST;
-			linequeue_append( wld->client_toqueue, recalled );
-			line = line->next;
-		}
-	}
+			world_newmsg_client( wld, "%lu line%s of context "
+					"history.", queue->count,
+					( queue->count == 1 ) ? "" : "s" );
 
-	/* Inform the user about dropped possibly new lines, if any. */
-	if( wld->dropped_inactive_lines > 0 )
-	{
-		world_msg_client( wld, "WARNING: Due to low buffer space, "
-			"%lu possibly new line%s %s been dropped!",
-			wld->dropped_inactive_lines,
-			( wld->dropped_inactive_lines == 1 ) ? "" : "s", 
-			( wld->dropped_inactive_lines == 1 ) ? "has" : "have" );
-		wld->dropped_inactive_lines = 0;
+			/* Move the lines from local queue to client. */
+			linequeue_merge( wld->client_toqueue, queue );
+		}
+		else
+			/* Flag no context lines for later reporting. */
+			nocontext = 1;
+
+		/* We don't need this anymore. */
+		linequeue_destroy( queue );
 	}
 
 	/* Possibly new lines. */
 	if( il->count > 0 )
 	{
 		/* Inform the user about them. */
-		world_msg_client( wld, "%lu possibly new line%s "
+		world_newmsg_client( wld, "%s%lu possibly new line%s "
 			"(%.1f%% of buffer).",
+			( nocontext == 0 ) ? "" : "No context lines. ",
 			il->count, ( il->count == 1 ) ? "" : "s",
-			il->length / 10.24 / wld->max_buffer_size );
+			il->size / 10.24 / wld->max_buffer_size );
+
+		/* If nocontext was 1, we reported on it now. Clear it. */
+		nocontext = 0;
 
 		/* Pass the lines. These are already in the history path, so
 		 * they need to be duplicated and be NOHISTed. */
@@ -499,87 +534,67 @@ extern void world_recall_and_pass( World *wld )
 		while( line != NULL )
 		{
 			recalled = line_dup( line );
-			recalled->flags |= LINE_NOHIST;
+			recalled->flags = LINE_RECALLED;
 			linequeue_append( wld->client_toqueue, recalled );
 			line = line->next;
 		}
 	}
-
-	/* Inform the user about dropped certainly new lines, if any. */
-	if( wld->dropped_buffered_lines > 0 )
-	{
-		world_msg_client( wld, "WARNING: Due to low buffer space, "
-			"%lu certainly new line%s %s been dropped!",
-			wld->dropped_buffered_lines,
-			( wld->dropped_buffered_lines == 1 ) ? "" : "s", 
-			( wld->dropped_buffered_lines == 1 ) ? "has" : "have" );
-		wld->dropped_buffered_lines = 0;
-	}
+	else
+		/* Flag no possibly new lines for later reporting. */
+		noposnew = 1;
 
 	/* Certainly new lines. */
 	if( bl->count > 0 )
 	{
 		/* Inform the user about them. */
-		world_msg_client( wld, "%s%lu certainly new line%s "
+		world_newmsg_client( wld, "%s%s%lu certainly new line%s "
 			"(%.1f%% of buffer).",
-			( ilcount == 0 ) ? "No possibly new lines. " : "",
+			( nocontext == 0 ) ? "" : "No context lines. ",
+			( noposnew == 0 ) ? "" : "No possibly new lines. ",
 			bl->count, ( bl->count == 1 ) ? "" : "s",
-			bl->length / 10.24 / wld->max_buffer_size );
+			bl->size / 10.24 / wld->max_buffer_size );
+
+		/* If nocontext/noposnew were 1, we reported. Clear them. */
+		nocontext = 0;
+		noposnew = 0;
 
 		/* Pass the lines. Since these are just waiting to be passed
 		 * to a client, and never have been in history, they don't
 		 * need to be fiddled with and can be passed in one go. */
 		linequeue_merge( wld->client_toqueue, wld->buffered_lines );
 	}
-
-	/* If there are no new lines at all, say so.
-	 * Otherwise, mark the end of all new lines. */
-	if( wld->inactive_lines->count + wld->buffered_lines->count == 0 )
-		world_msg_client( wld, "No new lines." );
 	else
-		world_msg_client( wld, "%sEnd of new lines.",
-			( blcount == 0 ) ? "No certainly new lines. " : "" );
-}
+		/* Flag no possibly new lines for later reporting. */
+		nocernew = 1;
 
+	/* Flag end of new lines, with some special cases... */
+	if( noposnew == 1 && nocernew == 1 )
+		world_newmsg_client( wld, "%sNo new lines.",
+			( nocontext == 0 ) ? "" : "No context lines. " );
+	else
+		world_newmsg_client( wld, "%sEnd of new lines.",
+			( nocernew == 0 ) ? "" : "No certainly new lines. " );
 
-
-extern void world_recall_history_lines( World *wld, int hlc, int ilc )
-{
-	Line *line, *recalled;
-	int i;
-
-	/* First, do the history lines. */
-	if( wld->history_lines->count > 0 && hlc > 0 )
+	/* Inform the user about dropped possibly new lines, if any. */
+	if( wld->dropped_inactive_lines > 0 )
 	{
-		/* Seek backwards to the correct line. */
-		line = wld->history_lines->tail;
-		for( i = hlc; i > 1 && line->prev != NULL; i-- )
-			line = line->prev;
-
-		/* Duplicate lines, copying them to the toqueue. */
-		for( ; line; line = line->next )
-		{
-			recalled = line_dup( line );
-			recalled->flags |= LINE_NOHIST;
-			linequeue_append( wld->client_toqueue, recalled );
-		}
+		world_newmsg_client( wld, "WARNING: Due to low buffer space, "
+			"%lu possibly new line%s %s been dropped!",
+			wld->dropped_inactive_lines,
+			( wld->dropped_inactive_lines == 1 ) ? "" : "s", 
+			( wld->dropped_inactive_lines == 1 ) ? "has" : "have" );
+		wld->dropped_inactive_lines = 0;
 	}
 
-	/* Second, the inactive lines. */
-	if( wld->inactive_lines->count > 0 && ilc > 0 )
+	/* Inform the user about dropped certainly new lines, if any. */
+	if( wld->dropped_buffered_lines > 0 )
 	{
-		/* Seek backwards to the correct line. */
-		line = wld->inactive_lines->tail;
-		for( i = ilc; i > 1 && line->prev != NULL; i-- )
-			line = line->prev;
-
-		/* Duplicate lines, copying them to the toqueue. */
-		for( ; line; line = line->next )
-		{
-			recalled = line_dup( line );
-			recalled->flags |= LINE_NOHIST;
-			linequeue_append( wld->client_toqueue, recalled );
-		}
+		world_newmsg_client( wld, "WARNING: Due to low buffer space, "
+			"%lu certainly new line%s %s been dropped!",
+			wld->dropped_buffered_lines,
+			( wld->dropped_buffered_lines == 1 ) ? "" : "s", 
+			( wld->dropped_buffered_lines == 1 ) ? "has" : "have" );
+		wld->dropped_buffered_lines = 0;
 	}
 }
 
@@ -609,6 +624,7 @@ extern void world_login_server( World *wld, int override )
 		return;
 	}
 
+	/* Say if we're logging in automatically or manually. */
 	if( override )
 		world_msg_client( wld, "Logging in on world %s.", wld->name );
 	else
@@ -617,4 +633,197 @@ extern void world_login_server( World *wld, int override )
 
 	linequeue_append( wld->server_toqueue,
 			line_create( xstrdup( wld->auth_literal ), -1 ) );
+}
+
+
+
+extern void world_inactive_to_history( World *wld )
+{
+	linequeue_merge( wld->history_lines, wld->inactive_lines );
+}
+
+
+
+extern Linequeue *world_recall_history( World *wld, long count )
+{
+	Linequeue *queue;
+	Line *line, *recalled;
+	char *str;
+	long len;
+
+	/* Create our queue. */
+	queue = linequeue_create();
+
+	/* If we have no lines or count <= 0, return the empty queue. */
+	line = wld->history_lines->tail;
+	if( line == NULL || count < 1 )
+		return queue;
+
+	/* Seek back from the end of the history, to the first line we 
+	 * should display. */
+	for( ; line->prev != NULL && count > 1; count-- )
+		line = line->prev;
+
+	/* Copy the lines to our local queue. */
+	while( line != NULL )
+	{
+		/* Copy the string, without ASCII BELLs. */
+		str = xmalloc( line->len + 1 );
+		len = strcpy_nobell( str, line->str );
+
+		/* Resize it, if necessary. */
+		if( len != line->len )
+			str = xrealloc( str, len + 1 );
+
+		/* Make it into a proper line object... */
+		recalled = line_create( str, len );
+		recalled->flags = LINE_RECALLED;
+		recalled->time = line->time;
+		recalled->day = line->day;
+
+		/* And put it in our queue. */
+		linequeue_append( queue, recalled );
+		line = line->next;
+	}
+
+	/* All done, return the queue. */
+	return queue;
+}
+
+
+
+extern void world_rebind_port( World *wld )
+{
+	BindResult *result = wld->bindresult;
+	int i;
+
+	/* Binding to the port we're already bound to makes no sense. */
+	if( wld->requestedlistenport == wld->listenport )
+	{
+		world_msg_client( wld, "Already bound to port %li.",
+				wld->requestedlistenport );
+		return;
+	}
+
+	/* Announce what we're gonna do. */
+	world_msg_client( wld, "Binding to new port." );
+
+	/* Actually try and bind to the new port. */
+	world_bind_port( wld, wld->requestedlistenport );
+
+	/* Fatal error, inform the user and abort. */
+	if( result->fatal )
+	{
+		world_msg_client( wld, "%s", result->fatal );
+		world_msg_client( wld, "The option listenport has not been "
+				"changed." );
+		return;
+	}
+
+	/* Print the result for each address family. */
+	for( i = 0; i < result->af_count; i++ )
+		world_msg_client( wld, "  %s %s", result->af_success[i]
+				? " " : "!", result->af_msg[i] );
+
+	/* Report the conclusion. */
+	world_msg_client( wld, "%s", result->conclusion );
+
+	/* We need success on at least one af. */
+	if( result->af_success_count == 0 )
+	{
+		world_msg_client( wld, "The option listenport has not been "
+				"changed." );
+		return;
+	}
+
+	/* Yay, success! Get rid of old file descriptors. */
+	if( wld->listen_fds != NULL )
+		for( i = 0; wld->listen_fds[i] != -1; i++ )
+			close( wld->listen_fds[i] );
+
+	/* Install the new ones. */
+	free( wld->listen_fds );
+	wld->listen_fds = result->listen_fds;
+	result->listen_fds = NULL;
+
+	/* Update the listenport. */
+	wld->listenport = wld->requestedlistenport;
+
+	/* Announce succes. */
+	world_msg_client( wld, "The option listenport has been changed "
+			"to %li.", wld->listenport );
+}
+
+
+
+extern void world_schedule_reconnect( World *wld )
+{
+	long delay = ( wld->reconnect_delay + 500 ) / 1000;
+	char *whenstr;
+
+	/* This is only valid if we're currently not connected. */
+	if( wld->server_status != ST_DISCONNECTED )
+		return;
+
+	/* And we're not gonna do this if we're not supposed to. */
+	if( !wld->reconnect_enabled )
+		return;
+
+	/* Indicate we're waiting, and for when. */
+	wld->server_status = ST_RECONNECTWAIT;
+	wld->reconnect_at = current_time() + delay;
+
+	/* Construct a nice message for the user. */
+	if( delay == 0 )
+		whenstr = xstrdup( "immediately" );
+	else if( delay < 60 )
+		xasprintf( &whenstr, "in %li second%s", delay,
+				( delay == 1 ) ? "" : "s" );
+	else
+		xasprintf( &whenstr, "in %li minute%s and %i second%s",
+				delay / 60, ( delay / 60 == 1 ) ? "" : "s",
+				delay % 60, ( delay % 60 == 1 ) ? "" : "s" );
+
+	/* And send it off. */
+	world_msg_client( wld, "Will reconnect %s (at %s).", whenstr,
+			time_string( wld->reconnect_at, "%T" ) );
+	free( whenstr );
+
+	/* Increase the delay. */
+	wld->reconnect_delay *= 2;
+	wld->reconnect_delay += 4000 + rand() / (RAND_MAX / 3000);
+	if( wld->reconnect_delay > 3600000 )
+		wld->reconnect_delay = 3600000;
+
+	/* If we have to reconnect immediately, actually do it immediately. */
+	if( delay == 0 )
+		world_do_reconnect( wld );
+}
+
+
+
+extern void world_do_reconnect( World *wld )
+{
+	/* We'll only do a reconnect if we're waiting for reconnecting. */
+	if( wld->server_status != ST_RECONNECTWAIT )
+		return;
+
+	/* Start the connecting. */
+	wld->flags |= WLD_SERVERRESOLVE;
+
+	/* And announce what we did. */
+	linequeue_append( wld->client_toqueue,
+			line_create( xstrdup( "" ), -1 ) );
+	world_msg_client( wld, "Reconnecting now (at %s).", 
+			time_string( current_time(), FULL_TIME ) );
+}
+
+
+
+extern void world_decrease_reconnect_delay( World *wld )
+{
+	/* Decrease the delay. */
+	wld->reconnect_delay = wld->reconnect_delay / 2 - 1;
+	if( wld->reconnect_delay < 0 )
+		wld->reconnect_delay = 0;
 }

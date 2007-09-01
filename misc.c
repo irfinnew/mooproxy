@@ -16,7 +16,7 @@
 
 
 
-#define _GNU_SOURCE
+#define _GNU_SOURCE /* For vasprintf(). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -257,7 +257,9 @@ extern char *get_one_word( char **str )
 	if( *s == '\0' )
 		return NULL;
 
-	/* Look for the first non-whitespace character or \0 */
+	word = s;
+
+	/* Look for the first whitespace character or \0 */
 	while( !isspace( *s ) && *s != '\0' )
 		s++;
 
@@ -265,9 +267,34 @@ extern char *get_one_word( char **str )
 	if( *s != '\0' )
 		*s++ = '\0';
 
-	word = *str;
-
 	*str = s;
+	return word;
+}
+
+
+
+extern char *peek_one_word( char *str )
+{
+	char *s = str, *t, *word;
+
+	/* Find the first non-whitespace character */
+	while( isspace( *s ) )
+		s++;
+
+	/* If that's \0, we're out of words. */
+	if( *s == '\0' )
+		return NULL;
+
+	t = s;
+
+	/* Look for the first whitespace character or \0 */
+	while( !isspace( *s ) && *s != '\0' )
+		s++;
+
+	word = xmalloc( s - t + 1 );
+	memcpy( word, t, s - t );
+	word[s - t] = '\0';
+
 	return word;
 }
 
@@ -606,4 +633,62 @@ extern int attempt_createdir( char *dirname, char **err )
 	}
 
 	return 0;
+}
+
+
+
+extern long strcpy_noansi( char *dest, char *src )
+{
+	char *origdest = dest;
+
+	for(;;)
+	{
+		/* Normal character, copy and continue. */
+		if( (unsigned char) *src >= ' ' || *src == '\t' )
+		{
+			*dest++ = *src++;
+			continue;
+		}
+
+		/* Escape char, skip ANSI sequence. */
+		if( *src == 0x1B )
+		{
+			src++;
+			if( *src == '[' )
+				while( *src != '\0' && !isalpha( *src ) )
+					src++;
+
+			src++;
+			continue;
+		}
+
+		/* Nul, terminate. */
+		if( *src == '\0' )
+			break;
+
+		/* A character we don't deal with, skip over it. */
+		src++;
+	}
+	*dest = '\0';
+
+	return dest - origdest;
+}
+
+
+
+extern long strcpy_nobell( char *dest, char *src )
+{
+	char *origdest = dest;
+
+	/* Copy the string, skipping over ASCII BELL. */
+	while( *src )
+		if( *src != 0x07 )
+			*dest++ = *src++;
+		else
+			src++;
+
+	/* Nul-terminate. */
+	*dest = '\0';
+
+	return dest - origdest;
 }

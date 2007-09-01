@@ -75,6 +75,9 @@ static const struct
 	{ 0, "autologin",
 		&aset_autologin,
 		&aget_autologin },
+	{ 0, "autoreconnect",
+		&aset_autoreconnect,
+		&aget_autoreconnect },
 
 	{ 0, "commandstring",
 		&aset_commandstring,
@@ -82,6 +85,9 @@ static const struct
 	{ 0, "infostring",
 		&aset_infostring,
 		&aget_infostring },
+	{ 0, "newinfostring",
+		&aset_newinfostring,
+		&aget_newinfostring },
 
 	{ 0, "logging_enabled",
 		&aset_logging_enabled,
@@ -284,6 +290,14 @@ extern int world_load_config( World *wld, char **err )
 					"key `%s': %s",
 					wld->configfile, lineno, key, seterr );
 			free( seterr );
+			break;
+
+			case SET_KEY_OK:
+			break;
+
+			default:
+			xasprintf( err, "Huh? set_key_value( %s ) returned "
+					"weird value...", key );
 			break;
 		}
 

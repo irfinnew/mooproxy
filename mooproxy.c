@@ -105,7 +105,10 @@ int main( int argc, char **argv )
 	if( check_configdir_perms( &warn, &err ) != 0 )
 		die( world, err );
 	if( warn )
+	{
 		printf( "%s", warn );
+		free( warn );
+	}
 
 	/* Make sure this world isn't open yet. */
 	if( world_acquire_lock_file( world, &err ) )
@@ -123,18 +126,26 @@ int main( int argc, char **argv )
 
 	/* Bind to network port */
 	printf( "Binding to port.\n" );
-	world_bind_port( world );
+	world_bind_port( world, world->listenport );
+
+	/* Fatal error, abort. */
 	if( world->bindresult->fatal )
 		die( world, xstrdup( world->bindresult->fatal ) );
 
+	/* Print the result for each address family. */
 	for( i = 0; i < world->bindresult->af_count; i++ )
 		printf( "  %s %s\n", world->bindresult->af_success[i] ?
 				" " : "!", world->bindresult->af_msg[i] );
 
+	/* We need success on at least one af. */
 	if( world->bindresult->af_success_count == 0 )
 		die( world, xstrdup( world->bindresult->conclusion ) );
 
 	printf( "%s\n", world->bindresult->conclusion );
+
+	/* Move the listening FDs to the world. */
+	world->listen_fds = world->bindresult->listen_fds;
+	world->bindresult->listen_fds = NULL;
 
 	/* Stay on foreground, or daemonize. */
 	if( config.no_daemon )
@@ -242,7 +253,7 @@ static void mainloop( World *wld )
 			/* MCP. */
 			world_do_mcp_client( wld, line );
 		} else {
-			/* Regular lines are always 'activating'. */
+			/* Regular lines are always activating. */
 			wld->flags |= WLD_ACTIVATED;
 			linequeue_append( wld->server_toqueue, line );
 		}
@@ -297,11 +308,10 @@ static void mainloop( World *wld )
 /* Handle wld->flags. Clear each flag which has been handled. */
 static void handle_flags( World *wld )
 {
-	/* React to status flags */
 	if( wld->flags & WLD_ACTIVATED )
 	{
 		wld->flags &= ~WLD_ACTIVATED;
-		linequeue_merge( wld->history_lines, wld->inactive_lines );
+		world_inactive_to_history( wld );
 	}
 
 	if( current_time() < wld->client_last_notconnmsg + NOTCONN_MSGINTERVAL )
@@ -310,16 +320,16 @@ static void handle_flags( World *wld )
 	{
 		wld->flags &= ~WLD_NOTCONNECTED;
 
-		if( wld->server_status == ST_DISCONNECTED )
-			world_msg_client( wld, "Not connected to server!" );
-		else
+		if( wld->server_status == ST_RESOLVING ||
+				wld->server_status == ST_CONNECTING )
 			world_msg_client( wld, "Connection attempt (to %s) "
 				"still in progress!", wld->server_host );
+		else
+			world_msg_client( wld, "Not connected to server!" );
 
 		wld->client_last_notconnmsg = current_time();
 	}
 
-	/* React to action flags */
 	if( wld->flags & WLD_CLIENTQUIT )
 	{
 		wld->flags &= ~WLD_CLIENTQUIT;
@@ -330,6 +340,12 @@ static void handle_flags( World *wld )
 	{
 		wld->flags &= ~WLD_SERVERQUIT;
 		world_disconnect_server( wld );
+	}
+
+	if( wld->flags & WLD_RECONNECT )
+	{
+		wld->flags &= ~WLD_RECONNECT;
+		world_schedule_reconnect( wld );
 	}
 
 	if( wld->flags & WLD_SERVERRESOLVE )
@@ -348,6 +364,12 @@ static void handle_flags( World *wld )
 	{
 		wld->flags &= ~WLD_LOGLINKUPDATE;
 		world_log_link_update( wld );
+	}
+
+	if( wld->flags & WLD_REBINDPORT )
+	{
+		wld->flags &= ~WLD_REBINDPORT;
+		world_rebind_port( wld );
 	}
 }
 
@@ -370,7 +392,7 @@ static void print_help_text( void )
 	"\n"
 	"released under the GPL 2, report bugs to <marcelm@luon.net>\n"
 	"Mooproxy comes with ABSOLUTELY NO WARRANTY; "
-			"for details run mooproxy --license\n" );
+	"for details run mooproxy --license\n" );
 }
 
 

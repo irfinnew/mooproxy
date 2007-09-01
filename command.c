@@ -29,6 +29,7 @@
 #include "log.h"
 #include "daemon.h"
 #include "resolve.h"
+#include "recall.h"
 
 
 
@@ -48,6 +49,7 @@ static void command_version( World *, char *, char * );
 static void command_date( World *, char *, char * );
 static void command_uptime( World *, char *, char * );
 static void command_world( World *, char *, char * );
+static void command_debug( World *, char *, char * );
 
 
 
@@ -88,6 +90,7 @@ static const struct
 	{ "date",		command_date },
 	{ "uptime",		command_uptime },
 	{ "world",		command_world },
+	{ "debug",		command_debug },
 
 	{ NULL,			NULL }
 };
@@ -144,7 +147,8 @@ extern int world_do_command( World *wld, char *line )
 	if( backup )
 		args++;
 
-	/* Do the command! */
+	/* Do the command!
+	 * Note: it's OK to modify cmd and args in the command functions. */
 	(*command_db[idx].func)( wld, cmd, args );
 
 	free( line );
@@ -238,13 +242,13 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 	/* If we got here, there were no arguments. */
 
 	/* Unlogged data? Refuse. */
-	if( wld->log_queue->length + wld->log_current->length +
+	if( wld->log_queue->size + wld->log_current->size +
 			wld->log_bfull > 0 )
 	{
 		unlogged_lines = wld->log_queue->count +
-				wld->log_current->count + wld->log_bfull / 100;
-		unlogged_kb = ( wld->log_bfull + wld->log_queue->length +
-				wld->log_current->length ) / 1024.0;
+				wld->log_current->count + wld->log_bfull / 80;
+		unlogged_kb = ( wld->log_bfull + wld->log_queue->size +
+				wld->log_current->size ) / 1024.0;
 		world_msg_client( wld, "There are approximately %li lines "
 				"(%.1fkb) not yet logged to disk. ",
 				unlogged_lines, unlogged_kb );
@@ -280,8 +284,19 @@ static void command_connect( World *wld, char *cmd, char *args )
 	if( wld->server_status == ST_RESOLVING ||
 			wld->server_status == ST_CONNECTING )
 	{
-		world_msg_client( wld, "Connection attempt (to %s) already "
+		world_msg_client( wld, "Connection attempt to %s already "
 				"in progress.", wld->server_host );
+		return;
+	}
+
+	/* Or perhaps we're waiting to reconnect? */
+	if( wld->server_status == ST_RECONNECTWAIT )
+	{
+		world_msg_client( wld, "Resetting autoreconnect delay and "
+				"reconnecting immediately." );
+		wld->reconnect_delay = 0;
+		wld->reconnect_at = current_time();
+		world_do_reconnect( wld );
 		return;
 	}
 
@@ -307,7 +322,7 @@ static void command_connect( World *wld, char *cmd, char *args )
 			return;
 		}
 
-		xasprintf( &( wld->server_port ), "%li", port );
+		xasprintf( &wld->server_port, "%li", port );
 	}
 
 	/* If there's no server hostname at all, complain. */
@@ -330,11 +345,14 @@ static void command_connect( World *wld, char *cmd, char *args )
 
 	/* If there's no argument port, use the configured one. */
 	if( wld->server_port == NULL )
-		xasprintf( &( wld->server_port ), "%li", wld->dest_port );
+		xasprintf( &wld->server_port, "%li", wld->dest_port );
 
 	/* Inform the client */
 	world_msg_client( wld, "Connecting to %s, port %s",
 			wld->server_host, wld->server_port );
+
+	/* We don't reconnect if a new connection attempt fails. */
+	wld->reconnect_enabled = 0;
 
 	/* Start the resolving */
 	wld->flags |= WLD_SERVERRESOLVE;
@@ -365,11 +383,15 @@ static void command_disconnect( World *wld, char *cmd, char *args )
 		break;
 
 		case ST_CONNECTED:
+		wld->flags |= WLD_SERVERQUIT;
 		world_msg_client( wld, "Disconnected." );
 		break;
-	}
 
-	wld->flags |= WLD_SERVERQUIT;
+		case ST_RECONNECTWAIT:
+		wld->server_status = ST_DISCONNECTED;
+		wld->reconnect_delay = 0;
+		world_msg_client( wld, "Canceled reconnect." );
+	}
 }
 
 
@@ -462,7 +484,8 @@ static void command_setopt( World *wld, char *cmd, char *args )
 	char *key, *val, *err;
 	int ret;
 
-	key = args = trim_whitespace( args );
+	args = trim_whitespace( args );
+	key = args;
 
 	while( *args && !isspace( *args ) )
 		args++;
@@ -488,22 +511,37 @@ static void command_setopt( World *wld, char *cmd, char *args )
 	/* Key contains the key, val contains the value. Now try and set. */
 	ret = world_set_key( wld, key, val, &err );
 
+	/* The option doesn't exist. */
 	if( ret == SET_KEY_NF )
 	{
 		world_msg_client( wld, "No such option, %s.", key );
 		return;
 	}
 
+	/* We may not set the option. */
 	if( ret == SET_KEY_PERM )
 	{
 		world_msg_client( wld, "The option %s may not be set.", key );
 		return;
 	}
 
+	/* There was an error setting the option. */
 	if( ret == SET_KEY_BAD )
 	{
 		world_msg_client( wld, "%s", err );
 		free( err );
+		return;
+	}
+
+	/* The option was set succesfully, but we should shut up about it. */
+	if( ret == SET_KEY_OKSILENT )
+		return;
+
+	/* This shouldn't happen. */
+	if( ret != SET_KEY_OK )
+	{
+		world_msg_client( wld, "Huh? world_set_key( %s ) returned "
+				"weird %i!", key, ret );
 		return;
 	}
 
@@ -522,32 +560,68 @@ static void command_setopt( World *wld, char *cmd, char *args )
 
 
 
-/* Recalls the last <number> of lines from history. Arguments: <number> */
+/* Recalls lines. FIXME: better description. */
 static void command_recall( World *wld, char *cmd, char *args )
 {
-	int c = atoi( args );
-	int ilc, hlc;
+	Linequeue *queue;
+	long count;
+	char *str;
 
-	/* If there is no argument, or it's not a valid number (or it's zero),
-	 * report how many lines there are in the history, and how full
-	 * the history is. */
-	if( c == 0 )
+	trim_whitespace( args );
+
+	/* If there are no arguments, print terse usage. */
+	if( args[0] == '\0' )
 	{
-		world_msg_client( wld, "Use: recall <number of lines>" );
+		world_msg_client( wld, "Use: recall [from <when>] [to <when>]"
+				" [search <text>]" );
+		world_msg_client( wld, "Or:  recall last <number>"
+				" [search <text>]" );
+		world_msg_client( wld, "Or:  recall <number>" );
+		world_msg_client( wld, "See the README file for details." );
 		return;
 	}
 
-	ilc = c;
-	if( ilc > wld->inactive_lines->count )
-		ilc = wld->inactive_lines->count;
+	/* We want to include the inactive lines in our recall as well, so
+	 * we move them to the history right now. */
+	world_inactive_to_history( wld );
 
-	hlc = c - ilc;
-	if( hlc > wld->history_lines->count )
-		hlc = wld->history_lines->count;
+	/* Check if there are any lines to recall. */
+	if( wld->history_lines->count == 0 )
+	{
+		world_msg_client( wld, "There are no lines to recall." );
+		return;
+	}
 
-	world_msg_client( wld,  "Recall start (%i lines).", hlc + ilc );
-	world_recall_history_lines( wld, hlc, ilc );
-	world_msg_client( wld, "Recall end." );
+	/* Check if the arg string is all digits. */
+	for( str = args; isdigit( *str ); str++ )
+		continue;
+
+	/* It isn't, pass it on for more sophisticated processing. */
+	if( *str != '\0' )
+	{
+		world_recall_command( wld, args );
+		return;
+	}
+
+	/* Ok, it's all digits, do 'classic' recall. */
+	count = atol( args );
+	if( count <= 0 )
+	{
+		world_msg_client( wld, "Number of lines to recall should be "
+				"greater than zero." );
+		return;
+	}
+
+	/* Get the recalled lines. */
+	queue = world_recall_history( wld, count );
+
+	/* Announce the recall. */
+	world_msg_client( wld, "Recalling %lu line%s.", queue->count,
+			( queue->count == 1 ) ? "" : "s" );
+
+	/* Append the recalled lines, and clean up. */
+	linequeue_merge( wld->client_toqueue, queue );
+	linequeue_destroy( queue );
 }
 
 
@@ -598,4 +672,69 @@ static void command_world( World *wld, char *cmd, char *args )
 		return;
 
 	world_msg_client( wld, "The world is %s.", wld->name );
+}
+
+
+
+static void command_debug( World *wld, char *cmd, char *args )
+{
+	trim_whitespace( args );
+
+	if( strcasecmp( args, "stats" ) )
+	{
+		world_msg_client( wld, "Supported actions:" );
+		world_msg_client( wld, "  stats" );
+		return;
+	}
+
+	world_msg_client( wld, "Stats:" );
+
+	world_msg_client( wld, "  max_buffer_size: %li,  "
+		"max_logbuffer_size: %li,  LINE_BYTE_COST: %li",
+		wld->max_buffer_size,
+		wld->max_logbuffer_size,
+		( sizeof( Line ) + sizeof( void * ) * 2 + 8 ) );
+
+	world_msg_client( wld, "                       lines      bytes"
+		"       free     %%used" );
+
+	world_msg_client( wld, "  inactive_lines:  %9li  %9li   %8s  %7.3f%%",
+		wld->inactive_lines->count,
+		wld->inactive_lines->size,
+		"-",
+		wld->inactive_lines->size / 10.24 / wld->max_buffer_size );
+
+	world_msg_client( wld, "  history_lines :  %9li  %9li   %8s  %7.3f%%",
+		wld->history_lines->count,
+		wld->history_lines->size,
+		"-",
+		wld->history_lines->size / 10.24 / wld->max_buffer_size );
+
+	world_msg_client( wld, "  `---- +          %9li  %9li  %9li  %7.3f%%",
+		wld->inactive_lines->count + wld->history_lines->count,
+		wld->inactive_lines->size + wld->history_lines->size,
+		wld->max_buffer_size * 1024 - wld->inactive_lines->size
+		- wld->history_lines->size,
+		( wld->inactive_lines->size + wld->history_lines->size )
+		/ 10.24 / wld->max_buffer_size );
+
+	world_msg_client( wld, "  log_queue     :  %9li  %9li   %8s  %7.3f%%",
+		wld->log_queue->count,
+		wld->log_queue->size,
+		"-",
+		wld->log_queue->size / 10.24 / wld->max_logbuffer_size );
+
+	world_msg_client( wld, "  log_current   :  %9li  %9li   %8s  %7.3f%%",
+		wld->log_current->count,
+		wld->log_current->size,
+		"-",
+		wld->log_current->size / 10.24 / wld->max_logbuffer_size );
+
+	world_msg_client( wld, "  `---- +          %9li  %9li  %9li  %7.3f%%",
+		wld->log_queue->count + wld->log_current->count,
+		wld->log_queue->size + wld->log_current->size,
+		wld->max_logbuffer_size * 1024 - wld->log_queue->size
+		- wld->log_current->size,
+		( wld->log_queue->size + wld->log_current->size )
+		/ 10.24 / wld->max_logbuffer_size );
 }

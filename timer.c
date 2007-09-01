@@ -43,7 +43,7 @@ extern void world_timer_init( World *wld, time_t t )
 	wld->timer_prev_sec = ts->tm_sec;
 	wld->timer_prev_min = ts->tm_min;
 	wld->timer_prev_hour = ts->tm_hour;
-	wld->timer_prev_day = ts->tm_mday;
+	wld->timer_prev_day = ts->tm_year * 366 + ts->tm_yday;
 	wld->timer_prev_mon = ts->tm_mon;
 	wld->timer_prev_year = ts->tm_year;
 }
@@ -69,7 +69,7 @@ extern void world_timer_tick( World *wld, time_t t )
 		tick_hour( wld, t );
 
 	/* Days */
-	if( wld->timer_prev_day != ts->tm_mday )
+	if( wld->timer_prev_day != ts->tm_year * 366 + ts->tm_yday )
 		tick_day( wld, t, ts->tm_year * 366 + ts->tm_yday );
 
 	/* Months */
@@ -83,7 +83,7 @@ extern void world_timer_tick( World *wld, time_t t )
 	wld->timer_prev_sec = ts->tm_sec;
 	wld->timer_prev_min = ts->tm_min;
 	wld->timer_prev_hour = ts->tm_hour;
-	wld->timer_prev_day = ts->tm_mday;
+	wld->timer_prev_day = ts->tm_year * 366 + ts->tm_yday;
 	wld->timer_prev_mon = ts->tm_mon;
 	wld->timer_prev_year = ts->tm_year;
 }
@@ -94,6 +94,10 @@ extern void world_timer_tick( World *wld, time_t t )
 static void tick_second( World *wld, time_t t )
 {
 	set_current_time( t );
+
+	/* If we're waiting for a reconnect, and now is the time, do it. */
+	if( wld->server_status == ST_RECONNECTWAIT && wld->reconnect_at <= t )
+		world_do_reconnect( wld );
 }
 
 
@@ -104,6 +108,10 @@ static void tick_minute( World *wld, time_t t )
 	/* Try and sync written logdata to disk. The sooner it hits the
 	 * actual disk, the better. */
 	world_sync_logdata( wld );
+
+	/* If we're connected, decrease the reconnect delay every minute. */
+	if( wld->reconnect_delay != 0 && wld->server_status == ST_CONNECTED )
+		world_decrease_reconnect_delay( wld );
 }
 
 

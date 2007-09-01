@@ -34,7 +34,6 @@
 
 
 static void update_one_link( World *wld, char *link, time_t timestamp );
-static long strcpy_noansi( char *dest, char *src );
 static void log_init( World *, time_t );
 static void log_deinit( World * );
 static void log_write( World * );
@@ -52,12 +51,12 @@ extern void world_log_line( World *wld, Line *line )
 	if( wld->log_timestamps )
 	{
 		/* First, make sure the timestamp is up to date. */
-		if( wld->log_currenttime != current_time() )
+		if( wld->log_currenttime != line->time )
 		{
 			free( wld->log_currenttimestr );
 			wld->log_currenttimestr = xstrdup( time_string(
-				current_time(), LOG_TIMESTAMP_FORMAT ) );
-			wld->log_currenttime = current_time();
+				line->time, LOG_TIMESTAMP_FORMAT ) );
+			wld->log_currenttime = line->time;
 		}
 
 		/* Duplicate the line, but with ANSI stripped,
@@ -271,48 +270,6 @@ static void update_one_link( World *wld, char *linkname, time_t timestamp )
 
 
 
-static long strcpy_noansi( char *dest, char *src )
-{
-	char *origdest = dest;
-	int escape = 0;
-
-	/* State machine:
-	 * escape = 0   Processing normal characters.
-	 * escape = 1   Seen ^[, expect [
-	 * escape = 2   Seen ^[[, process until alpha char */
-
-	for( ; *src != '\0'; src ++ )
-	{
-		switch( escape )
-		{
-			case 0:
-			if( *src == 0x1B )
-				escape = 1;
-			/* A normal character. Copy it. */
-			if( (unsigned char) *src >= ' ' )
-				*dest++ = *src;
-			break;
-
-			case 1:
-			if( *src == '[' )
-				escape = 2;
-			else
-				escape = 0;
-			break;
-
-			case 2:
-			if( isalpha( *src ) )
-				escape = 0;
-			break;
-		}
-	}
-	*dest = '\0';
-
-	return dest - origdest;
-}
-
-
-
 static void log_init( World *wld, time_t timestamp )
 {
 	char *file = NULL, *errstr = NULL, *prev = NULL;
@@ -474,7 +431,7 @@ static void nag_client_error( World *wld, char *msg, char *file, char *err )
 	line = world_msg_client( wld, "LOGGING FAILED! Approximately %lu lines"
 		" not yet logged (%.1f%% of logbuffer).", wld->log_bfull / 100 +
 		wld->log_queue->count + wld->log_current->count, 
-		( wld->log_queue->length + wld->log_current->length )
+		( wld->log_queue->size + wld->log_current->size )
 		/ 10.24 / wld->max_logbuffer_size );
 	line->flags |= buffer_line;
 

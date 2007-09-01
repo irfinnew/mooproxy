@@ -41,11 +41,25 @@ static int get_bool( int, char ** );
 extern int aset_listenport( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	/* If it's set from the user, we're already bound to a port.
-	 * And for now, we don't rebind while running. */
+	int ret;
+
+	/* We're called from user. Set the requested port, flag for rebind,
+	 * and return silently if everything went ok. */
 	if( src == ASRC_USER )
-		return SET_KEY_PERM;
+	{
+		ret = set_long_ranged( value, &wld->requestedlistenport,
+				err, 1, 65535, "Port numbers" );
+
+		/* Something went wrong, just return that. */
+		if( ret != SET_KEY_OK )
+			return ret;
+
+		/* We got SET_KEY_OK, try and bind on this new port. */
+		wld->flags |= WLD_REBINDPORT;
+		return SET_KEY_OKSILENT;
+	}
  
+	/* We're called from configfile, just set the thing as usual. */
 	return set_long_ranged( value, &wld->listenport, err, 1, 65535,
 			"Port numbers" );
 }
@@ -144,6 +158,14 @@ extern int aset_autologin( World *wld, char *key, char *value,
 
 
 
+extern int aset_autoreconnect( World *wld, char *key, char *value,
+		int src, char **err )
+{
+	return set_bool( value, &wld->autoreconnect, err );
+}
+
+
+
 extern int aset_commandstring( World *wld, char *key, char *value,
 		int src, char **err )
 {
@@ -159,6 +181,17 @@ extern int aset_infostring( World *wld, char *key, char *value,
 	wld->infostring_parsed = parse_ansi_tags( value );
 
 	return set_string( value, &wld->infostring, err );
+}
+
+
+
+extern int aset_newinfostring( World *wld, char *key, char *value,
+		int src, char **err )
+{
+	free( wld->newinfostring_parsed );
+	wld->newinfostring_parsed = parse_ansi_tags( value );
+
+	return set_string( value, &wld->newinfostring, err );
 }
 
 
@@ -185,8 +218,8 @@ extern int aset_context_on_connect( World *wld, char *key, char *value,
 extern int aset_max_buffer_size( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_long_ranged( value, &wld->max_buffer_size, err, 0,
-			LONG_MAX / 1024, "Max buffer size" );
+	return set_long_ranged( value, &wld->max_buffer_size, err, 8,
+			LONG_MAX / 1024 - 2, "Max buffer size" );
 }
 
 
@@ -194,7 +227,7 @@ extern int aset_max_buffer_size( World *wld, char *key, char *value,
 extern int aset_max_logbuffer_size( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_long_ranged( value, &wld->max_logbuffer_size, err, 0,
+	return set_long_ranged( value, &wld->max_logbuffer_size, err, 8,
 			LONG_MAX / 1024, "Max logbuffer size" );
 }
 
@@ -259,6 +292,13 @@ extern int aget_autologin( World *wld, char *key, char **value, int src )
 
 
 
+extern int aget_autoreconnect( World *wld, char *key, char **value, int src )
+{
+	return get_bool( wld->autoreconnect, value );
+}
+
+
+
 extern int aget_commandstring( World *wld, char *key, char **value, int src )
 {
 	return get_string( wld->commandstring, value );
@@ -269,6 +309,13 @@ extern int aget_commandstring( World *wld, char *key, char **value, int src )
 extern int aget_infostring( World *wld, char *key, char **value, int src )
 {
 	return get_string( wld->infostring, value );
+}
+
+
+
+extern int aget_newinfostring( World *wld, char *key, char **value, int src )
+{
+	return get_string( wld->newinfostring, value );
 }
 
 

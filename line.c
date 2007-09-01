@@ -86,7 +86,7 @@ extern Linequeue *linequeue_create( void )
 	queue->head= NULL;
 	queue->tail = NULL;
 	queue->count = 0;
-	queue->length = 0;
+	queue->size = 0;
 
 	return queue;
 }
@@ -115,7 +115,7 @@ extern void linequeue_clear( Linequeue *queue )
 	queue->head = NULL;
 	queue->tail = NULL;
 	queue->count = 0;
-	queue->length = 0;
+	queue->size = 0;
 }
 
 
@@ -143,7 +143,7 @@ extern void linequeue_append( Linequeue *queue, Line *line )
 	queue->tail = line;
 
 	queue->count++;
-	queue->length += line->len + LINE_BYTE_COST;
+	queue->size += line->len + LINE_BYTE_COST;
 }
 
 
@@ -168,7 +168,7 @@ extern Line* linequeue_pop( Linequeue *queue )
 		queue->head->prev = NULL;
 
 	queue->count--;
-	queue->length -= line->len + LINE_BYTE_COST;
+	queue->size -= line->len + LINE_BYTE_COST;
 
 	return line;
 }
@@ -195,7 +195,7 @@ extern Line* linequeue_popend( Linequeue *queue )
 		queue->tail->next = NULL;
 
 	queue->count--;
-	queue->length -= line->len + LINE_BYTE_COST;
+	queue->size -= line->len + LINE_BYTE_COST;
 
 	return line;
 }
@@ -222,11 +222,11 @@ extern void linequeue_merge( Linequeue *one, Linequeue *two )
 	}
 
 	one->count += two->count;
-	one->length += two->length;
+	one->size += two->size;
 
 	/* Two is now empty. */
 	two->head = NULL;
 	two->tail = NULL;
 	two->count = 0;
-	two->length = 0;
+	two->size = 0;
 }
