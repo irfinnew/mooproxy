@@ -2,3 +2,11 @@
 
    Can't reproduce. More info, ways to reproduce, backtraces etc
    are greatly appreciated.
+   (reported: Michiel ? / Paul van Tilburg)
+
+ * Resolver slave can fail after libc upgrade.
+
+   The forked child will inherit the libc of the parent process, but
+   libnss_*.so are loaded dynamically, so their versions might not
+   match the libc version mooproxy was started with.
+   (reported: Bram Senders)
