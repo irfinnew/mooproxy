@@ -133,7 +133,7 @@ extern void world_handle_resolver_fd( World *wld )
 	addresses = xrealloc( addresses, len + 1 );
 	addresses[len++] = '\0';
 
-	/* The first character should say whether the lookup was succesful
+	/* The first character should say whether the lookup was successful
 	 * or not. */
 	switch( addresses[0] )
 	{

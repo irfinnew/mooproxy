@@ -59,7 +59,7 @@ static char *help_text[] = {
 "  quit                       Disconnect from mooproxy.",
 "  shutdown [-f]              Shut down mooproxy. ",
 "  connect [<host> [<port>]]  Connect to the server. Arguments",
-"                             override configuration, if given.",
+"                             override configuration.",
 "  disconnect                 Disconnect from the server.",
 "  listopts                   List the available option names.",
 "  get <option>               Query the value of one option.",
@@ -533,7 +533,7 @@ static void command_setopt( World *wld, char *cmd, char *args )
 		return;
 	}
 
-	/* The option was set succesfully, but we should shut up about it. */
+	/* The option was set successfully, but we should shut up about it. */
 	if( ret == SET_KEY_OKSILENT )
 		return;
 
@@ -545,13 +545,13 @@ static void command_setopt( World *wld, char *cmd, char *args )
 		return;
 	}
 
-	/* ret == SET_KEY_OK, the key is set succesfully */
+	/* ret == SET_KEY_OK, the key is set successfully */
 	if( world_get_key( wld, key, &val ) == GET_KEY_OK )
 	{
 		world_msg_client( wld, "The option %s is now %s.", key, val );
 		free( val );
 	} else {
-		/* The key was succesfully set, but we could not query the
+		/* The key was successfully set, but we could not query the
 		 * new value. Either the option is hidden or it may not be
 		 * read. We just report it has been changed. */
 		world_msg_client( wld, "The option %s has been changed.", key );

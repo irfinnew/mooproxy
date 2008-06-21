@@ -749,7 +749,7 @@ extern void world_rebind_port( World *wld )
 	/* Update the listenport. */
 	wld->listenport = wld->requestedlistenport;
 
-	/* Announce succes. */
+	/* Announce success. */
 	world_msg_client( wld, "The option listenport has been changed "
 			"to %li.", wld->listenport );
 }

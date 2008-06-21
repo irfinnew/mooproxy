@@ -424,9 +424,9 @@ static int parse_keyword_search( World *wld, Params *params )
 
 
 
-/* Parse a timespec. Returns true on error, false on succes.
+/* Parse a timespec. Returns true on error, false on success.
  * On error, params->error may or may not be set.
- * On succes, params->when or params->lines will be modified. */
+ * On success, params->when or params->lines will be modified. */
 static int parse_when( World *wld, Params *params, int lma )
 {
 	if( params->word[0] == '-' || params->word[0] == '+' )
@@ -437,9 +437,9 @@ static int parse_when( World *wld, Params *params, int lma )
 
 
 
-/* Parse a relative timespec. Returns true on error, false on succes.
+/* Parse a relative timespec. Returns true on error, false on success.
  * On error, params->error may or may not be set.
- * On succes, params->when or params->lines will be modified.
+ * On success, params->when or params->lines will be modified.
  * lma idicates whether or not the 'lines' modifier is allowed now. */
 static int parse_when_relative( World *wld, Params *params, int lma )
 {
@@ -540,9 +540,9 @@ static int parse_when_relative( World *wld, Params *params, int lma )
 
 
 
-/* Parse an absolute timespec. Returns true on error, false on succes.
+/* Parse an absolute timespec. Returns true on error, false on success.
  * On error, params->error may or may not be set.
- * On succes, params->when or params->lines will be modified. */
+ * On success, params->when or params->lines will be modified. */
 static int parse_when_absolute( World *wld, Params *params )
 {
 	struct tm *tm;
@@ -641,7 +641,7 @@ static int parse_when_absolute( World *wld, Params *params )
 
 
 /* Parse an absolute date, [YY/]MM/DD.
- * Return true on error, false on succes.
+ * Return true on error, false on success.
  * On success, params->when is modified. */
 static int parse_when_absdate( World *wld, Params *params )
 {
@@ -694,7 +694,7 @@ static int parse_when_absdate( World *wld, Params *params )
 
 
 /* Parse an absolute time, HH:MM[:SS].
- * Return true on error, false on succes.
+ * Return true on error, false on success.
  * On success, params->when is modified. */
 static int parse_when_abstime( World *wld, Params *params )
 {

@@ -384,7 +384,7 @@ extern int true_or_false( const char *str )
 	if( !strcasecmp( str, "0" ) )
 		return 0;
 
-	return( -1 );
+	return -1;
 }
 
 

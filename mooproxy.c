@@ -137,7 +137,7 @@ int main( int argc, char **argv )
 		printf( "  %s %s\n", world->bindresult->af_success[i] ?
 				" " : "!", world->bindresult->af_msg[i] );
 
-	/* We need success on at least one af. */
+	/* We need success on at least one address family. */
 	if( world->bindresult->af_success_count == 0 )
 		die( world, xstrdup( world->bindresult->conclusion ) );
 
@@ -152,7 +152,7 @@ int main( int argc, char **argv )
 	{
 		pid = getpid();
 		world_write_pid_to_file( world, pid );
-		printf( "Mooproxy succesfully started. Staying in "
+		printf( "Mooproxy successfully started. Staying in "
 				"foreground (pid %li).\n", (long) pid );
 	} else {
 		pid = daemonize( &err );
@@ -164,7 +164,7 @@ int main( int argc, char **argv )
 		if( pid > 0 )
 		{
 			world_write_pid_to_file( world, pid );
-			printf( "Mooproxy succesfully started in PID %li.\n",
+			printf( "Mooproxy successfully started in PID %li.\n",
 					(long) pid );
 			launch_parent_exit( EXIT_SUCCESS );
 		}
@@ -390,7 +390,7 @@ static void print_help_text( void )
 	"  -d, --no-daemon   forces mooproxy to stay in the foreground\n"
 	"  -m, --md5crypt    prompts for a string to create an md5 hash of\n"
 	"\n"
-	"released under the GPL 2, report bugs to <marcelm@luon.net>\n"
+	"Released under the GPL v2, report bugs to <marcelm@luon.net>\n"
 	"Mooproxy comes with ABSOLUTELY NO WARRANTY; "
 	"for details run mooproxy --license\n" );
 }

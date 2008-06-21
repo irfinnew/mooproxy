@@ -48,7 +48,7 @@ extern void launch_parent_exit( int exitval );
 
 /* Attempt to lock this worlds lockfile (creating it if it doesn't exist).
  * If the file could not be created or locked, err will contain an error
- * message, and non-zero is returned. On succes, the lockfile FD is placed
+ * message, and non-zero is returned. On success, the lockfile FD is placed
  * in world->lockfile_fd, and zero is returned. */
 extern int world_acquire_lock_file( World *wld, char **err );
 

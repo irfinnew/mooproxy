@@ -124,7 +124,7 @@ extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q );
  *            If false: appends UNIX newlines to written lines.
  *   errnum:  Modified to contain error code on error.
  * Return value:
- *   0 on succes (everything in buffer and queue was written without error)
+ *   0 on success (everything in buffer and queue was written without error)
  *   1 on congestion (the FD could take no more, not everything was written)
  *   2 on error (errnum is set) */
 extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
@@ -136,7 +136,7 @@ extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
 extern char *parse_ansi_tags( char *str );
 
 /* Attempts to create dirname (but not parent dirs).
- * On succes, return 0.
+ * On success, return 0.
  * On failure, return non-zero, and put error in err (err should be freed).
  * Err will contain just a brief error message (often strerror output),
  * more formatting should be done by the caller. */

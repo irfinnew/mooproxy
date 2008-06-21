@@ -109,7 +109,7 @@ extern void world_flush_client_logqueue( World *wld )
 		{
 			Line *line;
 
-			line = world_msg_client( wld, "Logging resumed succes"
+			line = world_msg_client( wld, "Logging resumed success"
 				"fully. %li lines have been irretrievably "
 				"lost.", wld->dropped_loggable_lines );
 

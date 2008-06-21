@@ -57,10 +57,10 @@ extern void prompt_to_md5hash( void )
 
 	printf( "\n" );
 
-	/* No typo's allowed! */
+	/* No typos allowed! */
 	if( strcmp( password, password2 ) )
 	{
-		printf( "The given strings are not equal, aborting.\n" );
+		printf( "The supplied strings are not equal, aborting.\n" );
 		free( password );
 		free( password2 );
 		return;
@@ -131,7 +131,7 @@ char *prompt_for_password( char *msg )
 	/* Write the prompt. */
 	write( 0, msg, strlen( msg ) );
 
-	/* Read the password (and bail out if something fails ). */
+	/* Read the password (and bail out if something fails). */
 	n = read( 0, password, NET_MAXAUTHLEN );
 	if( n < 0 )
 	{

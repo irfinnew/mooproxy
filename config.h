@@ -69,7 +69,7 @@ struct _Config
 extern void parse_command_line_options( int argc, char **argv, Config *config );
 
 /* Attempts to load the configuration file for this world.
- * On succes, returns 0.
+ * On success, returns 0.
  * On failure, returns non-zero and sets err to point to an error string.
  * The error string should be free()d. */
 extern int world_load_config( World *wld, char **err );

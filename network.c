@@ -282,7 +282,7 @@ extern void world_bind_port( World *wld, long port )
 			goto fail_this_af;
 
 		/* Try IPV6_V6ONLY, so IPv4 won't get mapped onto IPv6 */
-		#if defined( PF_INET6 ) && defined( IPV6_V6ONLY )
+		#if defined( AF_INET6 ) && defined( IPV6_V6ONLY )
 		if( ai->ai_family == AF_INET6 && setsockopt( fd, IPPROTO_IPV6,
 				IPV6_V6ONLY, &yes, sizeof( yes ) ) < 0 )
 			goto fail_this_af;
@@ -471,7 +471,7 @@ static void handle_connecting_fd( World *wld )
 	/* Flag and announce connectedness. */
 	wld->server_status = ST_CONNECTED;
 
-	world_msg_client( wld, "      Succes." );
+	world_msg_client( wld, "      Success." );
 	world_msg_client( wld, "Connected to world %s.", wld->name );
 
 	/* Inform the MCP layer that we just connected to the server. */

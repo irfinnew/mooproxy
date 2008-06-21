@@ -149,7 +149,7 @@ extern int world_acquire_lock_file( World *wld, char **err )
 			LOCKSDIR, wld->name );
 
 	/* Open lockfile. Should be non-blocking; read and write actions
-	 * are best-efford. */
+	 * are best-effort. */
 	fd = open( lockfile, O_RDWR | O_CREAT | O_NONBLOCK, S_IRUSR | S_IWUSR );
 	if( fd < 0 )
 	{

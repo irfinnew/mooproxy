@@ -59,9 +59,9 @@ struct _BindResult
 
 	/* Number of address families we tried to bind for */
 	int af_count;
-	/* Number of address families we succesfully bound for */
+	/* Number of address families we successfully bound for */
 	int af_success_count;
-	/* Array of booleans indicating each AF's succes or failure */
+	/* Array of booleans indicating each AF's success or failure */
 	int *af_success;
 	/* Human-readable message for each AF */
 	char **af_msg;

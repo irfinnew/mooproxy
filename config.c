@@ -323,7 +323,7 @@ extern int world_load_config( World *wld, char **err )
 
 /* Read file (with max length CONFIG_MAXLENGTH KB) in a block of memory,
  * and put the address of this block in contents. The block should be freed.
- * On succes, return 0.
+ * On success, return 0.
  * On error, no block is places in contents, an error is placed in err, and
  * 1 is returned. */
 static int read_configfile( char *file, char **contentp, char **err )
