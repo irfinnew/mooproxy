@@ -161,7 +161,17 @@ extern int aset_autologin( World *wld, char *key, char *value,
 extern int aset_autoreconnect( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_bool( value, &wld->autoreconnect, err );
+	int ret;
+
+	ret = set_bool( value, &wld->autoreconnect, err );
+
+	/* The reconnect functions actually look at reconnect_enabled, which
+	 * gets set in other ways. But if the user sets autoreconnect, we want
+	 * that to take effect immediately. */
+	if( ret == SET_KEY_OK )
+		wld->reconnect_enabled = wld->autoreconnect;
+
+	return ret;
 }
 
 
