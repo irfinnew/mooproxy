@@ -1,6 +1,6 @@
 Items considered for next release:
  * Print "Use /help" message on first connect after start?
- * Improve /help, allow /help <cmd>.
+ * Improve /help, allow /help <cmd>, /help <option>, /help commands, /help options.
  * Improve /listopts output.
  * Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable [from: bram]
  * More features for /recall (non-re, case sensitive, count, limit, etc)
@@ -13,8 +13,10 @@ Items considered for next release:
  * Document autoreconnect behaviour
  * Delay on authentication failure?
  * Fix /recall to -10 lines
- * Display the commandstring on client login.
+ * Display the commandstring on client login [from: christian]
  * A command to send non-activating input to the MOO server.
+ * Release date in /version output.
+ * Remove /get, /set.
  
 
 Probably's:
