@@ -13,6 +13,8 @@ Items considered for next release:
  * Document autoreconnect behaviour
  * Delay on authentication failure?
  * Fix /recall to -10 lines
+ * Display the commandstring on client login.
+ * A command to send non-activating input to the MOO server.
  
 
 Probably's:
