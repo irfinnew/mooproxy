@@ -16,6 +16,7 @@ Items considered for next release:
  * A command to send non-activating input to the MOO server.
  * Rename some options?
  * Improve setting of auth_md5hash.
+ * Change authstring to just mean the password instead of the entire connection string. May require additional options...
  
 
 Probably's:
@@ -37,8 +38,7 @@ Maybe's:
  * Fix panic.c not to use sprintf()?
  * Add option to ignore lockfile ?
  * Implement some MCP userlist in mooproxy?
- * Make prefixes for infomessages and checkpoint messages different?
- * Print date/time on mooproxy messages?
+ * Print date/time on mooproxy messages? Maybe defined a %-sequence for date/time?
  * Add SSL support (both ways)?
  * Tune Latency with TCP_NODELAY ?
  * Add option to /connect to enable autoreconnect from the start?
