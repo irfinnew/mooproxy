@@ -1,13 +1,12 @@
 Items considered for next release:
  * Print "Use /help" message on first connect after start?
- * Improve /help, allow /help <cmd>, /help <option>, /help commands, /help options.
  * Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable [from: bram]
  * More features for /recall (non-re, case sensitive, count, limit, etc)
  * Better RE support for /recall
  * Throttle client read() when server_txqueue is too full. (and vice versa)
  * /lock command to disallow changing options / connecting to strange servers?
  * Fix some FIXMEs.
- * Release data at mooproxy --version and /version
+ * Release date at mooproxy --version and /version
  * Live migration...?
  * Document autoreconnect behaviour
  * Delay on authentication failure?
@@ -17,6 +16,7 @@ Items considered for next release:
  * Rename some options?
  * Improve setting of auth_md5hash.
  * Change authstring to just mean the password instead of the entire connection string. May require additional options...
+ * Fix the remaining command/setting descriptions.
  
 
 Probably's:

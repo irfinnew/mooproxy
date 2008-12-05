@@ -104,6 +104,13 @@ extern int world_set_key( World *wld, char *key, char *value, char **err );
  *   GET_KEY_PERM:  Key may not be read. */
 extern int world_get_key( World *wld, char *key, char **value );
 
+/* Like world_get_key(), but gets descriptions of this setting.
+ * This function won't return GET_KEY_PERM.
+ * *shortdesc and *longdesc should not be free()d.
+ * *longdesc will be NULL if there is no long description available. */
+extern int world_desc_key( World *wld, char *key,
+		char **shortdesc, char **longdesc );
+
 /* This function attempts to create the configuration dirs for mooproxy.
  * On failure, it returns non-zero and places the error in err (the string
  * should be free()d). */

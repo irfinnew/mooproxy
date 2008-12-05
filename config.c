@@ -57,61 +57,58 @@ static const struct
 	char *keyname;
 	int (*setter)( World *, char *, char *, int, char ** );
 	int (*getter)( World *, char *, char **, int );
-} key_db[] =
+	char *shortdesc;
+	char *longdesc;
+}
+key_db[] =
 {
-	{ 0, "listenport",
-		&aset_listenport,
-		&aget_listenport },
-	{ 0, "auth_md5hash",
-		&aset_auth_md5hash,
-		&aget_auth_md5hash },
+	{ 0, "listenport", aset_listenport, aget_listenport,
+		"The network port mooproxy listens on.",
+		NULL },
+	{ 0, "auth_md5hash", aset_auth_md5hash, aget_auth_md5hash,
+		"The \"password\" a client needs to connect.",
+		"FIXME" },
+	{ 0, "host", aset_dest_host, aget_dest_host,
+		"The hostname of the server to connect to.",
+		NULL },
+	{ 0, "port", aset_dest_port, aget_dest_port,
+		"The port to connect to on the server.",
+		NULL },
+	{ 0, "autologin", aset_autologin, aget_autologin,
+		"Log in automatically after connecting.",
+		"FIXME" },
+	{ 0, "autoreconnect", aset_autoreconnect, aget_autoreconnect,
+		"Reconnect when the server disconnects us.",
+		"FIXME" },
+	{ 0, "commandstring", aset_commandstring, aget_commandstring,
+		"How mooproxy recognizes commands.",
+		"FIXME" },
+	{ 0, "infostring", aset_infostring, aget_infostring,
+		"Prefix for all messages from mooproxy.",
+		"FIXME" },
+	{ 0, "newinfostring", aset_newinfostring, aget_newinfostring,
+		"Prefix for history/new lines messages.",
+		"FIXME" },
+	{ 0, "logging_enabled", aset_logging_enabled, aget_logging_enabled,
+		"Log everything from the server.",
+		"FIXME" },
+	{ 0, "context_on_connect", aset_context_on_connect, aget_context_on_connect,
+		"Context lines to provide when you connect.",
+		"FIXME" },
+	{ 0, "max_buffer_size", aset_max_buffer_size, aget_max_buffer_size,
+		"Max memory to spend on new/history lines.",
+		"FIXME" },
+	{ 0, "max_logbuffer_size", aset_max_logbuffer_size, aget_max_logbuffer_size,
+		"Max memory to spend on unlogged lines.",
+		"FIXME" },
+	{ 0, "strict_commands", aset_strict_commands, aget_strict_commands,
+		"Ignore invalid commands.",
+		"FIXME" },
+	{ 0, "timestamped_logs", aset_timestamped_logs, aget_timestamped_logs,
+		"Prefix every logged line by a timestamp.",
+		"FIXME" },
 
-	{ 0, "host",
-		&aset_dest_host,
-		&aget_dest_host },
-	{ 0, "port",
-		&aset_dest_port,
-		&aget_dest_port },
-	{ 0, "autologin",
-		&aset_autologin,
-		&aget_autologin },
-	{ 0, "autoreconnect",
-		&aset_autoreconnect,
-		&aget_autoreconnect },
-
-	{ 0, "commandstring",
-		&aset_commandstring,
-		&aget_commandstring },
-	{ 0, "infostring",
-		&aset_infostring,
-		&aget_infostring },
-	{ 0, "newinfostring",
-		&aset_newinfostring,
-		&aget_newinfostring },
-
-	{ 0, "logging_enabled",
-		&aset_logging_enabled,
-		&aget_logging_enabled },
-
-	{ 0, "context_on_connect",
-		&aset_context_on_connect,
-		&aget_context_on_connect },
-	{ 0, "max_buffer_size",
-		&aset_max_buffer_size,
-		&aget_max_buffer_size },
-	{ 0, "max_logbuffer_size",
-		&aset_max_logbuffer_size,
-		&aget_max_logbuffer_size },
-
-	{ 0, "strict_commands",
-		&aset_strict_commands,
-		&aget_strict_commands },
-
-	{ 0, "timestamped_logs",
-		&aset_timestamped_logs,
-		&aget_timestamped_logs },
-
-	{ 0, NULL, NULL, NULL }
+	{ 0, NULL, NULL, NULL, NULL, NULL }
 };
 
 /* Command line options. */
@@ -413,6 +410,27 @@ extern int world_set_key( World *wld, char *key, char *value, char **err )
 extern int world_get_key( World *wld, char *key, char **value )
 {
 	return get_key_internal( wld, key, value, ASRC_USER );
+}
+
+
+
+extern int world_desc_key( World *wld, char *key,
+		char **shortdesc, char **longdesc )
+{
+	int i;
+
+	for( i = 0; key_db[i].keyname; i++ )
+		if( !strcmp( key, key_db[i].keyname ) )
+		{
+			if( key_db[i].hidden )
+				return GET_KEY_NF;
+
+			*shortdesc = key_db[i].shortdesc;
+			*longdesc = key_db[i].longdesc;
+			return GET_KEY_OK;
+		}
+
+	return GET_KEY_NF;
 }
 
 

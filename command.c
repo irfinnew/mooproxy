@@ -33,11 +33,15 @@
 
 
 
-static int command_index( char *cmd );
-static int refuse_arguments( World *wld, char *cmd, char *args );
 static int try_command( World *wld, char *cmd, char *args );
 static int try_getoption( World *wld, char *key, char *args );
 static int try_setoption( World *wld, char *key, char *args );
+static int command_index( char *cmd );
+static int refuse_arguments( World *wld, char *cmd, char *args );
+static void show_longdesc( World *wld, char *desc );
+static void show_help( World *wld );
+static int show_command_help( World *wld, char *cmd );
+static int show_setting_help( World *wld, char *key );
 
 static void command_help( World *wld, char *cmd, char *args );
 static void command_quit( World *wld, char *cmd, char *args );
@@ -53,41 +57,66 @@ static void command_world( World *wld, char *cmd, char *args );
 
 
 
-static char *help_text[] = {
-"Commands:",
-"  help                       Show this help message.",
-"  quit                       Disconnect from mooproxy.",
-"  shutdown [-f]              Shut down mooproxy. ",
-"  connect [<host> [<port>]]  Connect to the server. Arguments",
-"                             override configuration.",
-"  disconnect                 Disconnect from the server.",
-"  listopts                   List the available option names.",
-"  recall <count>             Recall <count> lines.",
-"  version                    Show the mooproxy version.",
-"  date                       Show the current time and date.",
-"  uptime                     Show mooproxy's starting time and uptime.",
-"  world                      Show the name of the current world.",
-NULL
-};
-
 static const struct
 {
-	char *command;
+	char *cmd;
 	void (*func)( World *, char *, char * );
-} command_db[] = {
-	{ "help",		command_help },
-	{ "quit",		command_quit },
-	{ "shutdown",		command_shutdown },
-	{ "connect",		command_connect },
-	{ "disconnect",		command_disconnect },
-	{ "listopts",		command_listopts },
-	{ "recall",		command_recall },
-	{ "version",		command_version },
-	{ "date",		command_date },
-	{ "uptime",		command_uptime },
-	{ "world",		command_world },
+	char *args;
+	char *shortdesc;
+	char *longdesc;
+}
+cmd_db[] =
+{
+	{ "help", command_help, "[<topic>]",
+	"Helps you.",
+	NULL },
 
-	{ NULL,			NULL }
+	{ "quit", command_quit, "",
+	"Disconnects your client from mooproxy.",
+	NULL },
+
+	{ "shutdown", command_shutdown, "[-f]",
+	"Shuts down mooproxy.",
+	"Shuts down mooproxy.\n\n"
+	"Under some circumstances, mooproxy may refuse to shut down\n"
+	"(for example if not all loggable lines have been written to\n"
+	"disk). -f may be used to force shutdown." },
+
+	{ "connect", command_connect, "[<host> [<port>]]",
+	"Connects to the server.",
+	"Connects to the server.\n\n"
+	"The arguments, <host> and <port>, are optional. If they're not\n"
+	"provided, mooproxy will use the settings \"host\" and \"port\"." },
+
+	{ "disconnect", command_disconnect, "",
+	"Disconnects from the server.",
+	NULL },
+
+	{ "listopts", command_listopts, "",
+	"Lists the avaliable settings.",
+	"Lists all available settings, and their current value." },
+
+	{ "recall", command_recall, "<...>",
+	"Recalls some lines from history.",
+	"FIXME" },
+
+	{ "version", command_version, "",
+	"Shows the mooproxy version.",
+	NULL },
+
+	{ "date", command_date, "",
+	"Shows the current date and time.",
+	NULL },
+
+	{ "uptime", command_uptime, "",
+	"Shows mooproxy's starting time and uptime.",
+	NULL },
+
+	{ "world", command_world, "",
+	"Shows the name of the current world.",
+	NULL },
+
+	{ NULL, NULL, NULL, NULL, NULL }
 };
 
 
@@ -173,7 +202,7 @@ static int try_command( World *wld, char *cmd, char *args )
 	idx = command_index( cmd );
 	if( idx > -1 )
 	{
-		(*command_db[idx].func)( wld, cmd, args );
+		(*cmd_db[idx].func)( wld, cmd, args );
 		return 1;
 	}
 
@@ -281,8 +310,8 @@ static int command_index( char *cmd )
 {
 	int i;
 
-	for( i = 0; command_db[i].command; i++ )
-		if( !strcmp( cmd, command_db[i].command ) )
+	for( i = 0; cmd_db[i].cmd; i++ )
+		if( !strcmp( cmd, cmd_db[i].cmd ) )
 			return i;
 
 	return -1;
@@ -308,16 +337,161 @@ static int refuse_arguments( World *wld, char *cmd, char *args )
 
 
 
-/* Print a list of commands. No arguments. */
+/* Shows a \n-separated string of lines to the client, line by line.
+ * Each line is indented by two spaces. */
+static void show_longdesc( World *wld, char *desc )
+{
+	char *s, *t;
+
+	s = xmalloc( strlen( desc ) + 1 );
+
+	while( *desc )
+	{
+		/* s is our temporary storage. Copy the current line of desc
+		 * to s, and advance desc to point to the next line. */
+		t = s;
+		while( *desc != '\0' && *desc != '\n' )
+			*t++ = *desc++;
+		*t = '\0';
+		if( *desc == '\n' )
+			desc++;
+
+		/* And send the copied line off to the client. */
+		world_msg_client( wld, "  %s", s );
+	}
+
+	free( s );
+}
+
+
+
+/* Display the "generic" help, listing all commands and settings. */
+static void show_help( World *wld )
+{
+	int i, numkeys, longest = 0;
+	char **keylist, *desc, *tmp;
+
+	world_msg_client( wld, "" );
+	world_msg_client( wld, "Use %shelp <command> or %shelp <setting> "
+			"to get more detailed help.",
+			wld->commandstring, wld->commandstring );
+	world_msg_client( wld, "" );
+
+	/* Determine the longest command (for layout). */
+	for( i = 0; cmd_db[i].cmd; i++ )
+	{
+		/* We're displaying the command name plus its arguments, so
+		 * we need to determine the length of both. */
+		int l = strlen( cmd_db[i].cmd ) + strlen( cmd_db[i].args ) + 1;
+		if( l > longest )
+			longest = l;
+	}
+
+	/* Get the list of settings, and determine the longest cmd/setting. */
+	numkeys = world_get_key_list( wld, &keylist );
+	for( i = 0; i < numkeys; i++ )
+		if( strlen( keylist[i] ) > longest )
+			longest = strlen( keylist[i] );
+
+	/* Display the commands. */
+	world_msg_client( wld, "Commands" );
+	for( i = 0; cmd_db[i].cmd; i++ )
+	{
+		/* Join the command and its arguments, we need to feed them
+		 * to printf as one string. */
+		xasprintf( &tmp, "%s %s", cmd_db[i].cmd, cmd_db[i].args );
+		world_msg_client( wld, "  %*s    %s", -longest, tmp,
+				cmd_db[i].shortdesc );
+		free( tmp );
+	}
+
+	/* Display the settings. */
+	world_msg_client( wld, "" );
+	world_msg_client( wld, "Settings" );
+	for( i = 0; i < numkeys; i++ )
+	{
+		char *key = keylist[i];
+
+		desc = ""; /* In case world_desc_key() fails. */
+		world_desc_key( wld, key, &desc, &tmp);
+
+		world_msg_client( wld, "  %*s    %s", -longest, key, desc );
+	}
+
+	free( keylist );
+}
+
+
+
+/* Displays the help for one command.
+ * Returns 1 if it was able to show the help for cmd, 0 otherwise. */
+static int show_command_help( World *wld, char *cmd )
+{
+	int idx;
+
+	idx = command_index( cmd );
+	if( idx < 0 )
+		return 0;
+
+	world_msg_client( wld, "" );
+	world_msg_client( wld, "%s%s %s", wld->commandstring,
+			cmd_db[idx].cmd, cmd_db[idx].args );
+	world_msg_client( wld, "" );
+
+	if( cmd_db[idx].longdesc )
+		show_longdesc( wld, cmd_db[idx].longdesc );
+	else
+		show_longdesc( wld, cmd_db[idx].shortdesc );
+
+	return 1;
+}
+
+
+
+/* Displays the help for one setting.
+ * Returns 1 if it was able to show the help for key, 0 otherwise. */
+static int show_setting_help( World *wld, char *key )
+{
+	char *shortdesc, *longdesc;
+
+	if( world_desc_key( wld, key, &shortdesc, &longdesc ) != GET_KEY_OK )
+		return 0;
+
+	world_msg_client( wld, "" );
+	world_msg_client( wld, "%s", key );
+	world_msg_client( wld, "" );
+
+	if( longdesc )
+		show_longdesc( wld, longdesc );
+	else
+		show_longdesc( wld, shortdesc );
+
+	return 1;
+}
+
+
+
+/* Give help on a command or setting. If the command or setting is not
+ * recognized, show some generic help. */
 static void command_help( World *wld, char *cmd, char *args )
 {
-	int i;
+	/* Generic help. */
+	if( !*args || !strcmp( args, "help" ) )
+	{
+		show_help( wld );
+		return;
+	}
 
-	if( refuse_arguments( wld, cmd, args ) )
+	/* Help for one command. */
+	if( show_command_help( wld, args ) )
 		return;
 
-	for( i = 0; help_text[i]; i++ )
-		world_msg_client( wld, "%s", help_text[i] );
+	/* Help for one setting. */
+	if( show_setting_help( wld, args ) )
+		return;
+
+	/* And if all else fails: generic help. */
+	show_help( wld );
 }
 
 
@@ -524,7 +698,7 @@ static void command_listopts( World *wld, char *cmd, char *args )
 	if( refuse_arguments( wld, cmd, args ) )
 		return;
 
-	world_msg_client( wld, "Options:" );
+	world_msg_client( wld, "Settings" );
 
 	num = world_get_key_list( wld, &list );
 
@@ -540,7 +714,7 @@ static void command_listopts( World *wld, char *cmd, char *args )
 		if( world_get_key( wld, key, &val ) != GET_KEY_OK )
 			val = xstrdup( "-" );
 
-		world_msg_client( wld, "  %*s        %s", -longest, key, val );
+		world_msg_client( wld, "  %*s    %s", -longest, key, val );
 
 		free( val );
 	}
