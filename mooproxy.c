@@ -379,7 +379,7 @@ static void handle_flags( World *wld )
 static void print_help_text( void )
 {
 	printf( "Mooproxy - a buffering proxy for moo-connections\n"
-	"Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>\n"
+	"Copyright (C) %s Marcel L. Moreaux <marcelm@luon.net>\n"
 	"\n"
 	"usage: mooproxy [options]\n"
 	"\n"
@@ -392,7 +392,8 @@ static void print_help_text( void )
 	"\n"
 	"Released under the GPL v2, report bugs to <marcelm@luon.net>\n"
 	"Mooproxy comes with ABSOLUTELY NO WARRANTY; "
-	"for details run mooproxy --license\n" );
+	"for details run mooproxy --license\n",
+	COPYYEARS );
 }
 
 
@@ -400,8 +401,9 @@ static void print_help_text( void )
 /* Print the version output (-V, --version) */
 static void print_version_text( void )
 {
-	printf( "Mooproxy version " VERSIONSTR
-			". Copyright (C) 2001-2007 Marcel L Moreaux\n" );
+	printf( "Mooproxy version %s (released on %s).\n"
+		"Copyright (C) %s Marcel L Moreaux\n",
+		VERSIONSTR, RELEASEDATE, COPYYEARS );
 }
 
 
@@ -410,7 +412,7 @@ static void print_version_text( void )
 static void print_license_text( void )
 {
 	printf( "Mooproxy - a buffering proxy for moo-connections\n"
-	"Copyright (C) 2001-2007 Marcel L. Moreaux <marcelm@luon.net>\n"
+	"Copyright (C) %s Marcel L. Moreaux <marcelm@luon.net>\n"
 	"\n"
 	"This program is free software; you can redistribute it and/or modify\n"
 	"it under the terms of the GNU General Public License as published by\n"
@@ -419,5 +421,6 @@ static void print_license_text( void )
 	"This program is distributed in the hope that it will be useful,\n"
 	"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
 	"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n"
-	"GNU General Public License for more details.\n" );
+	"GNU General Public License for more details.\n",
+	COPYYEARS );
 }

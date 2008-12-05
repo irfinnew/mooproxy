@@ -6,7 +6,6 @@ Items considered for next release:
  * Throttle client read() when server_txqueue is too full. (and vice versa)
  * /lock command to disallow changing options / connecting to strange servers?
  * Fix some FIXMEs.
- * Release date at mooproxy --version and /version
  * Live migration...?
  * Document autoreconnect behaviour
  * Delay on authentication failure?

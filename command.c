@@ -794,7 +794,8 @@ static void command_version( World *wld, char *cmd, char *args )
 	if( refuse_arguments( wld, cmd, args ) )
 		return;
 
-	world_msg_client( wld, "Mooproxy version " VERSIONSTR "." );
+	world_msg_client( wld, "Mooproxy version %s (released on %s).",
+		VERSIONSTR, RELEASEDATE );
 }
 
 
