@@ -15,8 +15,6 @@ Items considered for next release:
  * Fix /recall to -10 lines
  * Display the commandstring on client login [from: christian]
  * A command to send non-activating input to the MOO server.
- * Release date in /version output.
- * Remove /get, /set.
  * Rename some options?
  * Improve setting of auth_md5hash.
  

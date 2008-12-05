@@ -33,23 +33,24 @@
 
 
 
-static int command_index( char * );
-static int refuse_arguments( World *, char *, char * );
+static int command_index( char *cmd );
+static int refuse_arguments( World *wld, char *cmd, char *args );
+static int try_command( World *wld, char *cmd, char *args );
+static int try_getoption( World *wld, char *key, char *args );
+static int try_setoption( World *wld, char *key, char *args );
 
-static void command_help( World *, char *, char * );
-static void command_quit( World *, char *, char * );
-static void command_shutdown( World *, char *, char * );
-static void command_connect( World *, char *, char * );
-static void command_disconnect( World *, char *, char * );
-static void command_listopts( World *, char *, char * );
-static void command_getopt( World *, char *, char * );
-static void command_setopt( World *, char *, char * );
-static void command_recall( World *, char *, char * );
-static void command_version( World *, char *, char * );
-static void command_date( World *, char *, char * );
-static void command_uptime( World *, char *, char * );
-static void command_world( World *, char *, char * );
-static void command_debug( World *, char *, char * );
+static void command_help( World *wld, char *cmd, char *args );
+static void command_quit( World *wld, char *cmd, char *args );
+static void command_shutdown( World *wld, char *cmd, char *args );
+static void command_connect( World *wld, char *cmd, char *args );
+static void command_disconnect( World *wld, char *cmd, char *args );
+static void command_listopts( World *wld, char *cmd, char *args );
+static void command_recall( World *wld, char *cmd, char *args );
+static void command_version( World *wld, char *cmd, char *args );
+static void command_date( World *wld, char *cmd, char *args );
+static void command_uptime( World *wld, char *cmd, char *args );
+static void command_world( World *wld, char *cmd, char *args );
+static void command_debug( World *wld, char *cmd, char *args );
 
 
 
@@ -62,8 +63,6 @@ static char *help_text[] = {
 "                             override configuration.",
 "  disconnect                 Disconnect from the server.",
 "  listopts                   List the available option names.",
-"  get <option>               Query the value of one option.",
-"  set <option> <value>       Set the value of one option.",
 "  recall <count>             Recall <count> lines.",
 "  version                    Show the mooproxy version.",
 "  date                       Show the current time and date.",
@@ -83,8 +82,6 @@ static const struct
 	{ "connect",		command_connect },
 	{ "disconnect",		command_disconnect },
 	{ "listopts",		command_listopts },
-	{ "get",		command_getopt },
-	{ "set",		command_setopt },
 	{ "recall",		command_recall },
 	{ "version",		command_version },
 	{ "date",		command_date },
@@ -99,8 +96,7 @@ static const struct
 
 extern int world_do_command( World *wld, char *line )
 {
-	char backup, *args, *cmd = line, *cstr = wld->commandstring;
-	int idx;
+	char backup, *backuppos, *args, *cmd = line, *cstr = wld->commandstring;
 
 	/* Ignore the equal parts of commandstr and the line */
 	while( *cstr && *cstr == *cmd )
@@ -120,38 +116,163 @@ extern int world_do_command( World *wld, char *line )
 
 	/* Mark the end of the command */
 	backup = *args;
+	backuppos = args;
 	*args = '\0';
 
-	/* Look up the command */
-	idx = command_index( cmd );
+	/* Advance args to the actual start of the arguments. */
+	if( backup )
+		args++;
+	/* Remove enclosing whitespace, too. */
+	args = trim_whitespace( args );
 
-	if( idx == -1 )
+	/* Try parsing cmd + args as a command, an option query, and an
+	 * option update, in that order.
+	 * The try_* functions may modify cmd and args _only_ if they
+	 * successfully parse the command. They may never free them. */
+	if( try_command( wld, cmd, args ) )
 	{
-		if( !wld->strict_commands )
-		{
-			/* Strictcmd is off, the line should now be
-			 * processed like a regular one. */
-			*args = backup;
-			return 0;
-		}
-
-		/* Invalid command, complain */
-		world_msg_client( wld, "Invalid command: %s.", cmd );
 		free( line );
 		return 1;
 	}
 
-	/* Ok, it's a command */
+	if( try_getoption( wld, cmd, args ) )
+	{
+		free( line );
+		return 1;
+	}
 
-	/* Advance args to the actual start of the arguments */
-	if( backup )
-		args++;
+	if( try_setoption( wld, cmd, args ) )
+	{
+		free( line );
+		return 1;
+	}
 
-	/* Do the command!
-	 * Note: it's OK to modify cmd and args in the command functions. */
-	(*command_db[idx].func)( wld, cmd, args );
+	/* Ok, it's not something we understand. */
 
+	if( !wld->strict_commands )
+	{
+		/* Strictcmd is off, the line should now be
+		 * processed as a regular one. */
+		*backuppos = backup;
+		return 0;
+	}
+
+	/* Invalid command, complain */
+	world_msg_client( wld, "No such command or option: %s.", cmd );
 	free( line );
+	return 1;
+}
+
+
+
+/* Try if cmd is a valid command.
+ * If it is, call the proper function and return 1. Otherwise, return 0. */
+static int try_command( World *wld, char *cmd, char *args )
+{
+	int idx;
+
+	/* See if it's a command, and if so, call the proper function. */
+	idx = command_index( cmd );
+	if( idx > -1 )
+	{
+		(*command_db[idx].func)( wld, cmd, args );
+		return 1;
+	}
+
+	return 0;
+}
+
+
+
+/* Try if key is a valid key and args is empty.
+ * If it is, query the option value and return 1. Otherwise, return 0. */
+static int try_getoption( World *wld, char *key, char *args )
+{
+	char *val, *kend;
+
+	/* If we have arguments, the option is not being queried. */
+	if( *args )
+		return 0;
+
+	/* Make kend point to the last char of key, or \0 if key is empty. */
+	kend = key + strlen( key );
+	if( kend != key )
+		kend--;
+
+	switch( world_get_key( wld, key, &val ) )
+	{
+		case GET_KEY_NF:
+		/* Key not found, tell the caller to keep trying. */
+		return 0;
+		break;
+
+		case GET_KEY_OK:
+		world_msg_client( wld, "The option %s is %s.", key, val );
+		free( val );
+		break;
+
+		case GET_KEY_PERM:
+		world_msg_client( wld, "The option %s may not be read.", key );
+		break;
+	}
+
+	return 1;
+}
+
+
+
+/* Try if key is a valid key and args is non-empty.
+ * If it is, update the option value and return 1. Otherwise, return 0. */
+static int try_setoption( World *wld, char *key, char *args )
+{
+	char *val, *tmp, *err;
+
+	/* If we have no arguments, the option is not being set. */
+	if( !*args )
+		return 0;
+
+	/* Remove any enclosing quotes.
+	 * We strdup, because we may not modify args yet. */
+	val = remove_enclosing_quotes( xstrdup( args ) );
+
+	switch( world_set_key( wld, key, val, &err ) )
+	{
+		case SET_KEY_NF:
+		/* Key not found, tell the caller to keep trying. */
+		free( val );
+		return 0;
+		break;
+
+		case SET_KEY_PERM:
+		world_msg_client( wld, "The option %s may not be set.", key );
+		break;
+
+		case SET_KEY_BAD:
+		world_msg_client( wld, "%s", err );
+		free( err );
+		break;
+
+		case SET_KEY_OKSILENT:
+		break;
+
+		case SET_KEY_OK:
+		/* Query the option we just set, so we get a normalized
+		 * representation of the value. */
+		if( world_get_key( wld, key, &tmp ) == GET_KEY_OK )
+		{
+			world_msg_client( wld, "The option %s is now %s.",
+					key, tmp );
+			free( tmp );
+			break;
+		}
+		/* The key was successfully set, but we could not query the
+		 * new value. Maybe the option is hidden or it may not be
+		 * read. Just say it's been changed. */
+		world_msg_client( wld, "The option %s has been changed.", key );
+		break;
+	}
+
+	free( val );
 	return 1;
 }
 
@@ -445,129 +566,12 @@ static void command_listopts( World *wld, char *cmd, char *args )
 
 
 
-/* Query one options. Arguments: <option name> */
-static void command_getopt( World *wld, char *cmd, char *args )
-{
-	char *val;
-
-	args = trim_whitespace( args );
-
-	/* If the argument was nothing but whitespace, complain. */
-	if( !*args )
-	{
-		world_msg_client( wld, "Use: get <option>" );
-		return;
-	}
-
-	switch( world_get_key( wld, args, &val ) )
-	{
-		case GET_KEY_OK:
-		world_msg_client( wld, "The option %s is %s.", args, val );
-		free( val );
-		break;
-
-		case GET_KEY_NF:
-		world_msg_client( wld, "No such option, %s.", args );
-		break;
-
-		case GET_KEY_PERM:
-		world_msg_client( wld, "The option %s may not be read.", args );
-		break;
-	}
-}
-
-
-
-/* Set one option. Arguments: <option name> <new value> */
-static void command_setopt( World *wld, char *cmd, char *args )
-{
-	char *key, *val, *err;
-	int ret;
-
-	args = trim_whitespace( args );
-	key = args;
-
-	while( *args && !isspace( *args ) )
-		args++;
-
-	/* If there were not at least two words as arguments, complain. */
-	if( !*args )
-	{
-		world_msg_client( wld, "Use: set <option> <value>" );
-		return;
-	}
-
-	/* Replace the first whitespace character after the first word
-	 * with \0, making the first word an independant C string. */
-	*args++ = '\0';
-
-	while( *args && isspace( *args ) )
-		args++;
-
-	/* args now contains everything after the first word, with whitespace
-	 * trimmed. Remove any quotes, and put the result in val. */
-	val = remove_enclosing_quotes( args );
-
-	/* Key contains the key, val contains the value. Now try and set. */
-	ret = world_set_key( wld, key, val, &err );
-
-	/* The option doesn't exist. */
-	if( ret == SET_KEY_NF )
-	{
-		world_msg_client( wld, "No such option, %s.", key );
-		return;
-	}
-
-	/* We may not set the option. */
-	if( ret == SET_KEY_PERM )
-	{
-		world_msg_client( wld, "The option %s may not be set.", key );
-		return;
-	}
-
-	/* There was an error setting the option. */
-	if( ret == SET_KEY_BAD )
-	{
-		world_msg_client( wld, "%s", err );
-		free( err );
-		return;
-	}
-
-	/* The option was set successfully, but we should shut up about it. */
-	if( ret == SET_KEY_OKSILENT )
-		return;
-
-	/* This shouldn't happen. */
-	if( ret != SET_KEY_OK )
-	{
-		world_msg_client( wld, "Huh? world_set_key( %s ) returned "
-				"weird %i!", key, ret );
-		return;
-	}
-
-	/* ret == SET_KEY_OK, the key is set successfully */
-	if( world_get_key( wld, key, &val ) == GET_KEY_OK )
-	{
-		world_msg_client( wld, "The option %s is now %s.", key, val );
-		free( val );
-	} else {
-		/* The key was successfully set, but we could not query the
-		 * new value. Either the option is hidden or it may not be
-		 * read. We just report it has been changed. */
-		world_msg_client( wld, "The option %s has been changed.", key );
-	}
-}
-
-
-
 /* Recalls lines. FIXME: better description. */
 static void command_recall( World *wld, char *cmd, char *args )
 {
 	Linequeue *queue;
 	long count;
 	char *str;
-
-	trim_whitespace( args );
 
 	/* If there are no arguments, print terse usage. */
 	if( args[0] == '\0' )
@@ -678,8 +682,6 @@ static void command_world( World *wld, char *cmd, char *args )
 
 static void command_debug( World *wld, char *cmd, char *args )
 {
-	trim_whitespace( args );
-
 	if( strcasecmp( args, "stats" ) )
 	{
 		world_msg_client( wld, "Supported actions:" );

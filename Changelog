@@ -1,4 +1,5 @@
 - autoreconnect setten vanuit user heeft nu onmiddelijk effect
+- /get en /set weg, gebruik /option
 
 
 
