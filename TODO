@@ -18,6 +18,7 @@ Items considered for next release:
  * Release date in /version output.
  * Remove /get, /set.
  * Rename some options?
+ * Improve setting of auth_md5hash.
  
 
 Probably's:
