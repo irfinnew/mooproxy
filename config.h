@@ -74,8 +74,8 @@ extern void parse_command_line_options( int argc, char **argv, Config *config );
  * The error string should be free()d. */
 extern int world_load_config( World *wld, char **err );
 
-/* Place a list of key names (except the hidden ones) in list (a pointer to
- * an array of strings). All strings, and the array, should be free()d.
+/* Place an array of key names (except the hidden ones) in list (a pointer to
+ * an array of strings). The array should be freed, the key names should not.
  * Returns the number of keys in the list. */
 extern int world_get_key_list( World *wld, char ***list );
 

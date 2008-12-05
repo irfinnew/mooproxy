@@ -395,7 +395,7 @@ extern int world_get_key_list( World *wld, char ***list )
 			continue;
 
 		*list = xrealloc( *list, ++num * sizeof( char * ) );
-		( *list )[num - 1] = xstrdup( key_db[i].keyname );
+		( *list )[num - 1] = key_db[i].keyname;
 	}
 
 	return num;

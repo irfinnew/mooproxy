@@ -540,11 +540,11 @@ static void command_listopts( World *wld, char *cmd, char *args )
 		key = list[i];
 
 		if( world_get_key( wld, key, &val ) != GET_KEY_OK )
-			val = "-";
+			val = xstrdup( "-" );
 
 		world_msg_client( wld, "  %*s        %s", -longest, key, val );
 
-		free( key );
+		free( val );
 	}
 
 	free( list );
