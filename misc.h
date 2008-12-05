@@ -37,7 +37,7 @@
 
 
 
-/* Wrappers for malloc(), realloc(), strdup(), xasprintf(), and xvasprintf() 
+/* Wrappers for malloc(), realloc(), strdup(), asprintf(), and vasprintf() 
  * These wrappers check for and abort on memory allocation failure.
  * Otherwise, they behave identical to the original functions. */
 extern void *xmalloc( size_t size );
