@@ -50,7 +50,6 @@ static void command_version( World *wld, char *cmd, char *args );
 static void command_date( World *wld, char *cmd, char *args );
 static void command_uptime( World *wld, char *cmd, char *args );
 static void command_world( World *wld, char *cmd, char *args );
-static void command_debug( World *wld, char *cmd, char *args );
 
 
 
@@ -87,7 +86,6 @@ static const struct
 	{ "date",		command_date },
 	{ "uptime",		command_uptime },
 	{ "world",		command_world },
-	{ "debug",		command_debug },
 
 	{ NULL,			NULL }
 };
@@ -662,67 +660,4 @@ static void command_world( World *wld, char *cmd, char *args )
 		return;
 
 	world_msg_client( wld, "The world is %s.", wld->name );
-}
-
-
-
-static void command_debug( World *wld, char *cmd, char *args )
-{
-	if( strcasecmp( args, "stats" ) )
-	{
-		world_msg_client( wld, "Supported actions:" );
-		world_msg_client( wld, "  stats" );
-		return;
-	}
-
-	world_msg_client( wld, "Stats:" );
-
-	world_msg_client( wld, "  max_buffer_size: %li,  "
-		"max_logbuffer_size: %li,  LINE_BYTE_COST: %li",
-		wld->max_buffer_size,
-		wld->max_logbuffer_size,
-		( sizeof( Line ) + sizeof( void * ) * 2 + 8 ) );
-
-	world_msg_client( wld, "                       lines      bytes"
-		"       free     %%used" );
-
-	world_msg_client( wld, "  inactive_lines:  %9li  %9li   %8s  %7.3f%%",
-		wld->inactive_lines->count,
-		wld->inactive_lines->size,
-		"-",
-		wld->inactive_lines->size / 10.24 / wld->max_buffer_size );
-
-	world_msg_client( wld, "  history_lines :  %9li  %9li   %8s  %7.3f%%",
-		wld->history_lines->count,
-		wld->history_lines->size,
-		"-",
-		wld->history_lines->size / 10.24 / wld->max_buffer_size );
-
-	world_msg_client( wld, "  `---- +          %9li  %9li  %9li  %7.3f%%",
-		wld->inactive_lines->count + wld->history_lines->count,
-		wld->inactive_lines->size + wld->history_lines->size,
-		wld->max_buffer_size * 1024 - wld->inactive_lines->size
-		- wld->history_lines->size,
-		( wld->inactive_lines->size + wld->history_lines->size )
-		/ 10.24 / wld->max_buffer_size );
-
-	world_msg_client( wld, "  log_queue     :  %9li  %9li   %8s  %7.3f%%",
-		wld->log_queue->count,
-		wld->log_queue->size,
-		"-",
-		wld->log_queue->size / 10.24 / wld->max_logbuffer_size );
-
-	world_msg_client( wld, "  log_current   :  %9li  %9li   %8s  %7.3f%%",
-		wld->log_current->count,
-		wld->log_current->size,
-		"-",
-		wld->log_current->size / 10.24 / wld->max_logbuffer_size );
-
-	world_msg_client( wld, "  `---- +          %9li  %9li  %9li  %7.3f%%",
-		wld->log_queue->count + wld->log_current->count,
-		wld->log_queue->size + wld->log_current->size,
-		wld->max_logbuffer_size * 1024 - wld->log_queue->size
-		- wld->log_current->size,
-		( wld->log_queue->size + wld->log_current->size )
-		/ 10.24 / wld->max_logbuffer_size );
 }
