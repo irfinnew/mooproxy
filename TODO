@@ -17,6 +17,7 @@ Items considered for next release:
  * A command to send non-activating input to the MOO server.
  * Release date in /version output.
  * Remove /get, /set.
+ * Rename some options?
  
 
 Probably's:
