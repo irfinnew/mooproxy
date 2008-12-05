@@ -520,7 +520,7 @@ static void command_disconnect( World *wld, char *cmd, char *args )
 /* Prints a list of options and their values. No arguments. */
 static void command_listopts( World *wld, char *cmd, char *args )
 {
-	char *line, **list, *key, *val;
+	char **list, *key, *val;
 	int i, num, longest = 0;
 
 	if( refuse_arguments( wld, cmd, args ) )
