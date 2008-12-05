@@ -829,8 +829,9 @@ static void promote_auth_connection( World *wld, int wa )
 	/* Clean up stuff left of the auth connection */
 	remove_auth_connection( wld, wa, 0 );
 
-	/* Confirm the connection to the authenticating client */
-	world_msg_client( wld, "Authentication successful, welcome." );
+	/* Introduce ourselves, and offer help. We're polite! */
+	world_msg_client( wld, "This is mooproxy %s. Get help with: %shelp.",
+			VERSIONSTR, wld->commandstring );
 
 	/* If a client was previously connected, say when and from where. */
 	if( wld->client_prev_address != NULL )
@@ -838,17 +839,6 @@ static void promote_auth_connection( World *wld, int wa )
 		world_msg_client( wld, "Last connected at %s, from %s.",
 				time_string( wld->client_last_connected,
 				FULL_TIME ), wld->client_prev_address );
-	}
-	else
-	{
-		/* Otherwise, this is the first connect. Display mooproxy
-		 * version and "use /help..." message. */
-
-		/* FIXME: actually enable this.
-		 * Probably after /help has been improved. */
-		/* world_msg_client( wld, "This is mooproxy " VERSIONSTR
-				". Use %shelp to get online help.",
-				wld->commandstring ); */
 	}
 
 	/* Show context history and pass buffered text */

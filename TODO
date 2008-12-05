@@ -1,5 +1,4 @@
 Items considered for next release:
- * Print "Use /help" message on first connect after start?
  * Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable [from: bram]
  * More features for /recall (non-re, case sensitive, count, limit, etc)
  * Better RE support for /recall
@@ -10,7 +9,6 @@ Items considered for next release:
  * Document autoreconnect behaviour
  * Delay on authentication failure?
  * Fix /recall to -10 lines
- * Display the commandstring on client login [from: christian]
  * A command to send non-activating input to the MOO server.
  * Rename some options?
  * Improve setting of auth_md5hash.
