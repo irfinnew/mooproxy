@@ -517,51 +517,37 @@ static void command_disconnect( World *wld, char *cmd, char *args )
 
 
 
-/* Prints a list of options the user may query or change. No arguments.
- * The list is truncated to 65 characters wide, so that it should fit nicely
- * on a 80x24 terminal, with up to 15 characters of infostring prepended. */
+/* Prints a list of options and their values. No arguments. */
 static void command_listopts( World *wld, char *cmd, char *args )
 {
-	char *line, **list;
-	int i, num;
+	char *line, **list, *key, *val;
+	int i, num, longest = 0;
 
 	if( refuse_arguments( wld, cmd, args ) )
 		return;
 
 	world_msg_client( wld, "Options:" );
 
-	/* The line initially starts with spaces for indenting. */
-	line = xstrdup( "   " );
 	num = world_get_key_list( wld, &list );
+
+	/* Calculate the longest key name, so we can line out the table. */
+	for( i = 0; i < num; i++ )
+		if( strlen( list[i] ) > longest )
+			longest = strlen( list[i] );
 
 	for( i = 0; i < num; i++ )
 	{
-		/* If the length of the line plus the current option would
-		 * exceed 65 characters, send the line (without current opt)
-		 * to the client, and create a new line. */
-		if( strlen( line ) + strlen( list[i] ) > 65 )
-		{
-			world_msg_client( wld, "%s", line );
-			strcpy( line, "   " );
-		}
+		key = list[i];
 
-		/* Append the current option to the line. */
-		line = xrealloc( line, strlen( line ) + strlen( list[i] ) + 3 );
-		line = strcat( line, list[i] );
-		line = strcat( line, ", " );
+		if( world_get_key( wld, key, &val ) != GET_KEY_OK )
+			val = "-";
 
-		free( list[i] );
+		world_msg_client( wld, "  %*s        %s", -longest, key, val );
+
+		free( key );
 	}
 
-	/* Change the last ", " to ".\0", making the list look good :) */
-	i = strlen( line );
-	line[i - 2] = '.';
-	line[i - 1] = '\0';
-
-	world_msg_client( wld, "%s", line );
-
 	free( list );
-	free( line );
 }
 
 
