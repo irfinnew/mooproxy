@@ -1,6 +1,7 @@
 - autoreconnect setten vanuit user heeft nu onmiddelijk effect
 - /get en /set weg, gebruik /option
 - /listopts geeft nu ook values terug.
+- mooproxy.crashed gerenamed naar mooproxy.panic
 
 
 
