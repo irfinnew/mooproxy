@@ -241,8 +241,8 @@ on the client). So the MCP session needs to be torn down and rebuilt.
 
 Because Standard MCP doesn't provide a mechanism to re-initialise the MCP
 session, a MCP package has been created for this purpose. The package is
-called dns-nl-icecrew-mcpreset. More information can be found on
-http://www.icecrew.nl/software/mcp/p_mcpreset.xhtml .
+called dns-nl-icecrew-mcpreset. More information can be found in
+mcpreset.html .
 
 Mooproxy uses the server MCP reset. When a client connects to mooproxy,
 and mooproxy is already connected to a MOO server, mooproxy sends a MCP
@@ -274,7 +274,7 @@ But now recall supports the following syntax as well:
    /recall [from <timespec>] [to <timespec>] [search <text>]
 
 This will recall any lines matching <text> in the period from <from timespec>
-to <to timespec>. You must use at least one of from and to.
+to <to timespec>.
 
 A timespec is one or more of the following:
 
@@ -438,6 +438,7 @@ Thanks (for testing, reporting bugs, and giving suggestions) to:
   Wouter Lueks <wouter@telox.net>
   Admar Schoonen <admar@luon.net>
   Bram Senders <bram@luon.net>
+  Christian Luijten <christian@luon.net>
 
 
 

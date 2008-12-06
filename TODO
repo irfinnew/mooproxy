@@ -25,6 +25,7 @@ Probably's:
  * Make mooproxy not remember authstring if autologin is off. ?
  * Have ACE send MCP client-size messages?
  * Test ACE with konsole, Windows' cmd, putty. Working so far: Linux console, gnome-terminal, xterm, rxvt.
+ * Add ACE to README?
 
 
 Maybe's:
