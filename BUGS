@@ -1,12 +1,12 @@
- * Mooproxy crashed when changing the system time.
-
-   Can't reproduce. More info, ways to reproduce, backtraces etc
-   are greatly appreciated.
-   (reported: Michiel ? / Paul van Tilburg)
-
  * Resolver slave can fail after libc upgrade.
 
    The forked child will inherit the libc of the parent process, but
    libnss_*.so are loaded dynamically, so their versions might not
    match the libc version mooproxy was started with.
    (reported: Bram Senders)
+
+ * MCP can get into an inconsistent state (no known mcp key, no initmsg)
+
+   I was able to get mooproxy in this state by reconnecting several
+   times (some of which through daisy-chained mooproxy). Not sure
+   how that caused the state to be messed up.
