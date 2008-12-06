@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+
+  <head>
+    <meta http-equiv="Content-Type" content="application/xml+xhtml; charset=utf-8"/>
+    <title>MCP Package specification :: dns-nl-icecrew-mcpreset</title>
+    <style type="text/css">
+      @charset "iso-8859-1";
+
+      body {
+        font-family: sans serif, sans, arial, verdana;
+      }
+
+      div.messages {
+        padding: 0.5em;
+      }
+
+      table.messages {
+        background: #eeeeff;
+        border: solid 1px #aaaaff;
+        padding: 0.5em;
+        width: 100%;
+      }
+
+      table.navigation {
+        background: #eeeeff;
+        border: solid 1px #aaaaff;
+        padding: 0.3em;
+        margin-top: 0.5em;
+        margin-bottom: 0.5em;
+        width: 100%;
+      }
+
+      td.header {
+        background: #e5e5ff;
+        border: solid 1px #aaaaff;
+        padding: 0.3em;
+        font-weight: bold;
+      }
+
+      span.comment {
+        color: #006600;
+      }
+
+      a:link {
+        color: #2222ff;
+      }
+
+      a:hover {
+        color: #aaaaff;
+      }
+
+      a:visited {
+        color: #000066;
+      }
+
+      p.code {
+        font-weight: bold;
+        margin: 0.5em;
+      }
+
+      p.example {
+        margin: 0;
+      }
+
+      div.code {
+        background: #eeeeff;
+        border: solid 1px #aaaaff;
+        font-family: courier new, courier, monospace;
+        padding: 0.5em;
+        margin: 0.5em;
+        margin-top: 0.1em;
+      }
+
+      table.arguments {
+        width: 100%;
+        margin-top: 1.0em;
+        margin-bottom: 1.0em;
+        margin-left: 2.0em;
+      }
+
+      td.nav_title {
+        font-weight: bold;
+        text-align: center;
+        padding: 5px;
+      }
+
+      span.item {
+        font-style: italic;
+        color: #222266;
+      }
+
+      p.footer {
+        font-size: 10px;
+        text-align: right;
+      }
+    </style>
+  </head>
+
+  <body>
+    <table class="navigation">
+      <tr>
+        <td class="nav_title">MCP Package specification :: dns-nl-icecrew-mcpreset</td>
+      </tr>
+    </table>
+
+    <h1>dns-nl-icecrew-mcpreset</h1>
+
+    <p>Package for resetting and reinitializing the mcp session</p>
+
+    <h2>Messages</h2>
+
+    <div class="messages">
+      <table class="messages">
+        <tr><td> </td></tr>
+        <tr><td class="header" colspan="2">Client to Server</td></tr>
+        <tr>
+          <td valign="top"><a class="message" href="#reset">dns-nl-icecrew-mcpreset-reset</a></td>
+          <td>( )</td>
+        </tr>
+        <tr><td> </td></tr>
+        <tr><td class="header" colspan="2">Server to Client</td></tr>
+        <tr>
+          <td valign="top"><a class="message" href="#reset">dns-nl-icecrew-mcpreset-reset</a></td>
+          <td>( )</td>
+        </tr>
+      </table>
+    </div>
+
+    <h2>Description</h2>
+
+    <div class="description">
+      <p>This package provides a way to reset and then reinitialize the mcp session.
+         This should probably be provided by the MCP specification itself, but since it
+         isn't this package will have to do.</p>
+      <p>There is only one message which as a slightly different meaning for the server
+         than for the client, but the difference is only small.</p>
+      <p>When the client receives the '<span class="item">reset</span>' message it should
+         finalize the current mcp session and be ready for a new initialisation by the
+         server (this is done by resending #$#mcp version: 2.1 to: 2.1).</p>
+      <p>On the server side the '<span class="item">reset</span>' message also will finalize
+         the mcp session. After it is finalized the server should send the initialisation of
+         a new session (as stated above).</p>
+      <p>Caution: the client MUST be ready to accept the new initialisation and therefor MUST
+         be properly finalised. Make sure that the client finalizes first!</p>
+    </div>
+
+    <hr/>
+
+    <h2>Messages:</h2>
+
+    <h3 id="reset">dns-nl-icecrew-mcpreset-reset</h3>
+
+    <div class="description">
+      <p>This will reset the current MCP session. </p>
+      <p>On the client side the session should be finalised and the client should be ready to accept a new initialisation of a MCP session.</p>
+      <p>On the server side the current session should be finalised and a new initialisation should be started.</p>
+    </div>
+
+    <p class="code">Single line</p>
+    <div class="code">
+      dns-nl-icecrew-mcpreset-reset ( )
+    </div>
+
+    <table class="arguments">
+    </table>
+
+    <p class="code">Example</p>
+    <div class="code">
+      <p class="example">#$#dns-nl-icecrew-mcpreset-reset 3453</p>
+    </div>
+
+    <p><br/></p>
+    <hr/>
+
+    <div>
+      <p style="font-size: 10px; float: left;">Downloaded from <a href="http://www.icecrew.nl/files/koemoe/mcp/p_mcpreset.xhtml">http://www.icecrew.nl/files/koemoe/mcp/p_mcpreset.xhtml</a> on 2008-12-06.</p>
+      <p class="footer" style="float: right;">This page was autogenerated by mcpDoc</p>
+    </div>
+  </body>
+</html>
