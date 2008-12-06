@@ -60,10 +60,6 @@
 /* The minimum number of seconds between two "not connected" messages.*/
 #define NOTCONN_MSGINTERVAL 3
 
-/* String to be prepended to mooproxy messages */
-#define MESSAGE_HEADER "[0m"
-/* String to be appended to mooproxy messages */
-#define MESSAGE_TERMINATOR "[0m"
 /* The strftime() format for full date and time. */
 #define FULL_TIME "%A %d %b %Y, %T"
 /* The strftime() format, and string length of the log timestamp. */

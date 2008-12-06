@@ -396,7 +396,7 @@ extern Line *world_newmsg_client( World *wld, const char *fmt, ... )
 
 
 
-/* Send prefix + str + MESSAGE_TERMINATOR to the client.
+/* Send prefix + str + <ansi reset> to the client.
  * str is consumed, prefix is not.
  * If prefix is NULL or "", use wld->infostring_parsed.
  * Returns the line object that has been enqueued to the client. */
@@ -408,12 +408,11 @@ static Line *message_client( World *wld, char *prefix, char *str )
 	if( prefix == NULL || *prefix == '\0' )
 		prefix = wld->infostring_parsed;
 
-	/* Construct the message */
-	msg = xmalloc( strlen( str ) + strlen( prefix ) +
-			sizeof( MESSAGE_TERMINATOR ) );
+	/* Construct the message. The 5 is for the ansi reset and \0. */
+	msg = xmalloc( strlen( str ) + strlen( prefix ) + 5 );
 	strcpy( msg, prefix );
 	strcat( msg, str );
-	strcat( msg, MESSAGE_TERMINATOR );
+	strcat( msg, "\x1B[0m" );
 	free( str );
 
 	/* And append it to the client queue */

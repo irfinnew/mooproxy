@@ -651,7 +651,7 @@ extern long strcpy_noansi( char *dest, char *src )
 		}
 
 		/* Escape char, skip ANSI sequence. */
-		if( *src == 0x1B )
+		if( *src == '\x1B' )
 		{
 			src++;
 			if( *src == '[' )
