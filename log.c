@@ -377,7 +377,7 @@ static void log_write( World *wld )
 		return;
 
 	ret = flush_buffer( wld->log_fd, wld->log_buffer, &wld->log_bfull,
-			wld->log_current, NULL, 0, &errnum );
+			wld->log_current, NULL, 0, NULL, NULL, &errnum );
 
 	if( ret == 1 )
 		nag_client_error( wld, "Could not write to logfile", NULL,

@@ -53,6 +53,9 @@
 /* Size of blocks-to-lines buffer in bytes.
  * Note that this limits the maximum line length. */
 #define NET_BBUFFER_LEN 65536
+/* The actual size (rather than "pretend size") of the buffers.
+ * See (1) in world.c for details. */
+#define NET_BBUFFER_ALLOC ( NET_BBUFFER_LEN + 512 )
 
 /* The minimum number of seconds between two identical complaints about
  * the logfiles */

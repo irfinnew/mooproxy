@@ -23,7 +23,8 @@ Probably's:
  * Provide more and better documentation.
  * Remove some trivial helper functions from accessor.c?
  * Make mooproxy not remember authstring if autologin is off. ?
- * ANSI console client emulation
+ * Have ACE send MCP client-size messages?
+ * Test ACE with konsole, Windows' cmd, putty. Working so far: Linux console, gnome-terminal, xterm, rxvt.
 
 
 Maybe's:

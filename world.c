@@ -22,6 +22,7 @@
 #include <time.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "global.h"
 #include "world.h"
@@ -98,9 +99,9 @@ extern World *world_create( char *wldname )
 	wld->server_rxqueue = linequeue_create();
 	wld->server_toqueue = linequeue_create();
 	wld->server_txqueue = linequeue_create();
-	wld->server_rxbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
+	wld->server_rxbuffer = xmalloc( NET_BBUFFER_ALLOC ); /* See (1) */
 	wld->server_rxfull = 0;
-	wld->server_txbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
+	wld->server_txbuffer = xmalloc( NET_BBUFFER_ALLOC ); /* See (1) */
 	wld->server_txfull = 0;
 
 	/* Data related to the client connection */
@@ -114,9 +115,9 @@ extern World *world_create( char *wldname )
 	wld->client_rxqueue = linequeue_create();
 	wld->client_toqueue = linequeue_create();
 	wld->client_txqueue = linequeue_create();
-	wld->client_rxbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
+	wld->client_rxbuffer = xmalloc( NET_BBUFFER_ALLOC ); /* See (1) */
 	wld->client_rxfull = 0;
-	wld->client_txbuffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
+	wld->client_txbuffer = xmalloc( NET_BBUFFER_ALLOC ); /* See (1) */
 	wld->client_txfull = 0;
 
 	/* Miscellaneous */
@@ -142,7 +143,7 @@ extern World *world_create( char *wldname )
 	wld->log_currenttime = 0;
 	wld->log_currenttimestr = NULL;
 	wld->log_fd = -1;
-	wld->log_buffer = xmalloc( NET_BBUFFER_LEN + 4 ); /* See (1) */
+	wld->log_buffer = xmalloc( NET_BBUFFER_ALLOC ); /* See (1) */
 	wld->log_bfull = 0;
 	wld->log_lasterror = NULL;
 	wld->log_lasterrtime = 0;
@@ -151,6 +152,11 @@ extern World *world_create( char *wldname )
 	wld->mcp_negotiated = 0;
 	wld->mcp_key = NULL;
 	wld->mcp_initmsg = NULL;
+
+	/* Ansi Client Emulation (ACE) */
+	wld->ace_enabled = 0;
+	wld->ace_prestr = NULL;
+	wld->ace_poststr = NULL;
 
 	/* Options */
 	wld->logging_enabled = DEFAULT_LOGENABLE;
@@ -174,13 +180,17 @@ extern World *world_create( char *wldname )
 
 	/* (1) comment for allocations of several buffers:
 	 * 
-	 * The TX and log buffers must be a little larger than specified, so
-	 * that flush_buffer() can append a newline (\n or \r\n) to the line
-	 * written in the buffer, even if the buffer is completely filled with
-	 * lines.
+	 * We allocate using NET_BBUFFER_ALLOC rather than NET_BUFFER_LEN,
+	 * because the buffers need to be longer than their "pretend length",
+	 * so we can fit in some additional things even when the buffer is
+	 * completely full with lines.
 	 *
-	 * The RX buffers must be larger so that buffer_to_lines() can append a
-	 * sentinal for its linear search.
+	 * Some things that we need to fit in there:
+	 *
+	 *   - For the log buffer, a \n after the last line.
+	 *   - For the TX buffers, a \r\n and possible ansi sequences for
+	 *     client emulation
+	 *   - For the RX buffers, a sentinel for the linear search
 	 */
 }
 
@@ -265,6 +275,10 @@ extern void world_destroy( World *wld )
 	/* MCP stuff */
 	free( wld->mcp_key );
 	free( wld->mcp_initmsg );
+
+	/* Ansi Client Emulation (ACE) */
+	free( wld->ace_prestr );
+	free( wld->ace_poststr );
 
 	/* Options */
 	free( wld->commandstring );
@@ -825,4 +839,97 @@ extern void world_decrease_reconnect_delay( World *wld )
 	wld->reconnect_delay = wld->reconnect_delay / 2 - 1;
 	if( wld->reconnect_delay < 0 )
 		wld->reconnect_delay = 0;
+}
+
+
+
+extern int world_enable_ace( World *wld )
+{
+	Linequeue *queue;
+	char *tmp, *status;
+	int cols = wld->ace_cols, rows = wld->ace_rows;
+
+	/* Create the "statusbar". */
+	status = xmalloc( cols + strlen( wld->name ) + 20 );
+	sprintf( status, "---- mooproxy - %s ", wld->name );
+	memset( status + strlen( wld->name ) + 17, '-', cols );
+	status[cols] = '\0';
+
+	/* Construct the string to send to the client:
+	 *   - reset terminal
+	 *   - move cursor to the statusbar location
+	 *   - print statusbar
+	 *   - set scroll area to "input window"
+	 *   - move cursor to the very last line.
+	 */
+	xasprintf( &tmp, "\x1B" "c\x1B[%i;1H%s\x1B[%i;%ir\x1B[%i;1H",
+			rows - 3, status, rows - 2, rows, rows );
+	free( status );
+
+	/* We fail if the string doesn't fit into the buffer. */
+	if( wld->client_txfull + strlen( tmp ) > NET_BBUFFER_ALLOC )
+	{
+		free( tmp );
+		return 0;
+	}
+
+	/* Append the string to the buffer. */
+	strcpy( wld->client_txbuffer + wld->client_txfull, tmp );
+	wld->client_txfull += strlen( tmp );
+	free( tmp );
+
+	/* Construct the string that will be prepended to each line:
+	 *   - save cursor position
+	 *   - set scroll area to "output window"
+	 *   - set cursor to the last line of the "output window"
+	 */
+	free( wld->ace_prestr );
+	xasprintf( &wld->ace_prestr, "\x1B[s\x1B[1;%ir\x1B[%i;1H",
+			rows - 4, rows - 4 );
+
+	/* Construct the string that will be appended to each line:
+	 *   - set scroll area to "input window"
+	 *   - restore cursor position
+	 *   - reset attribute mode
+	 */
+	free( wld->ace_poststr );
+	xasprintf( &wld->ace_poststr, "\x1B[%i;%ir\x1B[u\x1B[0m",
+			rows - 2, rows );
+
+	/* Of course, ACE is enabled now. */
+	wld->ace_enabled = 1;
+
+	/* We want to include the inactive lines in our recall as well, so
+	 * we move them to the history right now. */
+	world_inactive_to_history( wld );
+
+	/* Recall enough lines to fill the "output window". */
+	queue = world_recall_history( wld, rows - 4 );
+	linequeue_merge( wld->client_toqueue, queue );
+	linequeue_destroy( queue );
+
+	return 1;
+}
+
+
+
+extern void world_disable_ace( World *wld )
+{
+	/* Send "reset terminal" to the client, so the clients terminal is
+	 * not left in a messed up state.
+	 * ACE deactivation should always succeed, so if the ansi sequence
+	 * doesn't fit in the buffer, we'll still do all the other stuff. */
+	if( wld->client_txfull + 2 < NET_BBUFFER_ALLOC )
+	{
+		wld->client_txbuffer[wld->client_txfull++] = '\x1B';
+		wld->client_txbuffer[wld->client_txfull++] = 'c';
+	}
+
+	free( wld->ace_prestr );
+	wld->ace_prestr = NULL;
+
+	free( wld->ace_poststr );
+	wld->ace_poststr = NULL;
+
+	wld->ace_enabled = 0;
 }

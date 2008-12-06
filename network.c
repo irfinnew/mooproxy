@@ -546,6 +546,11 @@ extern void world_disconnect_server( World *wld )
 
 extern void world_disconnect_client( World *wld )
 {
+	/* We don't want to mess up the next client with undesired ansi
+	 * stuff, so we always disable ace on disconnect. */
+	if( wld->ace_enabled )
+		world_disable_ace( wld );
+
 	if( wld->client_fd != -1 )
 		close( wld->client_fd );
 
@@ -779,6 +784,11 @@ static void verify_authentication( World *wld, int wa )
 	 * and flag the client connection for disconnection. */
 	if( wld->client_fd != -1 )
 	{
+		/* We don't want to mess up the next client with undesired
+		 * stuff, so we disable ace now. */
+		if( wld->ace_enabled )
+			world_disable_ace( wld );
+
 		world_msg_client( wld, "Connection taken over by %s.",
 				wld->auth_address[wa] );
 		wld->flags |= WLD_CLIENTQUIT;
@@ -926,7 +936,8 @@ extern void world_flush_client_txbuf( World *wld )
 
 	flush_buffer( wld->client_fd, wld->client_txbuffer,
 			&wld->client_txfull, wld->client_txqueue, 
-			wld->inactive_lines, 1, NULL );
+			wld->inactive_lines, 1, wld->ace_prestr,
+			wld->ace_poststr, NULL );
 }
 
 
@@ -947,5 +958,5 @@ extern void world_flush_server_txbuf( World *wld )
 
 	flush_buffer( wld->server_fd, wld->server_txbuffer,
 			&wld->server_txfull, wld->server_txqueue, NULL,
-			1, NULL );
+			1, NULL, NULL, NULL );
 }

@@ -114,21 +114,24 @@ extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q );
 
 /* Process the given buffer/queue, and write it to the given fd.
  * Arguments:
- *   fd:      FD to write to.
- *   buffer:  Buffer to use for writing to the FD.
- *   bffl:    Indicates how full the buffer is. Will be updated.
- *   queue:   Queue of lines to be written.
- *   tohist:  Queue to append written lines to.
- *            If queue is NULL, written lines are discarded.
- *   nnl:     If true:  appends network newlines to written lines.
- *            If false: appends UNIX newlines to written lines.
- *   errnum:  Modified to contain error code on error.
+ *   fd:         FD to write to.
+ *   buffer:     Buffer to use for writing to the FD.
+ *   bffl:       Indicates how full the buffer is. Will be updated.
+ *   queue:      Queue of lines to be written.
+ *   tohist:     Queue to append written lines to.
+ *               If queue is NULL, written lines are discarded.
+ *   network_nl: If true:  appends network newlines to written lines.
+ *               If false: appends UNIX newlines to written lines.
+ *   prestr:     Prepended to each line, if not NULL.
+ *   poststr:    Appended to every line, if not NULL.
+ *   errnum:     Modified to contain error code on error.
  * Return value:
  *   0 on success (everything in buffer and queue was written without error)
  *   1 on congestion (the FD could take no more, not everything was written)
  *   2 on error (errnum is set) */
 extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
-		Linequeue *tohist, int nnl, int *errnum );
+		Linequeue *tohist, int network_nl, char *prestr, char *poststr,
+		int *errnum );
 
 /* Return a copy of str (which must be freed manually) in which all occurrences
  * of colortags (like %R) are replaced by their corresponding ANSI sequence

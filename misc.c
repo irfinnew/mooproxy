@@ -481,7 +481,8 @@ extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q )
 
 
 extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
-		Linequeue *tohist, int nnl, int *errnum )
+		Linequeue *tohist, int network_nl, char *prestr, char *poststr,
+		int *errnum )
 {
 	long bfull = *bffl, len;
 	Line *line;
@@ -502,14 +503,31 @@ extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
 			if( bfull + len > NET_BBUFFER_LEN )
 				break;
 
-			/* Get the first line, append it to the buffer,
-			 * append newline, update length, free line */
+			/* First, write the prepend-string, if present. */
+			if( prestr )
+			{
+				strcpy( buffer + bfull, prestr );
+				bfull += strlen( prestr );
+			}
+
+			/* Now, get the line itself, and write to the buffer. */
 			line = linequeue_pop( queue );
 			memcpy( buffer + bfull, line->str, len );
 			bfull += len;
-			if( nnl )
+
+			/* Next up, the newline. */
+			if( network_nl )
 				buffer[bfull++] = '\r';
 			buffer[bfull++] = '\n';
+
+			/* And finally the append-string, if present. */
+			if( poststr )
+			{
+				strcpy( buffer + bfull, poststr );
+				bfull += strlen( poststr );
+			}
+
+			/* Move the line to a history queue, or destroy it. */
 			if( tohist == NULL || line->flags & LINE_NOHIST )
 				line_destroy( line );
 			else

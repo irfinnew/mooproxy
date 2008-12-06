@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdio.h>
 
 #include "world.h"
 #include "command.h"
@@ -50,6 +51,7 @@ static void command_connect( World *wld, char *cmd, char *args );
 static void command_disconnect( World *wld, char *cmd, char *args );
 static void command_listopts( World *wld, char *cmd, char *args );
 static void command_recall( World *wld, char *cmd, char *args );
+static void command_ace( World *wld, char *cmd, char *args );
 static void command_version( World *wld, char *cmd, char *args );
 static void command_date( World *wld, char *cmd, char *args );
 static void command_uptime( World *wld, char *cmd, char *args );
@@ -99,6 +101,32 @@ cmd_db[] =
 	{ "recall", command_recall, "<...>",
 	"Recalls some lines from history.",
 	"FIXME" },
+
+	{ "ace", command_ace, "[<C>x<R> | off]",
+	"En/disables ANSI client emulation.",
+	"Enables or disables ANSI client emulation (ACE).\n"
+	"\n"
+	"ACE is intended to be used when the client is a text terminal\n"
+	"(such as telnet or netcat running in a terminal window) rather\n"
+	"than a proper MOO client.\n"
+	"ACE makes mooproxy send ANSI escape sequences that will emulate\n"
+	"the behaviour of a primitive MOO client on a text terminal.\n"
+	"\n"
+	"Because mooproxy cannot know the size of your terminal, you have\n"
+	"to supply the size of your terminal to the ace command as COLxROW,\n"
+	"where COL is the number of columns, and ROW is the number of rows.\n"
+	"\n"
+	"If you invoke the command without arguments, and ACE was not yet\n"
+	"enabled, ACE will be enabled with a default size of 80x24.\n"
+	"If you invoke the command without arguments, and ACE was already\n"
+	"enabled, ACE will re-initialize with the last known size.\n"
+	"\n"
+	"When invoked with \"off\", ACE will be disabled.\n"
+	"\n"
+	"ACE will be automatically disabled when you disconnect or reconnect.\n"
+	"\n"
+	"ACE is known to work properly with the Linux console, xterm, rxvt,\n"
+	"and gnome-terminal.\n" },
 
 	{ "version", command_version, "",
 	"Shows the mooproxy version.",
@@ -502,6 +530,10 @@ static void command_quit( World *wld, char *cmd, char *args )
 	if( refuse_arguments( wld, cmd, args ) )
 		return;
 
+	/* We try to leave their terminal in a nice state when they leave. */
+	if( wld->ace_enabled )
+		world_disable_ace( wld );
+
 	world_msg_client( wld, "Closing connection." );
 	wld->flags |= WLD_CLIENTQUIT;
 }
@@ -524,9 +556,13 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 		return;
 	}
 
-	/* (tmp != NULL) => (tmp == "-f"). Ergo, forced shutdown. */
-	if( tmp != NULL )
+	/* Forced shutdown. */
+	if( tmp != NULL && !strcmp( tmp, "-f" ) )
 	{
+		/* We try to leave their terminal in a nice state. */
+		if( wld->ace_enabled )
+			world_disable_ace( wld );
+
 		world_msg_client( wld, "Shutting down forcibly." );
 		wld->flags |= WLD_SHUTDOWN;
 		return;
@@ -549,6 +585,10 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 				"Use /shutdown -f to override." );
 		return;
 	}
+
+	/* We try to leave their terminal in a nice state. */
+	if( wld->ace_enabled )
+		world_disable_ace( wld );
 
 	/* We're good, proceed. */
 	world_msg_client( wld, "Shutting down." );
@@ -784,6 +824,82 @@ static void command_recall( World *wld, char *cmd, char *args )
 	/* Append the recalled lines, and clean up. */
 	linequeue_merge( wld->client_toqueue, queue );
 	linequeue_destroy( queue );
+}
+
+
+
+/* Enable/disable ACE. Arguments: ROWSxCOLUMNS, or 'off'. */
+static void command_ace( World *wld, char *cmd, char *args )
+{
+	int cols, rows;
+
+	/* If /ace off, and ACE wasn't enabled, complain and be done. */
+	if( !strcmp( args, "off" ) && !wld->ace_enabled )
+	{
+		world_msg_client( wld, "ACE is not enabled." );
+		return;
+	}
+
+	/* If /ace off, and ACE was enabled, disable it and be done. */
+	if( !strcmp( args, "off" ) && wld->ace_enabled )
+	{
+		world_msg_client( wld, "Disabled ACE." );
+		world_disable_ace( wld );
+		return;
+	}
+
+	/* If we have arguments, parse them. */
+	if( *args )
+	{
+		if( sscanf( args, "%ix%i", &cols, &rows ) != 2 )
+		{
+			/* Parsing failed, complain and be done. */
+			world_msg_client( wld, "Usage: ace <columns>x<rows>" );
+			return;
+		}
+		/* Parsing succesful, the dimensions are in cols/rows. */
+	}
+
+	/* No arguments. */
+	if( !*args )
+	{
+		if( !wld->ace_enabled )
+		{
+			/* ACE wasn't enabled, initialize to 80x24. */
+			cols = 80;
+			rows = 24;
+		}
+		else
+		{
+			/* Ace was already enabled, use the previous dims. */
+			cols = wld->ace_cols;
+			rows = wld->ace_rows;
+		}
+	}
+
+	/* If the number of columns is too small or too large, complain. */
+	if( cols < 20 || cols > 2000 )
+	{
+		world_msg_client( wld, "The number of columns should be "
+				"between 20 and 2000." );
+		return;
+	}
+
+	/* If the number of rows is too small or too large, complain. */
+	if( rows < 10 || rows > 1000 )
+	{
+		world_msg_client( wld, "The number of rows should be "
+				"between 10 and 1000." );
+		return;
+	}
+
+	wld->ace_cols = cols;
+	wld->ace_rows = rows;
+	if( world_enable_ace( wld ) )
+		world_msg_client( wld, "Enabled ACE for %ix%i terminal.",
+			wld->ace_cols, wld->ace_rows );
+	else
+		world_msg_client( wld, "Failed to enable ACE." );
 }
 
 

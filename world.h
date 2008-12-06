@@ -180,6 +180,13 @@ struct _World
 	char *mcp_key;
 	char *mcp_initmsg;
 
+	/* Ansi Client Emulation (ACE) */
+	int ace_enabled;
+	int ace_cols;
+	int ace_rows;
+	char *ace_prestr;
+	char *ace_poststr;
+
 	/* Options */
 	int logging_enabled;
 	int autologin;
@@ -265,6 +272,16 @@ extern Linequeue *world_recall_history( World *wld, long count );
 /* Attempt to bind to wld->requestedlistenport. If successful, close old
  * listen fds and install new ones. If unsuccessful, retain old fds. */
 extern void world_rebind_port( World *wld );
+
+/* Enable Ansi Client Emulation for this world.
+ * Sends ansi sequences to initialize the screen, sets wld->ace_enabled to
+ * true, and initalizes the other wld->ace_* variables.
+ * Returns true if initialization was successful, false otherwise. */
+extern int world_enable_ace( World *wld );
+
+/* Disable Ansi Client Emulation for this world.
+ * Sends ansi sequences to reset the screen and cleans up wld->ace_*  */
+extern void world_disable_ace( World *wld );
 
 
 
