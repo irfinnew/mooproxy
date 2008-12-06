@@ -17,7 +17,7 @@ Items considered for next release:
  
 
 Probably's:
- * /idle command
+ * /idle command (shows how long since you've last sent something to the moo)
  * Access / recall logs from within mooproxy? [from: paul]
  * Option for verbose MCP, to ease MCP weirdness debugging?
  * Provide more and better documentation.
@@ -33,13 +33,12 @@ Maybe's:
  * Remove OOM detection in xmalloc() etc ? [Under Linux, the process seems to get SIGKILLed anyway]
  * Add logging framework which logs to file if mooproxy is running as daemon ?
  * Fix panic.c not to use sprintf()?
- * Add option to ignore lockfile ?
  * Implement some MCP userlist in mooproxy?
- * Print date/time on mooproxy messages? Maybe defined a %-sequence for date/time?
+ * Print date/time on mooproxy messages? Maybe define a %-sequence for date/time?
  * Add SSL support (both ways)?
  * Tune Latency with TCP_NODELAY ?
  * Add option to /connect to enable autoreconnect from the start?
- * Put program name and version in welcome message?
+ * Put program name and version in pre-authentication welcome message?
 
 
 Probably not's:
@@ -53,3 +52,5 @@ Probably not's:
    - Little enthusiasm from users.
  * Add option to use different dir (instead of ~/.mooproxy) for configuration ?
    - Little point.
+ * Add option to ignore lockfile ?
+   - Little point. The lockfile can always be removed if necessary.
