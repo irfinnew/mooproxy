@@ -14,6 +14,7 @@ Items considered for next release:
  * Improve setting of auth_md5hash.
  * Change authstring to just mean the password instead of the entire connection string. May require additional options...
  * Fix the remaining command/setting descriptions.
+ * Fix the "wacko resolver slave after libc upgrade" bug.
  
 
 Probably's:
