@@ -15,6 +15,10 @@ Items considered for next release:
  * Change authstring to just mean the password instead of the entire connection string. May require additional options...
  * Fix the remaining command/setting descriptions.
  * Fix the "wacko resolver slave after libc upgrade" bug.
+ * Rewrite "about" section of README.
+ * Have ACE send MCP client-size messages?
+ * Test ACE with konsole, Windows' cmd, putty. Working so far: Linux console, gnome-terminal, xterm, rxvt.
+ * Add ACE to README?
  
 
 Probably's:
@@ -24,9 +28,6 @@ Probably's:
  * Provide more and better documentation.
  * Remove some trivial helper functions from accessor.c?
  * Make mooproxy not remember authstring if autologin is off. ?
- * Have ACE send MCP client-size messages?
- * Test ACE with konsole, Windows' cmd, putty. Working so far: Linux console, gnome-terminal, xterm, rxvt.
- * Add ACE to README?
 
 
 Maybe's:
