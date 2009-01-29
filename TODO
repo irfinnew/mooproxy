@@ -17,7 +17,6 @@ Items considered for next release:
  * Fix the "wacko resolver slave after libc upgrade" bug.
  * Rewrite "about" section of README.
  * Have ACE send MCP client-size messages?
- * Test ACE with konsole, Windows' cmd, putty. Working so far: Linux console, gnome-terminal, xterm, rxvt.
  * Add ACE to README?
  
 

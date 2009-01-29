@@ -126,7 +126,7 @@ cmd_db[] =
 	"ACE will be automatically disabled when you disconnect or reconnect.\n"
 	"\n"
 	"ACE is known to work properly with the Linux console, xterm, rxvt,\n"
-	"and gnome-terminal.\n" },
+	"gnome-terminal, putty, and Windows XP telnet.\n" },
 
 	{ "version", command_version, "",
 	"Shows the mooproxy version.",
