@@ -134,7 +134,7 @@ extern pid_t daemonize( char **err )
 
 extern void launch_parent_exit( int exitval )
 {
-	_exit( exitval );
+	exit( exitval );
 }
 
 
