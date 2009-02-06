@@ -8,6 +8,9 @@ Items considered for next release:
  * Live migration...?
  * Document autoreconnect behaviour
  * Delay on authentication failure?
+   * Or limit connection rate per source IP.
+   * And display number of failed authentication attempts on login.
+   * And log all authentication attempts? Log in the main log, or log separately?
  * Fix /recall to -10 lines
  * A command to send non-activating input to the MOO server.
  * Rename some options?
@@ -18,6 +21,7 @@ Items considered for next release:
  * Rewrite "about" section of README.
  * Have ACE send MCP client-size messages?
  * Add ACE to README?
+ * Add previews for (new)infostring?
  
 
 Probably's:
