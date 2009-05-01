@@ -71,7 +71,9 @@ cmd_db[] =
 {
 	{ "help", command_help, "[<topic>]",
 	"Helps you.",
-	NULL },
+	"Without argument, displays a summary of commands and settings.\n"
+	"When the name of a command or setting is provided, displays \n"
+	"detailed help for that command or setting." },
 
 	{ "quit", command_quit, "",
 	"Disconnects your client from mooproxy.",
@@ -96,7 +98,7 @@ cmd_db[] =
 
 	{ "listopts", command_listopts, "",
 	"Lists the avaliable settings.",
-	"Lists all available settings, and their current value." },
+	"Lists all available settings, and their current values." },
 
 	{ "recall", command_recall, "<...>",
 	"Recalls some lines from history.",
@@ -504,7 +506,7 @@ static int show_setting_help( World *wld, char *key )
 static void command_help( World *wld, char *cmd, char *args )
 {
 	/* Generic help. */
-	if( !*args || !strcmp( args, "help" ) )
+	if( !*args )
 	{
 		show_help( wld );
 		return;
