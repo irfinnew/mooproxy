@@ -1,3 +1,4 @@
+- "Now connected to" en "Connection lost" worden nu gebufferd en gelogd.
 - autoreconnect setten vanuit user heeft nu onmiddelijk effect
 - /get en /set weg, gebruik /option
 - /listopts geeft nu ook values terug.

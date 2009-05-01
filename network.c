@@ -433,6 +433,7 @@ static void handle_connecting_fd( World *wld )
 {
 	int so_err, fd = wld->server_connecting_fd;
 	socklen_t optlen = sizeof( so_err );
+	Line *line;
 
 	/* Get the SO_ERROR option from the socket. This option holds the
 	 * error code for the connect() in the case of connection failure.
@@ -472,7 +473,8 @@ static void handle_connecting_fd( World *wld )
 	wld->server_status = ST_CONNECTED;
 
 	world_msg_client( wld, "      Success." );
-	world_msg_client( wld, "Connected to world %s.", wld->name );
+	line = world_msg_client( wld, "Now connected to world %s.", wld->name );
+	line->flags = LINE_CHECKPOINT;
 
 	/* Inform the MCP layer that we just connected to the server. */
 	world_mcp_server_connect( wld );
@@ -895,6 +897,7 @@ static void handle_server_fd( World *wld )
 {
 	int err, n, offset = wld->server_rxfull;
 	char *buffer = wld->server_rxbuffer;
+	Line *line;
 
 	/* Read into buffer */
 	n = read( wld->server_fd, buffer + offset, NET_BBUFFER_LEN - offset );
@@ -911,12 +914,13 @@ static void handle_server_fd( World *wld )
 
 		/* Notify the client */
 		if( n < 0 )
-			world_msg_client( wld, "Connection to server "
+			line = world_msg_client( wld, "Connection to server "
 					"lost (%s).", strerror( err ) );
 		else
-			world_msg_client( wld,
+			line = world_msg_client( wld,
 					"The server closed the connection." );
 
+		line->flags = LINE_CHECKPOINT;
 		wld->flags |= WLD_RECONNECT;
 		return;
 	}
