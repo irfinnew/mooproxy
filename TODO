@@ -23,6 +23,7 @@ Items considered for next release:
  * Add ACE to README?
  * Add previews for (new)infostring?
  * "The server closed the connection." is not logged or buffered. Should it be? Probably.
+ * Add command to clear the history lines - "a ^L for the proxy" (/forget?) [from: Paul]
  
 
 Probably's:
