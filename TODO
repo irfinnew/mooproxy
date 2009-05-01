@@ -21,7 +21,6 @@ Items considered for next release:
  * Rewrite "about" section of README.
  * Have ACE send MCP client-size messages?
  * Add ACE to README?
- * Add previews for (new)infostring?
  * Add command to clear the history lines - "a ^L for the proxy" (/forget?) [from: Paul]
  
 
