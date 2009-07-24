@@ -13,7 +13,9 @@ Items considered for next release:
    * And log all authentication attempts? Log in the main log, or log separately?
  * Fix /recall to -10 lines
  * A command to send non-activating input to the MOO server.
- * Rename some options?
+ * Rename some options? Less underscores, preferably.
+   * max_buffer_size -> buffer_size
+   * max_logbuffer_size -> logbuffer_size
  * Improve setting of auth_md5hash.
  * Change authstring to just mean the password instead of the entire connection string. May require additional options...
  * Fix the remaining command/setting descriptions.
