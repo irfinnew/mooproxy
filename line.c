@@ -208,7 +208,7 @@ extern void linequeue_merge( Linequeue *one, Linequeue *two )
 	if( two->head == NULL || two->tail == NULL )
 		return;
 
-	/* If the first list is empty, simple copy the references. */
+	/* If the first list is empty, simply copy the references. */
 	if( one->head == NULL || one->tail == NULL )
 	{
 		one->head = two->head;
