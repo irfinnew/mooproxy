@@ -228,7 +228,7 @@ extern int aset_context_on_connect( World *wld, char *key, char *value,
 extern int aset_max_buffer_size( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_long_ranged( value, &wld->max_buffer_size, err, 8,
+	return set_long_ranged( value, &wld->max_buffer_size, err, 0,
 			LONG_MAX / 1024 - 2, "Max buffer size" );
 }
 
@@ -237,7 +237,7 @@ extern int aset_max_buffer_size( World *wld, char *key, char *value,
 extern int aset_max_logbuffer_size( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_long_ranged( value, &wld->max_logbuffer_size, err, 8,
+	return set_long_ranged( value, &wld->max_logbuffer_size, err, 0,
 			LONG_MAX / 1024, "Max logbuffer size" );
 }
 
