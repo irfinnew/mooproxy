@@ -949,8 +949,37 @@ static void command_uptime( World *wld, char *cmd, char *args )
 /* Print the name of the current world. No arguments. */
 static void command_world( World *wld, char *cmd, char *args )
 {
+	char *status;
+
 	if( refuse_arguments( wld, cmd, args ) )
 		return;
 
-	world_msg_client( wld, "The world is %s.", wld->name );
+	switch( wld->server_status )
+	{
+		case ST_DISCONNECTED:
+		status = "not connected";
+		break;
+
+		case ST_RESOLVING:
+		status = "resolving hostname";
+		break;
+
+		case ST_CONNECTING:
+		status = "attempting to connect";
+		break;
+
+		case ST_CONNECTED:
+		status = "connected";
+		break;
+
+		case ST_RECONNECTWAIT:
+		status = "waiting before reconnect";
+		break;
+
+		default:
+		status = "unknown status";
+		break;
+	}
+
+	world_msg_client( wld, "The world is %s (%s).", wld->name, status );
 }
