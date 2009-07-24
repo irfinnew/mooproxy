@@ -49,7 +49,7 @@ static void command_quit( World *wld, char *cmd, char *args );
 static void command_shutdown( World *wld, char *cmd, char *args );
 static void command_connect( World *wld, char *cmd, char *args );
 static void command_disconnect( World *wld, char *cmd, char *args );
-static void command_listopts( World *wld, char *cmd, char *args );
+static void command_settings( World *wld, char *cmd, char *args );
 static void command_recall( World *wld, char *cmd, char *args );
 static void command_ace( World *wld, char *cmd, char *args );
 static void command_version( World *wld, char *cmd, char *args );
@@ -96,7 +96,7 @@ cmd_db[] =
 	"Disconnects from the server.",
 	NULL },
 
-	{ "listopts", command_listopts, "",
+	{ "settings", command_settings, "",
 	"Lists the avaliable settings.",
 	"Lists all available settings, and their current values." },
 
@@ -732,7 +732,7 @@ static void command_disconnect( World *wld, char *cmd, char *args )
 
 
 /* Prints a list of options and their values. No arguments. */
-static void command_listopts( World *wld, char *cmd, char *args )
+static void command_settings( World *wld, char *cmd, char *args )
 {
 	char **list, *key, *val;
 	int i, num, longest = 0;
