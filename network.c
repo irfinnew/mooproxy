@@ -733,7 +733,7 @@ static void verify_authentication( World *wld, int wa )
 	int alen, maxlen, buflen = wld->auth_read[wa];
 
 	/* If the authentication string is nonexistent, reject everything */
-	if( wld->auth_md5hash == NULL )
+	if( wld->auth_hash == NULL )
 	{
 		remove_auth_connection( wld, wa, 1 );
 		return;

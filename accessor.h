@@ -50,20 +50,20 @@
  */
 
 extern int aset_listenport( World *, char *, char *, int, char ** );
-extern int aset_auth_md5hash( World *, char *, char *, int, char ** );
+extern int aset_auth_hash( World *, char *, char *, int, char ** );
 extern int aset_dest_host( World *, char *, char *, int, char ** );
 extern int aset_dest_port( World *, char *, char *, int, char ** );
 extern int aset_autologin( World *, char *, char *, int, char ** );
 extern int aset_autoreconnect( World *, char *, char *, int, char ** );
 extern int aset_commandstring( World *, char *, char *, int, char ** );
+extern int aset_strict_commands( World *, char *, char *, int, char ** );
 extern int aset_infostring( World *, char *, char *, int, char ** );
 extern int aset_newinfostring( World *, char *, char *, int, char ** );
-extern int aset_logging_enabled( World *, char *, char *, int, char ** );
-extern int aset_context_on_connect( World *, char *, char *, int, char ** );
-extern int aset_max_buffer_size( World *, char *, char *, int, char ** );
-extern int aset_max_logbuffer_size( World *, char *, char *, int, char ** );
-extern int aset_strict_commands( World *, char *, char *, int, char ** );
-extern int aset_timestamped_logs( World *, char *, char *, int, char ** );
+extern int aset_context_lines( World *, char *, char *, int, char ** );
+extern int aset_buffer_size( World *, char *, char *, int, char ** );
+extern int aset_logbuffer_size( World *, char *, char *, int, char ** );
+extern int aset_logging( World *, char *, char *, int, char ** );
+extern int aset_log_timestamps( World *, char *, char *, int, char ** );
 
 
 
@@ -85,20 +85,20 @@ extern int aset_timestamped_logs( World *, char *, char *, int, char ** );
  */
 
 extern int aget_listenport( World *, char *, char **, int );
-extern int aget_auth_md5hash( World *, char *, char **, int );
+extern int aget_auth_hash( World *, char *, char **, int );
 extern int aget_dest_host( World *, char *, char **, int );
 extern int aget_dest_port( World *, char *, char **, int );
 extern int aget_autologin( World *, char *, char **, int );
 extern int aget_autoreconnect( World *, char *, char **, int );
 extern int aget_commandstring( World *, char *, char **, int );
+extern int aget_strict_commands( World *, char *, char **, int );
 extern int aget_infostring( World *, char *, char **, int );
 extern int aget_newinfostring( World *, char *, char **, int );
-extern int aget_logging_enabled( World *, char *, char **, int );
-extern int aget_context_on_connect( World *, char *, char **, int );
-extern int aget_max_buffer_size( World *, char *, char **, int );
-extern int aget_max_logbuffer_size( World *, char *, char **, int );
-extern int aget_strict_commands( World *, char *, char **, int );
-extern int aget_timestamped_logs( World *, char *, char **, int );
+extern int aget_context_lines( World *, char *, char **, int );
+extern int aget_buffer_size( World *, char *, char **, int );
+extern int aget_logbuffer_size( World *, char *, char **, int );
+extern int aget_logging( World *, char *, char **, int );
+extern int aget_log_timestamps( World *, char *, char **, int );
 
 
 

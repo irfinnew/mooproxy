@@ -173,7 +173,7 @@ Mooproxy will print a MD5 hash of the string, e.g.:
 
 You put this string in your configuration file, like so:
 
-    auth_md5hash = "$1$DWuIlrlu$vjiUiV7i23jNMCpSkDzDz."
+    auth_hash = "$1$DWuIlrlu$vjiUiV7i23jNMCpSkDzDz."
 
 Now, when your client connects to mooproxy, it is prompted for the
 authentication string. If your client responds with:
@@ -193,7 +193,7 @@ mooproxy in the middle.
 To change the authentication string from within mooproxy, you must also
 provide the old literal authentication string, like this:
 
-    /set auth_md5hash <new hash> <old literal>
+    /set auth_hash <new hash> <old literal>
 
 So, continuing the example scenario above, if you change your password to
 "Mirkwood", you must run mooproxy --md5crypt to generate a MD5 hash of the
@@ -205,10 +205,10 @@ new authentication string:
 
 You can then set the new hash like this:
 
-    /set auth_md5hash $1$PzGmXA.I$qmZomnNK2gBW6tR8iTJLA/ "connect Gandalf Shire"
+    /set auth_hash $1$PzGmXA.I$qmZomnNK2gBW6tR8iTJLA/ "connect Gandalf Shire"
 
 The MD5 hash should _not_ be enclosed in quotes. It is recommended to enclose
-the old literal in quotes, to remove ambiguity. After changing auth_md5hash
+the old literal in quotes, to remove ambiguity. After changing auth_hash
 from within mooproxy, mooproxy no longer has a literal authentication string.
 Therefore, autologin will not work until you re-authenticate to mooproxy
 (for example, by disconnecting your client, and connecting again).

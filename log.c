@@ -99,7 +99,7 @@ extern void world_flush_client_logqueue( World *wld )
 		 *     - Logging is disabled, or
 		 *     - It's a different day now
 		 * we should close the log file. */
-		if( wld->log_fd > -1 && ( !wld->logging_enabled ||
+		if( wld->log_fd > -1 && ( !wld->logging ||
 				wld->log_currentday != current_day() ) )
 			log_deinit( wld );
 
@@ -176,11 +176,11 @@ extern void world_sync_logdata( World *wld )
 
 extern void world_log_link_remove( World *wld )
 {
-	int logging_enabled  = wld->logging_enabled;
+	int logging  = wld->logging;
 
-	wld->logging_enabled = 0;
+	wld->logging = 0;
 	world_log_link_update( wld );
-	wld->logging_enabled = logging_enabled;
+	wld->logging = logging;
 }
 
 
@@ -235,7 +235,7 @@ static void update_one_link( World *wld, char *linkname, time_t timestamp )
 
 	/* If logging is disabled, we won't create any new symlinks.
 	 * Therefore, we're done. */
-	if( !wld->logging_enabled )
+	if( !wld->logging )
 	{
 		free( link );
 		return;
@@ -432,7 +432,7 @@ static void nag_client_error( World *wld, char *msg, char *file, char *err )
 		" not yet logged (%.1f%% of logbuffer).", wld->log_bfull / 100 +
 		wld->log_queue->count + wld->log_current->count, 
 		( wld->log_queue->size + wld->log_current->size )
-		/ 10.24 / wld->max_logbuffer_size );
+		/ 10.24 / wld->logbuffer_size );
 	line->flags |= buffer_line;
 
 	/* Finally, report the reason of the failure. */

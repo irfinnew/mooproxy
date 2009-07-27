@@ -66,7 +66,7 @@ extern int aset_listenport( World *wld, char *key, char *value,
 
 
 
-extern int aset_auth_md5hash( World *wld, char *key, char *value,
+extern int aset_auth_hash( World *wld, char *key, char *value,
 		int src, char **err )
 {
 	char *val, *origval, *newhash, *oldliteral = NULL;
@@ -110,7 +110,7 @@ extern int aset_auth_md5hash( World *wld, char *key, char *value,
 			return SET_KEY_BAD;
 		}
 
-		if( !match_string_md5hash( oldliteral, wld->auth_md5hash ) )
+		if( !match_string_md5hash( oldliteral, wld->auth_hash ) )
 		{
 			*err = xstrdup( "The old literal authentication string"
 					" was not correct." );
@@ -123,7 +123,7 @@ extern int aset_auth_md5hash( World *wld, char *key, char *value,
 	free( wld->auth_literal );
 	wld->auth_literal = NULL;
 
-	ret = set_string( newhash, &wld->auth_md5hash, err );
+	ret = set_string( newhash, &wld->auth_hash, err );
 
 	free( newhash );
 	free( oldliteral );
@@ -184,6 +184,14 @@ extern int aset_commandstring( World *wld, char *key, char *value,
 
 
 
+extern int aset_strict_commands( World *wld, char *key, char *value,
+		int src, char **err )
+{
+	return set_bool( value, &wld->strict_commands, err );
+}
+
+
+
 extern int aset_infostring( World *wld, char *key, char *value,
 		int src, char **err )
 {
@@ -206,52 +214,44 @@ extern int aset_newinfostring( World *wld, char *key, char *value,
 
 
 
-extern int aset_logging_enabled( World *wld, char *key, char *value,
+extern int aset_context_lines( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	wld->flags |= WLD_LOGLINKUPDATE;
-
-	return set_bool( value, &wld->logging_enabled, err );
-}
-
-
-
-extern int aset_context_on_connect( World *wld, char *key, char *value,
-		int src, char **err )
-{
-	return set_long_ranged( value, &wld->context_on_connect, err, 0,
+	return set_long_ranged( value, &wld->context_lines, err, 0,
 			LONG_MAX / 1024, "Context on connect" );
 }
 
 
 
-extern int aset_max_buffer_size( World *wld, char *key, char *value,
+extern int aset_buffer_size( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_long_ranged( value, &wld->max_buffer_size, err, 0,
+	return set_long_ranged( value, &wld->buffer_size, err, 0,
 			LONG_MAX / 1024 - 2, "Max buffer size" );
 }
 
 
 
-extern int aset_max_logbuffer_size( World *wld, char *key, char *value,
+extern int aset_logbuffer_size( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_long_ranged( value, &wld->max_logbuffer_size, err, 0,
+	return set_long_ranged( value, &wld->logbuffer_size, err, 0,
 			LONG_MAX / 1024, "Max logbuffer size" );
 }
 
 
 
-extern int aset_strict_commands( World *wld, char *key, char *value,
+extern int aset_logging( World *wld, char *key, char *value,
 		int src, char **err )
 {
-	return set_bool( value, &wld->strict_commands, err );
+	wld->flags |= WLD_LOGLINKUPDATE;
+
+	return set_bool( value, &wld->logging, err );
 }
 
 
 
-extern int aset_timestamped_logs( World *wld, char *key, char *value,
+extern int aset_log_timestamps( World *wld, char *key, char *value,
 		int src, char **err )
 {
 	return set_bool( value, &wld->log_timestamps, err );
@@ -270,13 +270,13 @@ extern int aget_listenport( World *wld, char *key, char **value, int src )
 
 
 
-extern int aget_auth_md5hash( World *wld, char *key, char **value, int src )
+extern int aget_auth_hash( World *wld, char *key, char **value, int src )
 {
 	/* For security reasons, the user may not view the MD5 hash. */
 	if( src == ASRC_USER )
 		return GET_KEY_PERM;
 
-	return get_string( wld->auth_md5hash, value );
+	return get_string( wld->auth_hash, value );
 }
 
 
@@ -316,6 +316,13 @@ extern int aget_commandstring( World *wld, char *key, char **value, int src )
 
 
 
+extern int aget_strict_commands( World *wld, char *key, char **value, int src )
+{
+	return get_bool( wld->strict_commands, value );
+}
+
+
+
 extern int aget_infostring( World *wld, char *key, char **value, int src )
 {
 	return get_string( wld->infostring, value );
@@ -330,45 +337,38 @@ extern int aget_newinfostring( World *wld, char *key, char **value, int src )
 
 
 
-extern int aget_logging_enabled( World *wld, char *key, char **value, int src )
-{
-	return get_bool( wld->logging_enabled, value );
-}
-
-
-
-extern int aget_context_on_connect( World *wld, char *key, char **value,
+extern int aget_context_lines( World *wld, char *key, char **value,
 		int src )
 {
-	return get_long( wld->context_on_connect, value );
+	return get_long( wld->context_lines, value );
 }
 
 
 
-extern int aget_max_buffer_size( World *wld, char *key, char **value,
+extern int aget_buffer_size( World *wld, char *key, char **value,
 		int src )
 {
-	return get_long( wld->max_buffer_size, value );
+	return get_long( wld->buffer_size, value );
 }
 
 
 
-extern int aget_max_logbuffer_size( World *wld,
+extern int aget_logbuffer_size( World *wld,
 		char *key, char **value, int src )
 {
-	return get_long( wld->max_logbuffer_size, value );
+	return get_long( wld->logbuffer_size, value );
 }
 
 
 
-extern int aget_strict_commands( World *wld, char *key, char **value, int src )
+extern int aget_logging( World *wld, char *key, char **value, int src )
 {
-	return get_bool( wld->strict_commands, value );
+	return get_bool( wld->logging, value );
 }
 
 
 
-extern int aget_timestamped_logs( World *wld, char *key, char **value, int src )
+extern int aget_log_timestamps( World *wld, char *key, char **value, int src )
 {
 	return get_bool( wld->log_timestamps, value );
 }

@@ -37,7 +37,7 @@ extern int looks_like_md5hash( char *str );
 
 /* Checks if str is the correct authentication string for wld.
  * If wld->auth_literal exists, str is checked against this.
- * Otherwise, it's hashed and checked against wld->auth_md5hash.
+ * Otherwise, it's hashed and checked against wld->auth_hash.
  * If str matches, and wld->auth_literal does not exist, it is created. 
  * Returns 1 if str matches, 0 if it doesn't. */
 extern int world_match_authentication( World *wld, const char *str );

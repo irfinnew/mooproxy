@@ -70,7 +70,7 @@ extern World *world_create( char *wldname )
 	world_bindresult_init( wld->bindresult );
 
 	/* Authentication related stuff */
-	wld->auth_md5hash = NULL;
+	wld->auth_hash = NULL;
 	wld->auth_literal = NULL;
 	wld->auth_connections = 0;
 	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
@@ -159,18 +159,18 @@ extern World *world_create( char *wldname )
 	wld->ace_poststr = NULL;
 
 	/* Options */
-	wld->logging_enabled = DEFAULT_LOGENABLE;
 	wld->autologin = DEFAULT_AUTOLOGIN;
 	wld->autoreconnect = DEFAULT_AUTORECONNECT;
 	wld->commandstring = xstrdup( DEFAULT_CMDSTRING );
+	wld->strict_commands = DEFAULT_STRICTCMDS;
 	wld->infostring = xstrdup( DEFAULT_INFOSTRING );
 	wld->infostring_parsed = parse_ansi_tags( wld->infostring );
 	wld->newinfostring = xstrdup( DEFAULT_NEWINFOSTRING );
 	wld->newinfostring_parsed = parse_ansi_tags( wld->newinfostring );
-	wld->context_on_connect = DEFAULT_CONTEXTLINES;
-	wld->max_buffer_size = DEFAULT_MAXBUFFERSIZE;
-	wld->max_logbuffer_size = DEFAULT_MAXLOGBUFFERSIZE;
-	wld->strict_commands = DEFAULT_STRICTCMDS;
+	wld->context_lines = DEFAULT_CONTEXTLINES;
+	wld->buffer_size = DEFAULT_BUFFERSIZE;
+	wld->logbuffer_size = DEFAULT_LOGBUFFERSIZE;
+	wld->logging = DEFAULT_LOGGING;
 	wld->log_timestamps = DEFAULT_LOGTIMESTAMPS;
 
 	/* Add to the list of worlds */
@@ -217,7 +217,7 @@ extern void world_destroy( World *wld )
 	free( wld->bindresult );
 
 	/* Authentication related stuff */
-	free( wld->auth_md5hash );
+	free( wld->auth_hash );
 	free( wld->auth_literal );
 	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
 	{
@@ -449,7 +449,7 @@ extern void world_trim_dynamic_queues( World *wld )
 	/* Trim the normal buffers. The data is distributed over
 	 * buffered_lines, inactive_lines and history_lines. We will trim
 	 * them in reverse order until everything is small enough. */
-	limit = wld->max_buffer_size * 1024;
+	limit = wld->buffer_size * 1024;
 
 	/* First, the history lines. Remove oldest lines. */
 	while( *bll + *ill + *hll > limit && wld->history_lines->head != NULL )
@@ -474,7 +474,7 @@ extern void world_trim_dynamic_queues( World *wld )
 	/* Trim the logbuffers. The data is distributed over log_current and
 	 * log_queue. We will trim them in reverse order until everything is
 	 * small enough. */
-	limit = wld->max_logbuffer_size * 1024;
+	limit = wld->logbuffer_size * 1024;
 
 	/* First log_queue. These are very important, so we count the number
 	 * of dropped lines. Remove newest lines. */
@@ -505,10 +505,10 @@ extern void world_recall_and_pass( World *wld )
 	Line *line, *recalled;
 	int nocontext = 0, noposnew = 0, nocernew = 0;
 
-	if( wld->context_on_connect > 0 )
+	if( wld->context_lines > 0 )
 	{
 		/* Recall history lines. */
-		queue = world_recall_history( wld, wld->context_on_connect );
+		queue = world_recall_history( wld, wld->context_lines );
 
 		/* Inform the client of the context lines */
 		if( queue->count > 0 )
@@ -536,7 +536,7 @@ extern void world_recall_and_pass( World *wld )
 			"(%.1f%% of buffer).",
 			( nocontext == 0 ) ? "" : "No context lines. ",
 			il->count, ( il->count == 1 ) ? "" : "s",
-			il->size / 10.24 / wld->max_buffer_size );
+			il->size / 10.24 / wld->buffer_size );
 
 		/* If nocontext was 1, we reported on it now. Clear it. */
 		nocontext = 0;
@@ -565,7 +565,7 @@ extern void world_recall_and_pass( World *wld )
 			( nocontext == 0 ) ? "" : "No context lines. ",
 			( noposnew == 0 ) ? "" : "No possibly new lines. ",
 			bl->count, ( bl->count == 1 ) ? "" : "s",
-			bl->size / 10.24 / wld->max_buffer_size );
+			bl->size / 10.24 / wld->buffer_size );
 
 		/* If nocontext/noposnew were 1, we reported. Clear them. */
 		nocontext = 0;

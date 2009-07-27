@@ -120,7 +120,7 @@ int main( int argc, char **argv )
 		die( world, err );
 
 	/* Refuse to start if the authentication string is absent. */
-	if( world->auth_md5hash == NULL )
+	if( world->auth_hash == NULL )
 		die( world, xstrdup( "No authentication string given in "
 				"configuration file. Refusing to start." ) );
 
@@ -266,7 +266,7 @@ static void mainloop( World *wld )
 	while( ( line = linequeue_pop( wld->client_toqueue ) ) )
 	{
 		/* Log if logging is enabled, and the line is loggable */
-		if( wld->logging_enabled && !( line->flags & LINE_DONTLOG ) )
+		if( wld->logging && !( line->flags & LINE_DONTLOG ) )
 			world_log_line( wld, line );
 
 		/* If the same line makes it back here again, it should not

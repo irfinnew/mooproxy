@@ -2,7 +2,7 @@
 # It contains all configurable options, all set to the same defaults that are
 # hardcoded into mooproxy.
 #
-# You need to change at least listenport and auth_md5hash before you can
+# You need to change at least listenport and auth_hash before you can
 # use mooproxy.
 
 
@@ -11,24 +11,40 @@
 listenport = -1
 # An MD5 hash of the authentication string clients must give after
 # connecting to mooproxy. Use mooproxy --md5crypt to create the hash.
-auth_md5hash = ""
+auth_hash = ""
+
+
 
 # The address of the MOO server to connect to.
 host = ""
+
 # The port to connect to on the MOO server.
 port = -1
+
 # If set to true, mooproxy will automatically try to log you in after
 # connecting to the MOO server. It uses the authentication string the
 # client gave mooproxy for this purpose.
 autologin = false
+
 # If set to true, mooproxy will reconnect when the connection to the server
 # has been lost or closed by the server. It will not reconnect if connecting
 # fails directly after using /connect.
 # Autoreconnect usually only makes sense if autologin is also true.
 autoreconnect = false
 
+
+
 # Lines starting with this string are interpreted as commands
 commandstring = "/"
+
+# If mooproxy receives a string from the client that starts with the
+# commandstring, but is not a valid command, this setting says what to do.
+# If it's set to true, mooproxy will complain that the command is invalid.
+# If it's set to false, mooproxy will send the string to the server as if
+# it was a regular line.
+strict_commands = true
+
+
 
 # Informational messages from mooproxy to the user are prefixed by this string.
 # In the string the following sequences have special meaning:
@@ -39,6 +55,7 @@ commandstring = "/"
 # Use uppercase to get the bold/bright variant (e.g., %B is bold/bright blue).
 # Use %% to get a literal %.
 infostring = "%c%% "
+
 # Mooproxy prefixes this string to the "context history", "possibly new lines",
 # "certainly new lines" and "end of new lines" messages. Setting this to
 # something colourful might make it easier to spot these messages.
@@ -47,29 +64,30 @@ infostring = "%c%% "
 # regular infostring for these messages.
 newinfostring = ""
 
-# Log output from the server to the client?
-logging_enabled = true
-# If set to true, all lines written to the logfiles are prepended with a
-# timestamp of the form [HH:MM:SS].
-timestamped_logs = true
+
 
 # When a client connects, mooproxy can reproduce lines from history to
 # the client, in order to provide the user with context.
 # This setting sets the number of recalled lines.
-context_on_connect = 100
+context_lines = 100
+
+
 
 # The maximum amount of memory in KB used to hold history lines (lines you have
 # already read) and new lines (lines you have not yet read).
-max_buffer_size = 4096
+buffer_size = 4096
+
 # The maximum amount of memory in KB used to hold loggable lines that have not
 # yet been written to disk. If your disk space runs out, and the amount of
 # unlogged lines exceeds this amount of memory, new lines will NOT be logged.
 # Therefore, it's recommended to keep this value large-ish.
-max_logbuffer_size = 4096
+logbuffer_size = 4096
 
-# If mooproxy receives a string from the client that starts with the
-# commandstring, but is not a valid command, this setting says what to do.
-# If it's set to true, mooproxy will complain that the command is invalid.
-# If it's set to false, mooproxy will send the string to the server as if
-# it was a regular line.
-strict_commands = true
+
+
+# Log output from the server to the client?
+logging = true
+
+# If set to true, all lines written to the logfiles are prepended with a
+# timestamp of the form [HH:MM:SS].
+log_timestamps = true

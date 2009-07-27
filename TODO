@@ -16,7 +16,7 @@ Items considered for next release:
  * Rename some options? Less underscores, preferably.
    * max_buffer_size -> buffer_size
    * max_logbuffer_size -> logbuffer_size
- * Improve setting of auth_md5hash.
+ * Improve setting of auth_hash.
  * Change authstring to just mean the password instead of the entire connection string. May require additional options...
  * Fix the remaining command/setting descriptions.
  * Fix the "wacko resolver slave after libc upgrade" bug.

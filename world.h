@@ -98,7 +98,7 @@ struct _World
 	BindResult *bindresult;
 
 	/* Authentication related stuff */
-	char *auth_md5hash;
+	char *auth_hash;
 	char *auth_literal;
 	int auth_connections;
 	int auth_correct[NET_MAXAUTHCONN];
@@ -188,18 +188,18 @@ struct _World
 	char *ace_poststr;
 
 	/* Options */
-	int logging_enabled;
 	int autologin;
 	int autoreconnect;
 	char *commandstring;
+	int strict_commands;
 	char *infostring;
 	char *infostring_parsed;
 	char *newinfostring;
 	char *newinfostring_parsed;
-	long context_on_connect;
-	long max_buffer_size;
-	long max_logbuffer_size;
-	int strict_commands;
+	long context_lines;
+	long buffer_size;
+	long logbuffer_size;
+	int logging;
 	int log_timestamps;
 };
 

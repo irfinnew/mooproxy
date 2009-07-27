@@ -199,7 +199,7 @@ extern int world_match_authentication( World *wld, const char *str )
 		return !strcmp( wld->auth_literal, str );
 
 	/* Match against the MD5 hash */
-	if( !match_string_md5hash( str, wld->auth_md5hash ) )
+	if( !match_string_md5hash( str, wld->auth_hash ) )
 		return 0;
 
 	/* If we got here, str is valid. Cache the literal for later. */
