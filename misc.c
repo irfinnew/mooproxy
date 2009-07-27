@@ -710,3 +710,26 @@ extern long strcpy_nobell( char *dest, char *src )
 
 	return dest - origdest;
 }
+
+
+
+extern int strcmp_under( char *s, char *t )
+{
+	for(;;)
+	{
+		while( *s == '_' )
+			s++;
+
+		while( *t == '_' )
+			t++;
+
+		while( *s && *s == *t )
+			s++, t++;
+
+		if( *s == '\0' && *t == '\0' )
+			return 0;
+
+		if( *s != '_' && *t != '_' )
+			return *s - *t;
+	}
+}

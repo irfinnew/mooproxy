@@ -420,7 +420,7 @@ extern int world_desc_key( World *wld, char *key,
 	int i;
 
 	for( i = 0; key_db[i].keyname; i++ )
-		if( !strcmp( key, key_db[i].keyname ) )
+		if( !strcmp_under( key, key_db[i].keyname ) )
 		{
 			if( key_db[i].hidden )
 				return GET_KEY_NF;
@@ -455,7 +455,7 @@ static int set_key_internal( World *wld, char *key, char *value, int src,
 	int i;
 
 	for( i = 0; key_db[i].keyname; i++ )
-		if( !strcmp( key, key_db[i].keyname ) )
+		if( !strcmp_under( key, key_db[i].keyname ) )
 		{
 			if( key_db[i].hidden && src == ASRC_USER )
 				return SET_KEY_NF;
@@ -477,7 +477,7 @@ static int get_key_internal( World *wld, char *key, char **value, int src )
 	int i;
 
 	for( i = 0; key_db[i].keyname; i++ )
-		if( !strcmp( key, key_db[i].keyname ) )
+		if( !strcmp_under( key, key_db[i].keyname ) )
 		{
 			if( key_db[i].hidden )
 				return GET_KEY_NF;

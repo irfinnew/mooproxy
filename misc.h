@@ -157,6 +157,11 @@ extern long strcpy_noansi( char *dest, char *src );
  * Returns the length of the new string (excluding terminating \0). */
 extern long strcpy_nobell( char *dest, char *src );
 
+/* Like strcmp(), but ignores underscores. Strings which can be transformed
+ * to eachother solely by the insertion and/or deletion of underscores are
+ * considered to be equal. */
+extern int strcmp_under( char *s, char *t );
+
 
 
 #endif  /* ifndef MOOPROXY__HEADER__MISC */
