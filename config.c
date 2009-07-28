@@ -63,50 +63,122 @@ static const struct
 key_db[] =
 {
 	{ 0, "listenport", aset_listenport, aget_listenport,
-		"The network port mooproxy listens on.",
-		NULL },
+	"The network port mooproxy listens on.",
+	"The network port mooproxy listens on for client connections." },
+
 	{ 0, "auth_hash", aset_auth_hash, aget_auth_hash,
-		"The \"password\" a client needs to connect.",
-		"FIXME" },
+	"The \"password\" a client needs to connect.",
+	"Clients connecting to mooproxy have to provide a string\n"
+	"(such as \"connect <player> <password>\") to authenticate\n"
+	"themselves. This setting contains a hash of this string.\n"
+	"\n"
+	"To change auth_hash, you need to specify the new hash as\n"
+	"well as the old literal authentication string, like so:\n"
+	"\n"
+	"/auth_hash <new hash> \"<old literal string>\"\n"
+	"\n"
+	"You can generate a new hash by running mooproxy --md5crypt.\n"
+	"See the README for more details on authentication." },
+
 	{ 0, "host", aset_dest_host, aget_dest_host,
-		"The hostname of the server to connect to.",
-		NULL },
+	"The hostname of the server to connect to.",
+	NULL },
+
 	{ 0, "port", aset_dest_port, aget_dest_port,
-		"The port to connect to on the server.",
-		NULL },
+	"The port to connect to on the server.",
+	NULL },
+
 	{ 0, "autologin", aset_autologin, aget_autologin,
-		"Log in automatically after connecting.",
-		"FIXME" },
+	"Log in automatically after connecting.",
+	"If true, mooproxy will try to log you in after connecting to\n"
+	"the server. For this, it will use the client authentication\n"
+	"string (see auth_hash)." },
+
 	{ 0, "autoreconnect", aset_autoreconnect, aget_autoreconnect,
-		"Reconnect when the server disconnects us.",
-		"FIXME" },
+	"Reconnect when the server disconnects us.",
+	"If true, mooproxy will attempt to reconnect to the server\n"
+	"whenever the connection to the server is lost or fails to be\n"
+	"established. It uses exponential back-off.\n"
+	"\n"
+	"Mooproxy will not reconnect if establishing a connection\n"
+	"fails directly after the /connect command has been issued.\n"
+	"\n"
+	"Autoreconnect usually only makes sense if autologin is on." },
+
 	{ 0, "commandstring", aset_commandstring, aget_commandstring,
-		"How mooproxy recognizes commands.",
-		"FIXME" },
+	"How mooproxy recognizes commands.",
+	"Lines from the client starting with this string are\n"
+	"interpreted as commands (but see also: strict_commands).\n"
+	"This string does not need to be one character, it can be any\n"
+	"length (even empty)." },
+
 	{ 0, "strict_commands", aset_strict_commands, aget_strict_commands,
-		"Ignore invalid commands.",
-		"FIXME" },
+	"Ignore invalid commands.",
+	"If mooproxy receives a string from the client that starts\n"
+	"with the commandstring, but is not a valid command, this\n"
+	"setting determines what mooproxy will do.\n"
+	"\n"
+	"If true, mooproxy will complain that the command is invalid.\n"
+	"If false, mooproxy will pass the line through to the server\n"
+	"as if it was a regular line." },
+
 	{ 0, "infostring", aset_infostring, aget_infostring,
-		"Prefix for all messages from mooproxy.",
-		"FIXME" },
+	"Prefix for all messages from mooproxy.",
+	"Informational messages from mooproxy to the user are\n"
+	"prefixed by this string.\n"
+	"\n"
+	"Use the following sequences to get colours:\n"
+	"  %b -> blue   %g -> green  %m -> magenta  %w -> white\n"
+	"  %c -> cyan   %k -> black  %r -> red      %y -> yellow\n"
+	"Use uppercase to get the bold/bright variant of that colour.\n"
+	"Use %% to get a literal %." },
+
 	{ 0, "newinfostring", aset_newinfostring, aget_newinfostring,
-		"Prefix for history/new lines messages.",
-		"FIXME" },
+	"Prefix for history/new lines messages.",
+	"Mooproxy prefixes this string to the \"context history\",\n"
+	"\"possibly new lines\", \"certainly new lines\" and \"end of new\n"
+	"lines\" messages. Setting this to something colourful might\n"
+	"make it easier to spot these messages.\n"
+	"\n"
+	"This string accepts the same colour sequences as infostring.\n"
+	"If this string is not set, or it is set to \"\", mooproxy will\n"
+	"use the regular infostring for these messages." },
+	
 	{ 0, "context_lines", aset_context_lines, aget_context_lines,
-		"Context lines to provide when you connect.",
-		"FIXME" },
+	"Context lines to provide when you connect.",
+	"When a client connects, mooproxy can reproduce lines from\n"
+	"history to the client, in order to provide the user with\n"
+	"context. This setting sets the number of reproduced lines." },
+
 	{ 0, "buffer_size", aset_buffer_size, aget_buffer_size,
-		"Max memory to spend on new/history lines.",
-		"FIXME" },
+	"Max memory to spend on new/history lines.",
+	"The maximum amount of memory in KB used to hold history\n"
+	"lines (lines you have already read) and new lines (lines you\n"
+	"have not yet read).\n"
+	"\n"
+	"If the amount of lines mooproxy receives from the server\n"
+	"while the client is not connected exceeds this amount of\n"
+	"memory, mooproxy will have to drop unread lines (but it will\n"
+	"still attempt to log those lines, see logbuffer_size)." },
+
 	{ 0, "logbuffer_size", aset_logbuffer_size, aget_logbuffer_size,
-		"Max memory to spend on unlogged lines.",
-		"FIXME" },
+	"Max memory to spend on unlogged lines.",
+	"The maximum amount of memory in KB used to hold loggable\n"
+	"lines that have not yet been written to disk.\n"
+	"\n"
+	"If your disk space runs out, and the amount of unlogged\n"
+	"lines exceeds this amount of memory, new lines will NOT be\n"
+	"logged." },
+
 	{ 0, "logging", aset_logging, aget_logging,
-		"Log everything from the server.",
-		"FIXME" },
+	"Log everything from the server.",
+	"If true, mooproxy will log all lines from the server (and a\n"
+	"select few messages from mooproxy) to file." },
+
 	{ 0, "log_timestamps", aset_log_timestamps, aget_log_timestamps,
-		"Prefix every logged line by a timestamp.",
-		"FIXME" },
+	"Prefix every logged line by a timestamp.",
+	"If true, all logged lines are prefixed with a [HH:MM:SS]\n"
+	"timestamp." },
 
 	{ 0, NULL, NULL, NULL, NULL, NULL }
 };

@@ -7,85 +7,114 @@
 
 
 
-# The port to accept connections from clients on.
+# The network port mooproxy listens on for client connections.
 listenport = -1
-# An MD5 hash of the authentication string clients must give after
-# connecting to mooproxy. Use mooproxy --md5crypt to create the hash.
+# Clients connecting to mooproxy have to provide a string
+# (such as "connect <player> <password>") to authenticate
+# themselves. This setting contains a hash of this string.
+# 
+# To change auth_hash, you need to specify the new hash as
+# well as the old literal authentication string, like so:
+# 
+# /auth_hash <new hash> "<old literal string>"
+# 
+# You can generate a new hash by running mooproxy --md5crypt.
+# See the README for more details on authentication.
 auth_hash = ""
 
 
 
-# The address of the MOO server to connect to.
+# The hostname of the server to connect to.
 host = ""
 
-# The port to connect to on the MOO server.
+# The port to connect to on the server.
 port = -1
 
-# If set to true, mooproxy will automatically try to log you in after
-# connecting to the MOO server. It uses the authentication string the
-# client gave mooproxy for this purpose.
+# If true, mooproxy will try to log you in after connecting to
+# the server. For this, it will use the client authentication
+# string (see auth_hash).
 autologin = false
 
-# If set to true, mooproxy will reconnect when the connection to the server
-# has been lost or closed by the server. It will not reconnect if connecting
-# fails directly after using /connect.
-# Autoreconnect usually only makes sense if autologin is also true.
+# If true, mooproxy will attempt to reconnect to the server
+# whenever the connection to the server is lost or fails to be
+# established. It uses exponential back-off.
+#
+# Mooproxy will not reconnect if establishing a connection
+# fails directly after the /connect command has been issued.
+#
+# Autoreconnect usually only makes sense if autologin is on.
 autoreconnect = false
 
 
 
-# Lines starting with this string are interpreted as commands
+# Lines from the client starting with this string are
+# interpreted as commands (but see also: strict_commands).
+# This string does not need to be one character, it can be any
+# length (even empty).
 commandstring = "/"
 
-# If mooproxy receives a string from the client that starts with the
-# commandstring, but is not a valid command, this setting says what to do.
-# If it's set to true, mooproxy will complain that the command is invalid.
-# If it's set to false, mooproxy will send the string to the server as if
-# it was a regular line.
+# If mooproxy receives a string from the client that starts
+# with the commandstring, but is not a valid command, this
+# setting determines what mooproxy will do.
+#
+# If true, mooproxy will complain that the command is invalid.
+# If false, mooproxy will pass the line through to the server
+# as if it was a regular line.
 strict_commands = true
 
 
 
-# Informational messages from mooproxy to the user are prefixed by this string.
-# In the string the following sequences have special meaning:
-#     %b  ->  blue                %m  ->  magenta
-#     %c  ->  cyan                %r  ->  red
-#     %g  ->  green               %w  ->  white
-#     %k  ->  black               %y  ->  yellow
-# Use uppercase to get the bold/bright variant (e.g., %B is bold/bright blue).
+# Informational messages from mooproxy to the user are
+# prefixed by this string.
+#
+# Use the following sequences to get colours:
+#   %b -> blue   %g -> green  %m -> magenta  %w -> white
+#   %c -> cyan   %k -> black  %r -> red      %y -> yellow
+# Use uppercase to get the bold/bright variant of that colour.
 # Use %% to get a literal %.
 infostring = "%c%% "
 
-# Mooproxy prefixes this string to the "context history", "possibly new lines",
-# "certainly new lines" and "end of new lines" messages. Setting this to
-# something colourful might make it easier to spot these messages.
+# Mooproxy prefixes this string to the "context history",
+# "possibly new lines", "certainly new lines" and "end of new
+# lines" messages. Setting this to something colourful might
+# make it easier to spot these messages.
+#
 # This string accepts the same colour sequences as infostring.
-# If this string is not set, or it is set to "", mooproxy will use the
-# regular infostring for these messages.
+# If this string is not set, or it is set to "", mooproxy will
+# use the regular infostring for these messages.
 newinfostring = ""
 
 
 
-# When a client connects, mooproxy can reproduce lines from history to
-# the client, in order to provide the user with context.
-# This setting sets the number of recalled lines.
+# When a client connects, mooproxy can reproduce lines from
+# history to the client, in order to provide the user with
+# context. This setting sets the number of reproduced lines.
 context_lines = 100
 
 
 
-# The maximum amount of memory in KB used to hold history lines (lines you have
-# already read) and new lines (lines you have not yet read).
+# The maximum amount of memory in KB used to hold history
+# lines (lines you have already read) and new lines (lines you
+# have not yet read).
+#
+# If the amount of lines mooproxy receives from the server
+# while the client is not connected exceeds this amount of
+# memory, mooproxy will have to drop unread lines (but it will
+# still attempt to log those lines, see logbuffer_size).
 buffer_size = 4096
 
-# The maximum amount of memory in KB used to hold loggable lines that have not
-# yet been written to disk. If your disk space runs out, and the amount of
-# unlogged lines exceeds this amount of memory, new lines will NOT be logged.
-# Therefore, it's recommended to keep this value large-ish.
+# The maximum amount of memory in KB used to hold loggable
+# lines that have not yet been written to disk.
+#
+# If your disk space runs out, and the amount of unlogged
+# lines exceeds this amount of memory, new lines will NOT be
+# logged.
 logbuffer_size = 4096
 
 
 
-# Log output from the server to the client?
+# If true, mooproxy will log all lines from the server (and a
+# select few messages from mooproxy) to file.
 logging = true
 
 # If set to true, all lines written to the logfiles are prepended with a
