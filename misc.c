@@ -588,6 +588,7 @@ extern char *parse_ansi_tags( char *str )
 			continue;
 		}
 
+		/* We got a %, advance to the next character. */
 		str++;
 
 		if( *str == '\0' )
