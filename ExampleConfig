@@ -117,6 +117,6 @@ logbuffer_size = 4096
 # select few messages from mooproxy) to file.
 logging = true
 
-# If set to true, all lines written to the logfiles are prepended with a
-# timestamp of the form [HH:MM:SS].
+# If true, all logged lines are prefixed with a [HH:MM:SS]
+# timestamp.
 log_timestamps = true
