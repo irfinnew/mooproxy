@@ -56,6 +56,7 @@ static void command_version( World *wld, char *cmd, char *args );
 static void command_date( World *wld, char *cmd, char *args );
 static void command_uptime( World *wld, char *cmd, char *args );
 static void command_world( World *wld, char *cmd, char *args );
+static void command_forget( World *wld, char *cmd, char *args );
 
 
 
@@ -144,6 +145,10 @@ cmd_db[] =
 
 	{ "world", command_world, "",
 	"Shows the name of the current world.",
+	NULL },
+
+	{ "forget", command_forget, "",
+	"Forgets all history lines.",
 	NULL },
 
 	{ NULL, NULL, NULL, NULL, NULL }
@@ -982,4 +987,16 @@ static void command_world( World *wld, char *cmd, char *args )
 	}
 
 	world_msg_client( wld, "The world is %s (%s).", wld->name, status );
+}
+
+
+
+/* Clear all history lines from memory. */
+static void command_forget( World *wld, char *cmd, char *args )
+{
+	world_inactive_to_history( wld );
+
+	linequeue_clear( wld->history_lines );
+
+	world_msg_client( wld, "All history lines have been forgotten." );
 }
