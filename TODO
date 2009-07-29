@@ -6,19 +6,15 @@ Items considered for next release:
  * /lock command to disallow changing options / connecting to strange servers?
  * Fix some FIXMEs.
  * Live migration...?
- * Document autoreconnect behaviour
  * Delay on authentication failure?
    * Or limit connection rate per source IP.
    * And display number of failed authentication attempts on login.
    * And log all authentication attempts? Log in the main log, or log separately?
  * Fix /recall to -10 lines
  * A command to send non-activating input to the MOO server.
- * Rename some options? Less underscores, preferably.
-   * max_buffer_size -> buffer_size
-   * max_logbuffer_size -> logbuffer_size
  * Improve setting of auth_hash.
  * Change authstring to just mean the password instead of the entire connection string. May require additional options...
- * Fix the remaining command/setting descriptions.
+ * Fix the remaining command descriptions.
  * Fix the "wacko resolver slave after libc upgrade" bug.
  * Rewrite "about" section of README.
  * Have ACE send MCP client-size messages?
@@ -56,7 +52,7 @@ Probably not's:
  * Have mooproxy convert received text to the right charset for logging?
    - Too complex; mooproxy can't know the charsets.
  * The accessor functions are mostly just dumb wrappers. Can't this be done using less code?
-   - Lots of effort, (virtually) no gain.
+   - Lots of effort, virtually no gain.
  * Commandstring escaping (to be able to send something starting with the cmdstring to the MOO)?
    - Little enthusiasm from users.
  * Add option to use different dir (instead of ~/.mooproxy) for configuration ?
