@@ -4,10 +4,10 @@ set -e
 
 if [ "${1}" = "" ]
 then
-	echo " * Update VERSIONSTR in global.h"
-	echo " * Update Changelog (822-date)"
-	echo " * Update debian/changelog"
-	echo " * Update the date in mooproxy.1"
+	echo " * Update VERSIONSTR/RELEASEDATE/COPYYEARS in global.h"
+	echo " * Update Changelog"
+	echo " * Update debian/changelog (822-date)"
+	echo " * Update the dates in mooproxy.1"
 	echo
 	echo " * Do ./release.sh <mooproxy version>"
 	echo " * Change dist to <version>-luon and do release again"
@@ -23,6 +23,7 @@ rm -rf build/
 mkdir -p build/mooproxy-${VERSION}/
 cp * build/mooproxy-${VERSION}/ || true
 rm build/mooproxy-${VERSION}/release.sh
+rm build/mooproxy-${VERSION}/gencfgdsc.sh
 
 cd build/
 tar cvzf mooproxy_${VERSION}.orig.tar.gz mooproxy-${VERSION}/
