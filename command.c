@@ -551,7 +551,7 @@ static void command_quit( World *wld, char *cmd, char *args )
 static void command_shutdown( World *wld, char *cmd, char *args )
 {
 	long unlogged_lines;
-	float unlogged_kb;
+	float unlogged_kib;
 	char *tmp;
 
 	tmp = get_one_word( &args );
@@ -583,11 +583,11 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 	{
 		unlogged_lines = wld->log_queue->count +
 				wld->log_current->count + wld->log_bfull / 80;
-		unlogged_kb = ( wld->log_bfull + wld->log_queue->size +
+		unlogged_kib = ( wld->log_bfull + wld->log_queue->size +
 				wld->log_current->size ) / 1024.0;
 		world_msg_client( wld, "There are approximately %li lines "
-				"(%.1fkb) not yet logged to disk. ",
-				unlogged_lines, unlogged_kb );
+				"(%.1fKiB) not yet logged to disk. ",
+				unlogged_lines, unlogged_kib );
 		world_msg_client( wld, "Refusing to shut down. "
 				"Use /shutdown -f to override." );
 		return;

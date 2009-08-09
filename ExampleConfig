@@ -93,7 +93,7 @@ context_lines = 100
 
 
 
-# The maximum amount of memory in KB used to hold history
+# The maximum amount of memory in KiB used to hold history
 # lines (lines you have already read) and new lines (lines you
 # have not yet read).
 #
@@ -103,7 +103,7 @@ context_lines = 100
 # still attempt to log those lines, see logbuffer_size).
 buffer_size = 4096
 
-# The maximum amount of memory in KB used to hold loggable
+# The maximum amount of memory in KiB used to hold loggable
 # lines that have not yet been written to disk.
 #
 # If your disk space runs out, and the amount of unlogged

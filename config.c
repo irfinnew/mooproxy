@@ -152,7 +152,7 @@ key_db[] =
 
 	{ 0, "buffer_size", aset_buffer_size, aget_buffer_size,
 	"Max memory to spend on new/history lines.",
-	"The maximum amount of memory in KB used to hold history\n"
+	"The maximum amount of memory in KiB used to hold history\n"
 	"lines (lines you have already read) and new lines (lines you\n"
 	"have not yet read).\n"
 	"\n"
@@ -163,7 +163,7 @@ key_db[] =
 
 	{ 0, "logbuffer_size", aset_logbuffer_size, aget_logbuffer_size,
 	"Max memory to spend on unlogged lines.",
-	"The maximum amount of memory in KB used to hold loggable\n"
+	"The maximum amount of memory in KiB used to hold loggable\n"
 	"lines that have not yet been written to disk.\n"
 	"\n"
 	"If your disk space runs out, and the amount of unlogged\n"
@@ -390,7 +390,7 @@ extern int world_load_config( World *wld, char **err )
 
 
 
-/* Read file (with max length CONFIG_MAXLENGTH KB) in a block of memory,
+/* Read file (with max length CONFIG_MAXLENGTH KiB) in a block of memory,
  * and put the address of this block in contents. The block should be freed.
  * On success, return 0.
  * On error, no block is places in contents, an error is placed in err, and

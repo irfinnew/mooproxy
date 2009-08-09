@@ -74,7 +74,7 @@
 #define XMALLOC_OOM_RETRIES 4
 /* The name of the panic file, which will be placed in ~. */
 #define PANIC_FILE "mooproxy.panic"
-/* The maximum allowed length of the config file, in KB. */
+/* The maximum allowed length of the config file, in KiB. */
 #define CONFIG_MAXLENGTH 128UL
 
 
