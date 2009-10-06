@@ -24,6 +24,17 @@ Items considered for next release:
  * Catch SIGTERM/QUIT and act on it.
  * /copyright command?
  * Improve the timer code, so mooproxy doesn't tick every second.
+        ==> utopia - 2009-10-01.log <==
+        [00:00:06]  -!- Day changed to Thursday 01 Oct 2009.
+        ==> utopia - 2009-10-02.log <==
+        [23:59:00]  -!- Day changed to Saturday 03 Oct 2009.
+        ==> utopia - 2009-10-03.log <==
+        [23:59:01]  -!- Day changed to Sunday 04 Oct 2009.
+        ==> utopia - 2009-10-04.log <==
+        [23:59:00]  -!- Day changed to Monday 05 Oct 2009.
+        ==> utopia - 2009-10-05.log <==
+        [23:59:01]  -!- Day changed to Tuesday 06 Oct 2009.
+
  
 
 Probably's:
