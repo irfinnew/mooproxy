@@ -11,6 +11,7 @@
 - Ook geeftie nu /help, wat ook handig is voor mensen die hun commandstring vergeten zijn. [from: christian]
 - ACE!
 - Tweaked autoreconnect delay.
+- Fixed empty line between reconnection attempts.
 
 
 

@@ -825,8 +825,7 @@ extern void world_do_reconnect( World *wld )
 	wld->flags |= WLD_SERVERRESOLVE;
 
 	/* And announce what we did. */
-	linequeue_append( wld->client_toqueue,
-			line_create( xstrdup( "" ), -1 ) );
+	world_msg_client( wld, "" );
 	world_msg_client( wld, "Reconnecting now (at %s).", 
 			time_string( current_time(), FULL_TIME ) );
 }
