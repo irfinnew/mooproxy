@@ -57,6 +57,11 @@
  * See (1) in world.c for details. */
 #define NET_BBUFFER_ALLOC ( NET_BBUFFER_LEN + 512 )
 
+/* The maximum time in seconds to delay between two autoreconnects. */
+#define AUTORECONNECT_MAX_DELAY 1800
+/* The exponential backoff in autoreconnecting. */
+#define AUTORECONNECT_BACKOFF_FACTOR 1.5
+
 /* The minimum number of seconds between two identical complaints about
  * the logfiles */
 #define LOG_MSGINTERVAL 600

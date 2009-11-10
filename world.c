@@ -803,10 +803,10 @@ extern void world_schedule_reconnect( World *wld )
 	free( whenstr );
 
 	/* Increase the delay. */
-	wld->reconnect_delay *= 2;
-	wld->reconnect_delay += 4000 + rand() / (RAND_MAX / 3000);
-	if( wld->reconnect_delay > 3600000 )
-		wld->reconnect_delay = 3600000;
+	wld->reconnect_delay *= AUTORECONNECT_BACKOFF_FACTOR;
+	wld->reconnect_delay += 3000 + rand() / (RAND_MAX / 4000);
+	if( wld->reconnect_delay > AUTORECONNECT_MAX_DELAY * 1000 )
+		wld->reconnect_delay = AUTORECONNECT_MAX_DELAY * 1000;
 
 	/* If we have to reconnect immediately, actually do it immediately. */
 	if( delay == 0 )
