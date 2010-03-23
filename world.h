@@ -51,8 +51,8 @@
 
 
 /* BindResult struct. Contains the result of the attempt to bind on a port. */
-typedef struct _BindResult BindResult;
-struct _BindResult
+typedef struct BindResult BindResult;
+struct BindResult
 {
 	/* Contains error msg if a fatal init error occurred. Otherwise NULL. */
 	char *fatal;
@@ -77,8 +77,8 @@ struct _BindResult
 
 /* The World struct. Contains all configuration and state information for a
  * world. */
-typedef struct _World World;
-struct _World
+typedef struct World World;
+struct World
 {
 	/* Essentials */
 	char *name;

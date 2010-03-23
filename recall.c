@@ -55,8 +55,8 @@ MODIFIER  -> 'lines'
 
 
 
-typedef struct _Params Params;
-struct _Params
+typedef struct Params Params;
+struct Params
 {
 	/* The argument string we're parsing. */
 	char   *argstr;

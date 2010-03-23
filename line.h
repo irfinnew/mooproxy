@@ -44,8 +44,8 @@
 
 
 /* Line type */
-typedef struct _Line Line;
-struct _Line
+typedef struct Line Line;
+struct Line
 {
 	char *str;
 	Line *next;
@@ -57,8 +57,8 @@ struct _Line
 };
 
 /* Linequeue type */
-typedef struct _Linequeue Linequeue;
-struct _Linequeue
+typedef struct Linequeue Linequeue;
+struct Linequeue
 {
 	Line *head;
 	Line *tail;

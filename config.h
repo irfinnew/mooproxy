@@ -26,8 +26,8 @@
 
 
 /* Collection of settings from the commandline. */
-typedef struct _Config Config;
-struct _Config
+typedef struct Config Config;
+struct Config
 {
 	int action;
 	char *worldname;
