@@ -188,17 +188,29 @@ extern void world_log_link_remove( World *wld )
 extern void world_log_link_update( World *wld )
 {
 	time_t timestamp = current_time();
-	struct tm *ts;
+	int today;
 
 	/* Update the 'today' link. */
 	update_one_link( wld, "today", timestamp );
 
-	/* Get a time_t for yesterday, and update the 'yesterday' link. */
-	ts = localtime( &timestamp );
-	ts->tm_mday--;
-	/* If tm_mday is 0, mktime() should normalize this to the last day
-	 * of the previous month. */
-	timestamp = mktime( ts );
+	/* Obtain a unix timestamp somewhere in the previous day.
+	 * Just subtracting 24*60*60 seconds is not guaranteed to work on
+	 * summertime switchover days, because days with a summertime ->
+	 * wintertime switch have 25*60*60 seconds. On the other hand,
+	 * subtracting 25*60*60 seconds might put us _two_ days before the
+	 * current day.
+	 * Converting to localtime first and then decrementing the day field
+	 * does not help, because the struct tm also contains flags for the
+	 * daylight saving time. That means that on switchover days we carry
+	 * over the wrong DST flag to the previous day which again leads to
+	 * problems.
+	 * Finally, renaming 'today' to 'yesterday' at midnight only works
+	 * at midnight, not when starting mooproxy.
+	 * So we just subtract hours from the current unix timestamp until we
+	 * end up in the previous day. Ugly, but it works. */
+	today = localtime( &timestamp )->tm_mday;
+	while( localtime( &timestamp )->tm_mday == today )
+		timestamp -= 3600;
 
 	update_one_link( wld, "yesterday", timestamp );
 }
