@@ -45,6 +45,9 @@
 #define DEFAULT_STRICTCMDS 1
 #define DEFAULT_LOGTIMESTAMPS 1
 
+/* Parameters for the token bucket controlling authentication attempts. */
+#define NET_AUTH_BUCKETSIZE 5
+#define NET_AUTH_TOKENSPERSEC 1
 /* Maximum number of authenticating connections */
 #define NET_MAXAUTHCONN 8
 /* Maximum number of characters accepted from an authenticating client.

@@ -22,6 +22,7 @@
 #include "timer.h"
 #include "log.h"
 #include "misc.h"
+#include "network.h"
 
 
 
@@ -94,6 +95,9 @@ extern void world_timer_tick( World *wld, time_t t )
 static void tick_second( World *wld, time_t t )
 {
 	set_current_time( t );
+
+	/* Add some tokens to the auth token bucket. */
+	world_auth_add_bucket( wld );
 
 	/* If we're waiting for a reconnect, and now is the time, do it. */
 	if( wld->server_status == ST_RECONNECTWAIT && wld->reconnect_at <= t )

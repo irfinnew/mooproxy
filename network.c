@@ -47,7 +47,7 @@
 #define NET_BACKLOG 4
 
 /* Authentication messages */
-#define NET_AUTHSTRING "Welcome, please authenticate."
+#define NET_AUTHSTRING "Welcome, this is mooproxy. Please authenticate."
 #define NET_AUTHFAIL "Authentication failed, goodbye."
 
 
@@ -71,14 +71,23 @@ extern void wait_for_network( World *wld )
 	fd_set rset, wset;
 	int high, i;
 
-	/* If there is a correctly authenticated authconn, promote that
-	 * connection and be done. */
+	/* Check the auth connections for ones that need to be promoted to
+	 * client, and for ones that need verification. */
 	for( i = 0; i < wld->auth_connections; i++ )
-		if( wld->auth_correct[i] )
+	{
+		if( wld->auth_status[i] == AUTH_ST_CORRECT )
 		{
 			promote_auth_connection( wld, i );
 			return;
 		}
+
+		if( wld->auth_tokenbucket > 0 )
+			if( wld->auth_status[i] == AUTH_ST_VERIFY )
+			{
+				verify_authentication( wld, i );
+				return;
+			}
+	}
 
 	/* If there are unprocessed lines in the *_toqueue queues, return.
 	 * The main loop will move these lines to their respective transmit
@@ -619,14 +628,14 @@ static void handle_listen_fd( World *wld, int which )
 	/* Use the next available slot */
 	i = wld->auth_connections++;
 
-	/* Initialize carefully. auth_correct = 0 is especially important. */
+	/* Initialize carefully. auth_status is especially important. */
 	wld->auth_fd[i] = newfd;
-	wld->auth_correct[i] = 0;
+	wld->auth_status[i] = AUTH_ST_WAITNET;
 	wld->auth_read[i] = 0;
 	wld->auth_address[i] = xstrdup( hostbuf );
 
 	/* Zero the buffer, just to be sure.
-	 * Now an erroneous compare won't check against garbage (or, worse,
+	 * Now an erroneous compare won't check against garbage (or worse,
 	 * a correct authentication string) still in the buffer. */
 	memset( wld->auth_buf[i], 0, NET_MAXAUTHLEN );
 
@@ -644,8 +653,8 @@ static void handle_auth_fd( World *wld, int wa )
 {
 	int i, n;
 
-	/* If this connection has already been authenticated, ignore it. */
-	if( wld->auth_correct[wa] )
+	/* Only proceed if this connection is actually waiting for more data */
+	if( wld->auth_status[wa] != AUTH_ST_WAITNET )
 		return;
 
 	/* Read into the buffer */
@@ -675,9 +684,10 @@ static void handle_auth_fd( World *wld, int wa )
 		return;
 	}
 
-	/* We encountered a newline or read too many characters */
+	/* We encountered a newline or read too many characters, verify the
+	 * authentication attempt */
 	wld->auth_read[wa] += n;
-	verify_authentication( wld, wa );
+	wld->auth_status[wa] = AUTH_ST_VERIFY;
 }
 
 
@@ -709,7 +719,7 @@ static void remove_auth_connection( World *wld, int wa, int donack )
 		wld->auth_read[i] = wld->auth_read[i + 1];
 		wld->auth_buf[i] = wld->auth_buf[i + 1];
 		wld->auth_address[i] = wld->auth_address[i + 1];
-		wld->auth_correct[i] = wld->auth_correct[i + 1];
+		wld->auth_status[i] = wld->auth_status[i + 1];
 	}
 
 	wld->auth_connections--;
@@ -718,7 +728,7 @@ static void remove_auth_connection( World *wld, int wa, int donack )
 	wld->auth_fd[wld->auth_connections] = -1;
 	wld->auth_buf[wld->auth_connections] = buf;
 	wld->auth_address[wld->auth_connections] = NULL;
-	wld->auth_correct[wld->auth_connections] = 0;
+	wld->auth_status[wld->auth_connections] = AUTH_ST_WAITNET;
 }
 
 
@@ -738,6 +748,9 @@ static void verify_authentication( World *wld, int wa )
 		remove_auth_connection( wld, wa, 1 );
 		return;
 	}
+
+	/* Each authentication attempt uses up one token. */
+	wld->auth_tokenbucket--;
 
 	/* Determine the maximum number of characters to scan */
 	maxlen = buflen + 2;
@@ -797,7 +810,7 @@ static void verify_authentication( World *wld, int wa )
 	}
 
 	/* Finally, flag this connection as correctly authenticated. */
-	wld->auth_correct[wa] = 1;
+	wld->auth_status[wa] = AUTH_ST_CORRECT;
 }
 
 
@@ -808,7 +821,7 @@ static void verify_authentication( World *wld, int wa )
 static void promote_auth_connection( World *wld, int wa )
 {
 	/* If the world is not correctly authenticated, ignore it. */
-	if( !wld->auth_correct[wa] )
+	if( wld->auth_status[wa] != AUTH_ST_CORRECT )
 		return;
 
 	/* The client shouln't be connected.
@@ -963,4 +976,13 @@ extern void world_flush_server_txbuf( World *wld )
 	flush_buffer( wld->server_fd, wld->server_txbuffer,
 			&wld->server_txfull, wld->server_txqueue, NULL,
 			1, NULL, NULL, NULL );
+}
+
+
+
+extern void world_auth_add_bucket( World *wld )
+{
+	wld->auth_tokenbucket += NET_AUTH_TOKENSPERSEC;
+	if( wld->auth_tokenbucket > NET_AUTH_BUCKETSIZE )
+		wld->auth_tokenbucket = NET_AUTH_BUCKETSIZE;
 }

@@ -60,6 +60,9 @@ extern void world_flush_client_txbuf( World *wld );
  * disconnectedness. */
 extern void world_flush_server_txbuf( World *wld );
 
+/* Add some tokens to the auth token bucket. */
+extern void world_auth_add_bucket( World *wld );
+
 
 
 #endif  /* ifndef MOOPROXY__HEADER__NETWORK */

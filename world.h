@@ -41,13 +41,17 @@
 #define WLD_REBINDPORT		0x00000100
 #define WLD_SHUTDOWN		0x00000200
 
-/* Server statuses */
+/* Server/client statuses */
 #define ST_DISCONNECTED		0x01
 #define ST_RESOLVING		0x02
 #define ST_CONNECTING		0x03
 #define ST_CONNECTED		0x04
 #define ST_RECONNECTWAIT	0x05
 
+/* Authentication connection statuses */
+#define AUTH_ST_WAITNET		0x01
+#define AUTH_ST_VERIFY		0x02
+#define AUTH_ST_CORRECT		0x03
 
 
 /* BindResult struct. Contains the result of the attempt to bind on a port. */
@@ -100,8 +104,9 @@ struct World
 	/* Authentication related stuff */
 	char *auth_hash;
 	char *auth_literal;
+	int auth_tokenbucket;
 	int auth_connections;
-	int auth_correct[NET_MAXAUTHCONN];
+	int auth_status[NET_MAXAUTHCONN];
 	int auth_fd[NET_MAXAUTHCONN];
 	int auth_read[NET_MAXAUTHCONN];
 	char *auth_buf[NET_MAXAUTHCONN];

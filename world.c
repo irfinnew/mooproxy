@@ -72,6 +72,7 @@ extern World *world_create( char *wldname )
 	/* Authentication related stuff */
 	wld->auth_hash = NULL;
 	wld->auth_literal = NULL;
+	wld->auth_tokenbucket = NET_AUTH_BUCKETSIZE;
 	wld->auth_connections = 0;
 	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
 	{
