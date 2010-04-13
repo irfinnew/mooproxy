@@ -142,6 +142,9 @@ struct World
 	char *client_address;
 	char *client_prev_address;
 	time_t client_last_connected;
+	long client_login_failures;
+	char *client_last_failaddr;
+	time_t client_last_failtime;
 	time_t client_last_notconnmsg;
 
 	Linequeue *client_rxqueue;

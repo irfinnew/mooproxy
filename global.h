@@ -48,6 +48,8 @@
 /* Parameters for the token bucket controlling authentication attempts. */
 #define NET_AUTH_BUCKETSIZE 5
 #define NET_AUTH_TOKENSPERSEC 1
+/* The number of failed login attempts that triggers the warning. */
+#define NET_TOOMANY_LOGIN_FAILURES 20
 /* Maximum number of authenticating connections */
 #define NET_MAXAUTHCONN 8
 /* Maximum number of characters accepted from an authenticating client.

@@ -704,6 +704,17 @@ static void remove_auth_connection( World *wld, int wa, int donack )
 		write( wld->auth_fd[wa], NET_AUTHFAIL "\r\n",
 				sizeof( NET_AUTHFAIL "\r\n" ) - 1);
 
+	/* Connections that have been actively denied are counted towards
+	 * failed login attempts, so we record some information. */
+	if( donack )
+	{
+		wld->client_login_failures++;
+		wld->client_last_failtime = current_time();
+		free( wld->client_last_failaddr );
+		wld->client_last_failaddr = wld->auth_address[wa];
+		wld->auth_address[wa] = NULL;
+	}
+
 	/* Free allocated resources */
 	free( wld->auth_address[wa] );
 	if( wld->auth_fd[wa] != -1 )
@@ -864,10 +875,33 @@ static void promote_auth_connection( World *wld, int wa )
 				time_string( wld->client_last_connected,
 				FULL_TIME ), wld->client_prev_address );
 	else
-		world_msg_client( wld, "No earlier connections." );
+		world_msg_client( wld, "No earlier successful connections." );
+
+	/* If there were unsuccessful login attempts since the last login,
+	 * report on that. */
+	if( wld->client_login_failures > 0 )
+	{
+		world_msg_client( wld, "" );
+		world_msg_client( wld, "%i failed login attempt%s since %s.",
+				wld->client_login_failures,
+				wld->client_login_failures > 1 ? "s" : "",
+				wld->client_prev_address != NULL ? "your last login" : "mooproxy started" );
+		world_msg_client( wld, "Last failed attempt at %s, from %s.",
+				time_string( wld->client_last_failtime,
+				FULL_TIME ), wld->client_last_failaddr );
+		world_msg_client( wld, "" );
+	}
 
 	/* Show context history and pass buffered text */
 	world_recall_and_pass( wld );
+
+	/* If there were a lot of failed login attempts, warn the user. */
+	if( wld->client_login_failures >= NET_TOOMANY_LOGIN_FAILURES )
+		world_msg_client( wld, "POSSIBLE BREAK-IN ATTEMPT! Many login"
+			" failures, scroll up for more info." );
+
+	/* Reset the unsuccessful login counter. */
+	wld->client_login_failures = 0; 
 
 	/* Inform the MCP layer that a client just connected. */
 	if( wld->server_fd != -1 )

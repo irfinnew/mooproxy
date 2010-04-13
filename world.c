@@ -111,6 +111,9 @@ extern World *world_create( char *wldname )
 	wld->client_address = NULL;
 	wld->client_prev_address = NULL;
 	wld->client_last_connected = 0;
+	wld->client_login_failures = 0;
+	wld->client_last_failaddr = NULL;
+	wld->client_last_failtime = 0;
 	wld->client_last_notconnmsg = 0;
 
 	wld->client_rxqueue = linequeue_create();
