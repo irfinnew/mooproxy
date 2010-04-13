@@ -10,6 +10,7 @@ Items considered for next release:
    * Or limit connection rate per source IP.
    * And display number of failed authentication attempts on login.
    * And log all authentication attempts? Log in the main log, or log separately?
+   * Add "privileged addresses" concept, and /authstats (or something) command.
  * Fix /recall to -10 lines
  * A command to send non-activating input to the MOO server.
  * Improve setting of auth_hash.
