@@ -80,9 +80,9 @@ infostring = "%c%% "
 # make it easier to spot these messages.
 #
 # This string accepts the same colour sequences as infostring.
-# If this string is not set, or it is set to "", mooproxy will
+# If this string is set to the empty string (""), mooproxy will
 # use the regular infostring for these messages.
-newinfostring = ""
+newinfostring = "%C%% "
 
 
 
