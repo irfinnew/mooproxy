@@ -482,7 +482,8 @@ static void handle_connecting_fd( World *wld )
 	wld->server_status = ST_CONNECTED;
 
 	world_msg_client( wld, "      Success." );
-	line = world_msg_client( wld, "Now connected to world %s.", wld->name );
+	line = world_msg_client( wld, "Now connected to world %s (%s:%s).",
+			wld->name, wld->server_host, wld->server_port );
 	line->flags = LINE_CHECKPOINT;
 
 	/* Inform the MCP layer that we just connected to the server. */
@@ -752,6 +753,7 @@ static void verify_authentication( World *wld, int wa )
 {
 	char *buffer = wld->auth_buf[wa];
 	int alen, maxlen, buflen = wld->auth_read[wa];
+	Line *line;
 
 	/* If the authentication string is nonexistent, reject everything */
 	if( wld->auth_hash == NULL )
@@ -808,17 +810,26 @@ static void verify_authentication( World *wld, int wa )
 
 	/* Tell the client (if any) that the connection is taken over,
 	 * and flag the client connection for disconnection. */
-	if( wld->client_fd != -1 )
+	if( wld->client_status == ST_CONNECTED )
 	{
 		/* We don't want to mess up the next client with undesired
 		 * stuff, so we disable ace now. */
 		if( wld->ace_enabled )
 			world_disable_ace( wld );
 
-		world_msg_client( wld, "Connection taken over by %s.",
+		line = world_msg_client( wld, "Connection taken over by %s.",
 				wld->auth_address[wa] );
+		line->flags &= ~LINE_DONTLOG;
 		wld->flags |= WLD_CLIENTQUIT;
 	}
+	else
+	{
+		/* Record this connection for the log. */
+		line = world_msg_client( wld, "Client connected from %s.",
+				wld->auth_address[wa] );
+		line->flags = LINE_LOGONLY;
+	}
+
 
 	/* Finally, flag this connection as correctly authenticated. */
 	wld->auth_status[wa] = AUTH_ST_CORRECT;
@@ -885,7 +896,8 @@ static void promote_auth_connection( World *wld, int wa )
 		world_msg_client( wld, "%i failed login attempt%s since %s.",
 				wld->client_login_failures,
 				wld->client_login_failures > 1 ? "s" : "",
-				wld->client_prev_address != NULL ? "your last login" : "mooproxy started" );
+				wld->client_prev_address != NULL ?
+				"your last login" : "mooproxy started" );
 		world_msg_client( wld, "Last failed attempt at %s, from %s.",
 				time_string( wld->client_last_failtime,
 				FULL_TIME ), wld->client_last_failaddr );
@@ -916,6 +928,7 @@ static void handle_client_fd( World *wld )
 {
 	int n, offset = wld->client_rxfull;
 	char *buffer = wld->client_rxbuffer;
+	Line *line;
 
 	/* Read into the buffer */
 	n = read( wld->client_fd, buffer + offset, NET_BBUFFER_LEN - offset );
@@ -924,10 +937,19 @@ static void handle_client_fd( World *wld )
 	if( n == -1 && ( errno == EINTR || errno == EAGAIN ) )
 		return;
 
+	/* The connection died, record a message. */
 	if( n < 1 )
 	{
-		/* Ok, the connection dropped dead */
+		if( n < 0 )
+			line = world_msg_client( wld, "Connection to client "
+					"lost (%s).", strerror( errno ) );
+		else
+			line = world_msg_client( wld,
+					"Client closed connection." );
+
 		world_disconnect_client( wld );
+
+		line->flags = LINE_LOGONLY;
 		return;
 	}
 
@@ -942,7 +964,7 @@ static void handle_client_fd( World *wld )
  * append to RX queue. If the connection died, close FD. */
 static void handle_server_fd( World *wld )
 {
-	int err, n, offset = wld->server_rxfull;
+	int n, offset = wld->server_rxfull;
 	char *buffer = wld->server_rxbuffer;
 	Line *line;
 
@@ -953,19 +975,17 @@ static void handle_server_fd( World *wld )
 	if( n == -1 && ( errno == EINTR || errno == EAGAIN ) )
 		return;
 
+	/* The connection died, notify the client */
 	if( n < 1 )
 	{
-		/* Ok, the connection dropped dead */
-		err = errno;
-		world_disconnect_server( wld );
-
-		/* Notify the client */
 		if( n < 0 )
 			line = world_msg_client( wld, "Connection to server "
-					"lost (%s).", strerror( err ) );
+					"lost (%s).", strerror( errno ) );
 		else
 			line = world_msg_client( wld,
 					"The server closed the connection." );
+
+		world_disconnect_server( wld );
 
 		line->flags = LINE_CHECKPOINT;
 		wld->flags |= WLD_RECONNECT;

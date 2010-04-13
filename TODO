@@ -19,7 +19,6 @@ Items considered for next release:
  * Rewrite "about" section of README.
  * Have ACE send MCP client-size messages?
  * Add ACE to README?
- * Add command to clear the history lines - "a ^L for the proxy" (/forget?) [from: Paul]
  * Generate logged messages for succesful client connections and disconnections.
  * Catch SIGTERM/QUIT and act on it.
  * /copyright command?

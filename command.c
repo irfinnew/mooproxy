@@ -534,6 +534,8 @@ static void command_help( World *wld, char *cmd, char *args )
 /* Disconnect the client. No arguments. */
 static void command_quit( World *wld, char *cmd, char *args )
 {
+	Line *line;
+
 	if( refuse_arguments( wld, cmd, args ) )
 		return;
 
@@ -543,6 +545,10 @@ static void command_quit( World *wld, char *cmd, char *args )
 
 	world_msg_client( wld, "Closing connection." );
 	wld->flags |= WLD_CLIENTQUIT;
+
+	/* And one for the log... */
+	line = world_msg_client( wld, "Client /quit." );
+	line->flags = LINE_LOGONLY;
 }
 
 

@@ -213,6 +213,10 @@ static void mainloop( World *wld )
 	world_timer_init( wld, last_checked );
 	set_current_time( last_checked );
 
+	/* Log the fact that we started. */
+	line = world_msg_client( wld, "Started mooproxy v" VERSIONSTR "." );
+	line->flags = LINE_LOGONLY;
+
 	/* Loop forever. */
 	for(;;)
 	{
@@ -273,7 +277,11 @@ static void mainloop( World *wld )
 		 * be logged again */
 		line->flags |= LINE_DONTLOG;
 
-		linequeue_append( wld->client_txqueue, line );
+		/* Only process the line further if it's not LOGONLY. */
+		if( line->flags & LINE_LOGONLY )
+			line_destroy( line );
+		else
+			linequeue_append( wld->client_txqueue, line );
 	}
 
 	/* If we aren't connected to the client, move queued lines to the
