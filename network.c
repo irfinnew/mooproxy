@@ -847,11 +847,11 @@ static void promote_auth_connection( World *wld, int wa )
 
 	/* If a client was previously connected, say when and from where. */
 	if( wld->client_prev_address != NULL )
-	{
 		world_msg_client( wld, "Last connected at %s, from %s.",
 				time_string( wld->client_last_connected,
 				FULL_TIME ), wld->client_prev_address );
-	}
+	else
+		world_msg_client( wld, "No earlier connections." );
 
 	/* Show context history and pass buffered text */
 	world_recall_and_pass( wld );
