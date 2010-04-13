@@ -553,6 +553,7 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 	long unlogged_lines;
 	float unlogged_kib;
 	char *tmp;
+	Line *line;
 
 	tmp = get_one_word( &args );
 
@@ -570,7 +571,8 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 		if( wld->ace_enabled )
 			world_disable_ace( wld );
 
-		world_msg_client( wld, "Shutting down forcibly." );
+		line = world_msg_client( wld, "Shutting down forcibly." );
+		line->flags = LINE_CHECKPOINT;
 		wld->flags |= WLD_SHUTDOWN;
 		return;
 	}
@@ -598,7 +600,8 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 		world_disable_ace( wld );
 
 	/* We're good, proceed. */
-	world_msg_client( wld, "Shutting down." );
+	line = world_msg_client( wld, "Shutting down." );
+	line->flags = LINE_CHECKPOINT;
 	wld->flags |= WLD_SHUTDOWN;
 }
 
@@ -703,6 +706,8 @@ static void command_connect( World *wld, char *cmd, char *args )
 /* Disconnects from the server. No arguments. */
 static void command_disconnect( World *wld, char *cmd, char *args )
 {
+	Line *line;
+
 	if( refuse_arguments( wld, cmd, args ) )
 		return;
 
@@ -724,7 +729,8 @@ static void command_disconnect( World *wld, char *cmd, char *args )
 
 		case ST_CONNECTED:
 		wld->flags |= WLD_SERVERQUIT;
-		world_msg_client( wld, "Disconnected." );
+		line = world_msg_client( wld, "Disconnected from server." );
+		line->flags = LINE_CHECKPOINT;
 		break;
 
 		case ST_RECONNECTWAIT:

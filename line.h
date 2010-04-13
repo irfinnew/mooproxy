@@ -34,9 +34,11 @@
 #define LINE_REGULAR ( 0 )
 /* MCP lines. */
 #define LINE_MCP ( LINE_DONTLOG | LINE_DONTBUF | LINE_NOHIST )
-/* Mooproxy checkpoint message (e.g. day rollover). */
+/* Mooproxy checkpoint message.
+ * These are mooproxy messages that are so important that they
+ * deserve to be buffered and logged (e.g. day rollover, shutdown). */
 #define LINE_CHECKPOINT ( 0 )
-/* Mooproxy normal message (e.g. /listopts output). */
+/* Mooproxy normal message (e.g. /settings output). */
 #define LINE_MESSAGE ( LINE_DONTLOG | LINE_NOHIST )
 /* Recalled lines, like context and possibly-new. */
 #define LINE_RECALLED ( LINE_DONTLOG | LINE_DONTBUF | LINE_NOHIST )
