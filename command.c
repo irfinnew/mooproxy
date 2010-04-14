@@ -57,6 +57,7 @@ static void command_date( World *wld, char *cmd, char *args );
 static void command_uptime( World *wld, char *cmd, char *args );
 static void command_world( World *wld, char *cmd, char *args );
 static void command_forget( World *wld, char *cmd, char *args );
+static void command_authinfo( World *wld, char *cmd, char *args );
 
 
 
@@ -149,6 +150,10 @@ cmd_db[] =
 
 	{ "forget", command_forget, "",
 	"Forgets all history lines.",
+	NULL },
+
+	{ "authinfo", command_authinfo, "",
+	"Shows some authentication information.",
 	NULL },
 
 	{ NULL, NULL, NULL, NULL, NULL }
@@ -942,7 +947,7 @@ static void command_date( World *wld, char *cmd, char *args )
 		return;
 
 	world_msg_client( wld, "The current date is %s.",
-			time_string( current_time(), FULL_TIME ) ); 
+			time_fullstr( current_time() ) ); 
 }
 
 
@@ -957,7 +962,7 @@ static void command_uptime( World *wld, char *cmd, char *args )
 		return;
 
 	world_msg_client( wld, "Started %s. Uptime is %li days, %.2li:%.2li:"
-			"%.2li.", time_string( tme, FULL_TIME ), utme / 86400,
+			"%.2li.", time_fullstr( tme ), utme / 86400,
 			utme % 86400 / 3600, utme % 3600 / 60, utme % 60 );
 }
 
@@ -1003,12 +1008,65 @@ static void command_world( World *wld, char *cmd, char *args )
 
 
 
-/* Clear all history lines from memory. */
+/* Clear all history lines from memory. No arguments. */
 static void command_forget( World *wld, char *cmd, char *args )
 {
+	if( refuse_arguments( wld, cmd, args ) )
+		return;
+
 	world_inactive_to_history( wld );
 
 	linequeue_clear( wld->history_lines );
 
 	world_msg_client( wld, "All history lines have been forgotten." );
+}
+
+
+
+/* Print some authentication information. No arguments. */
+static void command_authinfo( World *wld, char *cmd, char *args )
+{
+	Line *line;
+
+	if( refuse_arguments( wld, cmd, args ) )
+		return;
+
+	/* Header. */
+	world_msg_client( wld, "Authentication information:" );
+	world_msg_client( wld, "" );
+
+	/* Current connection. */
+	world_msg_client( wld, "  Current connection from %s since %s.",
+			wld->client_address,
+			time_fullstr( wld->client_connected_since ) );
+	/* Previous connection. */
+	if( wld->client_prev_address )
+		world_msg_client( wld, "  Previous connection from %s until "
+				"%s.", wld->client_prev_address,
+				time_fullstr( wld->client_last_connected ) );
+	else
+		world_msg_client( wld, "  No previous connection." );
+	world_msg_client( wld, "" );
+
+	/* Failed attempts. */
+	world_msg_client( wld, "  %i failed login attempts since you logged "
+			"in.", wld->client_login_failures );
+	/* Last failed attempt. */
+	if( wld->client_last_failaddr )
+		world_msg_client( wld, "  Last failed from %s at %s.",
+				wld->client_last_failaddr,
+				time_fullstr( wld->client_last_failtime ) );
+	world_msg_client( wld, "" );
+
+	/* Privileged addresses. */
+	world_msg_client( wld, "  Privileged addresses (%i/%i):",
+			wld->auth_privaddrs->count, NET_MAX_PRIVADDRS );
+	for( line = wld->auth_privaddrs->tail; line; line = line->prev)
+		world_msg_client( wld, "    - %s", line->str );
+	world_msg_client( wld, "" );
+
+	/* Authentication token bucket. */
+	world_msg_client( wld, "  Authentication token bucket is %i/%i full. "
+			"Refill rate: %i/sec.", wld->auth_tokenbucket,
+			NET_AUTH_BUCKETSIZE, NET_AUTH_TOKENSPERSEC );
 }

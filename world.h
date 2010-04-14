@@ -143,6 +143,7 @@ struct World
 	int client_fd;
 	char *client_address;
 	char *client_prev_address;
+	time_t client_connected_since;
 	time_t client_last_connected;
 	long client_login_failures;
 	char *client_last_failaddr;

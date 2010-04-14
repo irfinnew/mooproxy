@@ -75,8 +75,6 @@
 /* The minimum number of seconds between two "not connected" messages.*/
 #define NOTCONN_MSGINTERVAL 3
 
-/* The strftime() format for full date and time. */
-#define FULL_TIME "%A %d %b %Y, %T"
 /* The strftime() format, and string length of the log timestamp. */
 #define LOG_TIMESTAMP_FORMAT "[%H:%M:%S] "
 #define LOG_TIMESTAMP_LENGTH 11

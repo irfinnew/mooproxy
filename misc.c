@@ -409,6 +409,13 @@ extern char *time_string( time_t t, const char *fmt )
 
 
 
+extern char *time_fullstr( time_t t )
+{
+	return time_string( t, "%A %d %b %Y, %T" );
+}
+
+
+
 extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q )
 {
 	char *eob = buffer + offset + read, *new;

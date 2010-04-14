@@ -108,6 +108,10 @@ extern int true_or_false( const char *str );
  * See the TIMESTR_ defines earlier in this file. */
 extern char *time_string( time_t t, const char *fmt );
 
+/* Like time_string(), but with a specific "full" time format.
+ * Shares its buffer with time_string(). */
+extern char *time_fullstr( time_t t );
+
 /* Process buffer into lines. Start scanning at offset, scan only read bytes.
  * The salvaged lines are appended to q. Return the new offset. */
 extern int buffer_to_lines( char *buffer, int offset, int read, Linequeue *q );

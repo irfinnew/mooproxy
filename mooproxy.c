@@ -88,7 +88,7 @@ int main( int argc, char **argv )
 
 	/* Announce that we are starting up. */
 	printf( "Starting mooproxy " VERSIONSTR " at %s.\n",
-			time_string( time( NULL ), FULL_TIME ) );
+			time_fullstr( time( NULL ) ) );
 
 	/* Register startup time. */
 	uptime_started_now();

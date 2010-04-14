@@ -833,7 +833,7 @@ extern void world_do_reconnect( World *wld )
 	/* And announce what we did. */
 	world_msg_client( wld, "" );
 	world_msg_client( wld, "Reconnecting now (at %s).", 
-			time_string( current_time(), FULL_TIME ) );
+			time_fullstr( current_time() ) );
 }
 
 

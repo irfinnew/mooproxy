@@ -873,6 +873,7 @@ static void promote_auth_connection( World *wld, int wa )
 	wld->auth_fd[wa] = -1;
 	wld->client_address = wld->auth_address[wa];
 	wld->auth_address[wa] = NULL;
+	wld->client_connected_since = current_time();
 
 	/* Add this address to the list of privileged addresses. */
 	privileged_add( wld, wld->client_address );
@@ -898,8 +899,8 @@ static void promote_auth_connection( World *wld, int wa )
 	/* If a client was previously connected, say when and from where. */
 	if( wld->client_prev_address != NULL )
 		world_msg_client( wld, "Last connected at %s, from %s.",
-				time_string( wld->client_last_connected,
-				FULL_TIME ), wld->client_prev_address );
+				time_fullstr( wld->client_last_connected ),
+				wld->client_prev_address );
 	else
 		world_msg_client( wld, "No earlier successful connections." );
 
@@ -914,8 +915,8 @@ static void promote_auth_connection( World *wld, int wa )
 				wld->client_prev_address != NULL ?
 				"your last login" : "mooproxy started" );
 		world_msg_client( wld, "Last failed attempt at %s, from %s.",
-				time_string( wld->client_last_failtime,
-				FULL_TIME ), wld->client_last_failaddr );
+				time_fullstr( wld->client_last_failtime ),
+				wld->client_last_failaddr );
 		world_msg_client( wld, "" );
 	}
 
@@ -1060,9 +1061,10 @@ extern void world_auth_add_bucket( World *wld )
 
 static void privileged_add( World *wld, char *addr )
 {
-	/* Don't add if it's already in there. */
-	if( is_privileged( wld, addr ) )
-			return;
+	/* If the address is already in the list, remove it.
+	 * This way, addr will be the last entry in the list, so the list
+	 * maintains a LRU ordering. */
+	privileged_del( wld, addr );
 
 	/* Make room if the list is full. */
 	if( wld->auth_privaddrs->count >= NET_MAX_PRIVADDRS )
