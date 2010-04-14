@@ -74,12 +74,13 @@ extern World *world_create( char *wldname )
 	wld->auth_literal = NULL;
 	wld->auth_tokenbucket = NET_AUTH_BUCKETSIZE;
 	wld->auth_connections = 0;
-	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
+	for( i = 0; i < NET_MAXAUTHCONN; i++ )
 	{
 		wld->auth_buf[i] = xmalloc( NET_MAXAUTHLEN );
 		wld->auth_address[i] = NULL;
 		wld->auth_fd[i] = -1;
 	}
+	wld->auth_privaddrs = linequeue_create();
 
 	/* Data related to the server connection */
 	wld->server_status = ST_DISCONNECTED;
@@ -223,13 +224,14 @@ extern void world_destroy( World *wld )
 	/* Authentication related stuff */
 	free( wld->auth_hash );
 	free( wld->auth_literal );
-	for( i = NET_MAXAUTHCONN - 1; i >= 0; i-- )
+	for( i = 0; i < NET_MAXAUTHCONN; i++ )
 	{
 		free( wld->auth_buf[i] );
 		free( wld->auth_address[i] );
 		if( wld->auth_fd[i] > -1 )
 			close( wld->auth_fd[i] );
 	}
+	linequeue_destroy( wld->auth_privaddrs );
 
 	/* Data related to server connection */
 	if( wld->server_fd > -1 )

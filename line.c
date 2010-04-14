@@ -150,53 +150,38 @@ extern void linequeue_append( Linequeue *queue, Line *line )
 
 extern Line* linequeue_pop( Linequeue *queue )
 {
-	Line *line;
-
-	line = queue->head;
-
-	if( !line )
-		return NULL;
-
-	/* The next line becomes the head. */
-	queue->head = line->next;
-
-	/* Did we just pop the last line? Tail should be NULL too! */
-	if( !queue->head )
-		queue->tail = NULL;
-	else
-		/* The new head has no previous. */
-		queue->head->prev = NULL;
-
-	queue->count--;
-	queue->size -= line->len + LINE_BYTE_COST;
-
-	return line;
+	return linequeue_remove( queue, queue->head );
 }
 
 
 
 extern Line* linequeue_popend( Linequeue *queue )
 {
-	Line *line;
+	return linequeue_remove( queue, queue->tail );
+}
 
-	line = queue->tail;
 
+
+extern Line *linequeue_remove( Linequeue *queue, Line *line )
+{
 	if( !line )
-		return NULL;
+		return line;
 
-	/* The previous line becomes the tail. */
-	queue->tail = line->prev;
-
-	/* Did we just pop the first line? Head should be NULL too! */
-	if( !queue->tail )
-		queue->head = NULL;
+	if( line->next )
+		line->next->prev = line->prev;
 	else
-		/* The new tail has no next. */
-		queue->tail->next = NULL;
+		queue->tail = line->prev;
+
+	if( line->prev )
+		line->prev->next = line->next;
+	else
+		queue->head = line->next;
 
 	queue->count--;
 	queue->size -= line->len + LINE_BYTE_COST;
 
+	line->prev = NULL;
+	line->next = NULL;
 	return line;
 }
 

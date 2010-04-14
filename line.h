@@ -77,7 +77,7 @@ struct Linequeue
  * Time and day are set to current time/day.
  * len should contain the length of str (excluding \0), or -1, in which case
  * line_create() will calculate the length itself.
- * Returns the new line. */
+ * Str is consumed. Returns the new line. */
 extern Line *line_create( char *str, long len );
 
 /* Destroy line, freeing its resources. */
@@ -99,17 +99,17 @@ extern void linequeue_destroy( Linequeue *queue );
 extern void linequeue_clear( Linequeue *queue );
 
 /* Append line to the end of queue */
-extern void linequeue_append( Linequeue *line, Line *queue );
+extern void linequeue_append( Linequeue *queue, Line *line );
 
-/* Return the first line at the beginning of the queue.
- * If queue is empty, it returns NULL.
- * The next/prev fields of the returned line should be considered garbage. */
+/* Remove the line at the start of the queue, and return it (NULL if empty). */
 extern Line* linequeue_pop( Linequeue *queue );
 
-/* Return the last line at the end of the queue.
- * If queue is empty, it returns NULL.
- * The next/prev fields of the returned line should be considered garbage. */
+/* Remove the line at the end of the queue, and return it (NULL if empty). */
 extern Line* linequeue_popend( Linequeue *queue );
+
+/* Remove line from queue, regardless of its position in queue.
+ * Line MUST be in queue. Returns line. */
+extern Line *linequeue_remove( Linequeue *queue, Line *line );
 
 /* Merge two queues. The contents of queue two is appended to queue one,
  * leaving queue two empty. */

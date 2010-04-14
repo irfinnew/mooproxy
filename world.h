@@ -107,10 +107,12 @@ struct World
 	int auth_tokenbucket;
 	int auth_connections;
 	int auth_status[NET_MAXAUTHCONN];
+	int auth_ispriv[NET_MAXAUTHCONN];
 	int auth_fd[NET_MAXAUTHCONN];
 	int auth_read[NET_MAXAUTHCONN];
 	char *auth_buf[NET_MAXAUTHCONN];
 	char *auth_address[NET_MAXAUTHCONN];
+	Linequeue *auth_privaddrs;
 
 	/* Data related to the server connection */
 	int server_status;

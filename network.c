@@ -62,6 +62,9 @@ static void verify_authentication( World *, int );
 static void promote_auth_connection( World *, int );
 static void handle_client_fd( World * );
 static void handle_server_fd( World * );
+static void privileged_add( World *, char * );
+static void privileged_del( World *, char * );
+static int is_privileged( World *, char * );
 
 
 
@@ -75,18 +78,20 @@ extern void wait_for_network( World *wld )
 	 * client, and for ones that need verification. */
 	for( i = 0; i < wld->auth_connections; i++ )
 	{
-		if( wld->auth_status[i] == AUTH_ST_CORRECT )
+		switch( wld->auth_status[i] )
 		{
+			case AUTH_ST_CORRECT:
 			promote_auth_connection( wld, i );
 			return;
-		}
 
-		if( wld->auth_tokenbucket > 0 )
-			if( wld->auth_status[i] == AUTH_ST_VERIFY )
+			case AUTH_ST_VERIFY:
+			if( wld->auth_tokenbucket > 0 || wld->auth_ispriv[i] )
 			{
 				verify_authentication( wld, i );
 				return;
 			}
+			break;
+		}
 	}
 
 	/* If there are unprocessed lines in the *_toqueue queues, return.
@@ -634,6 +639,7 @@ static void handle_listen_fd( World *wld, int which )
 	wld->auth_status[i] = AUTH_ST_WAITNET;
 	wld->auth_read[i] = 0;
 	wld->auth_address[i] = xstrdup( hostbuf );
+	wld->auth_ispriv[i] = is_privileged( wld, wld->auth_address[i] );
 
 	/* Zero the buffer, just to be sure.
 	 * Now an erroneous compare won't check against garbage (or worse,
@@ -732,6 +738,7 @@ static void remove_auth_connection( World *wld, int wa, int donack )
 		wld->auth_buf[i] = wld->auth_buf[i + 1];
 		wld->auth_address[i] = wld->auth_address[i + 1];
 		wld->auth_status[i] = wld->auth_status[i + 1];
+		wld->auth_ispriv[i] = wld->auth_ispriv[i + 1];
 	}
 
 	wld->auth_connections--;
@@ -741,6 +748,7 @@ static void remove_auth_connection( World *wld, int wa, int donack )
 	wld->auth_buf[wld->auth_connections] = buf;
 	wld->auth_address[wld->auth_connections] = NULL;
 	wld->auth_status[wld->auth_connections] = AUTH_ST_WAITNET;
+	wld->auth_ispriv[wld->auth_connections] = 0;
 }
 
 
@@ -763,7 +771,8 @@ static void verify_authentication( World *wld, int wa )
 	}
 
 	/* Each authentication attempt uses up one token. */
-	wld->auth_tokenbucket--;
+	if( wld->auth_tokenbucket > 0 )
+		wld->auth_tokenbucket--;
 
 	/* Determine the maximum number of characters to scan */
 	maxlen = buflen + 2;
@@ -778,6 +787,8 @@ static void verify_authentication( World *wld, int wa )
 	/* If we didn't find a newline, trash it. */
 	if( buffer[alen] != '\n' )
 	{
+		if( wld->auth_ispriv[wa] )
+			privileged_del( wld, wld->auth_address[wa] );
 		remove_auth_connection( wld, wa, 1 );
 		return;
 	}
@@ -792,6 +803,8 @@ static void verify_authentication( World *wld, int wa )
 	/* Now, check if the string before the newline is correct. */
 	if( !world_match_authentication( wld, buffer ) )
 	{
+		if( wld->auth_ispriv[wa] )
+			privileged_del( wld, wld->auth_address[wa] );
 		remove_auth_connection( wld, wa, 1 );
 		return;
 	}
@@ -830,7 +843,6 @@ static void verify_authentication( World *wld, int wa )
 		line->flags = LINE_LOGONLY;
 	}
 
-
 	/* Finally, flag this connection as correctly authenticated. */
 	wld->auth_status[wa] = AUTH_ST_CORRECT;
 }
@@ -861,6 +873,9 @@ static void promote_auth_connection( World *wld, int wa )
 	wld->auth_fd[wa] = -1;
 	wld->client_address = wld->auth_address[wa];
 	wld->auth_address[wa] = NULL;
+
+	/* Add this address to the list of privileged addresses. */
+	privileged_add( wld, wld->client_address );
 
 	/* In order to copy anything left in the authbuffer to the rxbuffer,
 	 * the rxbuffer must be large enough. */
@@ -1039,4 +1054,49 @@ extern void world_auth_add_bucket( World *wld )
 	wld->auth_tokenbucket += NET_AUTH_TOKENSPERSEC;
 	if( wld->auth_tokenbucket > NET_AUTH_BUCKETSIZE )
 		wld->auth_tokenbucket = NET_AUTH_BUCKETSIZE;
+}
+
+
+
+static void privileged_add( World *wld, char *addr )
+{
+	/* Don't add if it's already in there. */
+	if( is_privileged( wld, addr ) )
+			return;
+
+	/* Make room if the list is full. */
+	if( wld->auth_privaddrs->count >= NET_MAX_PRIVADDRS )
+		line_destroy( linequeue_pop( wld->auth_privaddrs ) );
+
+	/* Add it. */
+	linequeue_append( wld->auth_privaddrs,
+			line_create( xstrdup( addr ), -1 ) );
+}
+
+
+
+static void privileged_del( World *wld, char *addr )
+{
+	Line *line;
+
+	for( line = wld->auth_privaddrs->head; line; line = line->next )
+		if( !strcmp( addr, line->str ) )
+		{
+			linequeue_remove( wld->auth_privaddrs, line );
+			line_destroy( line );
+			return;
+		}
+}
+
+
+
+static int is_privileged( World *wld, char *addr )
+{
+	Line *line;
+
+	for( line = wld->auth_privaddrs->head; line; line = line->next )
+		if( !strcmp( addr, line->str ) )
+			return 1;
+
+	return 0;
 }
