@@ -901,8 +901,6 @@ static void promote_auth_connection( World *wld, int wa )
 		world_msg_client( wld, "Last connected at %s, from %s.",
 				time_fullstr( wld->client_last_connected ),
 				wld->client_prev_address );
-	else
-		world_msg_client( wld, "No earlier successful connections." );
 
 	/* If there were unsuccessful login attempts since the last login,
 	 * report on that. */
