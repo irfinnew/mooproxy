@@ -715,7 +715,8 @@ static void remove_auth_connection( World *wld, int wa, int donack )
 	 * failed login attempts, so we record some information. */
 	if( donack )
 	{
-		wld->client_login_failures++;
+		if( wld->client_login_failures < LONG_MAX )
+			wld->client_login_failures++;
 		wld->client_last_failtime = current_time();
 		free( wld->client_last_failaddr );
 		wld->client_last_failaddr = wld->auth_address[wa];
