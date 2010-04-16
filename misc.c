@@ -684,7 +684,8 @@ extern long strcpy_noansi( char *dest, char *src )
 				while( *src != '\0' && !isalpha( *src ) )
 					src++;
 
-			src++;
+			if( *src != '\0' )
+				src++;
 			continue;
 		}
 
