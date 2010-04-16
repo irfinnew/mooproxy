@@ -1,60 +1,45 @@
 Items considered for next release:
- * Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable [from: bram]
+ * Catch SIGTERM/QUIT and act on it.
+ * Fix the remaining command descriptions.
+ * Add ACE to README?
+
+
+
+Probably's:
+ * Tune Latency with TCP_NODELAY ?
+ * Implement some MCP userlist in mooproxy?
  * More features for /recall (non-re, case sensitive, count, limit, etc)
  * Better RE support for /recall
  * Throttle client read() when server_txqueue is too full. (and vice versa)
  * /lock command to disallow changing options / connecting to strange servers?
- * Fix some FIXMEs.
- * Live migration...?
- * Delay on authentication failure?
-   * Or limit connection rate per source IP.
-   * And display number of failed authentication attempts on login.
-   * And log all authentication attempts? Log in the main log, or log separately?
-   * Add "privileged addresses" concept, and /authstats (or something) command.
- * Fix /recall to -10 lines
- * A command to send non-activating input to the MOO server.
  * Improve setting of auth_hash.
  * Change authstring to just mean the password instead of the entire connection string. May require additional options...
- * Fix the remaining command descriptions.
- * Fix the "wacko resolver slave after libc upgrade" bug.
- * Rewrite "about" section of README.
- * Have ACE send MCP client-size messages?
- * Add ACE to README?
- * Generate logged messages for succesful client connections and disconnections.
- * Catch SIGTERM/QUIT and act on it.
- * /copyright command?
- * Improve the timer code, so mooproxy doesn't tick every second.
-        utopia - 2009-10-01.log:[00:00:06]  -!- Day changed to Thursday 01 Oct 2009.
-        utopia - 2009-10-01.log:[23:59:00]  -!- Day changed to Friday 02 Oct 2009.
-        utopia - 2009-10-02.log:[23:59:00]  -!- Day changed to Saturday 03 Oct 2009.
-        utopia - 2009-10-03.log:[23:59:01]  -!- Day changed to Sunday 04 Oct 2009.
-        utopia - 2009-10-04.log:[23:59:00]  -!- Day changed to Monday 05 Oct 2009.
-        utopia - 2009-10-05.log:[23:59:01]  -!- Day changed to Tuesday 06 Oct 2009.
-
- 
-
-Probably's:
- * /idle command (shows how long since you've last sent something to the moo)
- * Access / recall logs from within mooproxy? [from: paul]
- * Option for verbose MCP, to ease MCP weirdness debugging?
- * Provide more and better documentation.
- * Remove some trivial helper functions from accessor.c?
- * Make mooproxy not remember authstring if autologin is off. ?
 
 
 Maybe's:
- * Option to force IPv4 or IPv6? [from: bram]
  * Config file reloading on the fly? [from: cipri]
  * Support to listen on specific interfaces or addresses? [from: cipri]
  * Remove OOM detection in xmalloc() etc ? [Under Linux, the process seems to get SIGKILLed anyway]
  * Add logging framework which logs to file if mooproxy is running as daemon ?
  * Fix panic.c not to use sprintf()?
- * Implement some MCP userlist in mooproxy?
  * Print date/time on mooproxy messages? Maybe define a %-sequence for date/time?
  * Add SSL support (both ways)?
- * Tune Latency with TCP_NODELAY ?
  * Add option to /connect to enable autoreconnect from the start?
- * Put program name and version in pre-authentication welcome message?
+ * Put mooproxy version in pre-authentication welcome message?
+ * Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable [from: bram]
+ * Have ACE send MCP client-size messages?
+ * Improve the timer code, so mooproxy doesn't tick every second. [ugh, maybe... lots of hassle for little gain]
+ * Live upgrades...?
+ * Fix /recall to -10 lines [completely forgot what's wrong with it...]
+ * A command to send non-activating input to the MOO server.
+ * Rewrite "about" section of README.
+ * /copyright command?
+ * /idle command (shows how long since you've last sent something to the moo)
+ * Access / recall logs from within mooproxy? [from: paul]
+ * Option for verbose MCP, to ease MCP debugging?
+ * Provide more and better documentation.
+ * Make mooproxy not remember authstring if autologin is off. ?
+
 
 
 Probably not's:
@@ -70,3 +55,5 @@ Probably not's:
    - Little point.
  * Add option to ignore lockfile ?
    - Little point. The lockfile can always be removed if necessary.
+ * Fix the "wacko resolver slave after libc upgrade" bug.
+   - Only seems to be triggered by dist-upgrades, which require a reboot anyway.
