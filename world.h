@@ -164,6 +164,7 @@ struct World
 	Linequeue *history_lines;
 	long dropped_inactive_lines;
 	long dropped_buffered_lines;
+	time_t easteregg_last;
 
 	/* Timer stuff */
 	int timer_prev_sec;
@@ -293,6 +294,9 @@ extern int world_enable_ace( World *wld );
 /* Disable Ansi Client Emulation for this world.
  * Sends ansi sequences to reset the screen and cleans up wld->ace_*  */
 extern void world_disable_ace( World *wld );
+
+/* Check for, and respond to, easter eggs. */
+extern void world_easteregg_server( World *wld, Line *line );
 
 
 

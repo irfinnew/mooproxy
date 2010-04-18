@@ -240,6 +240,8 @@ static void mainloop( World *wld )
 		} else {
 			/* Regular */
 			linequeue_append( wld->client_toqueue, line );
+
+			world_easteregg_server( wld, line );
 		}
 	}
 

@@ -23,6 +23,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <ctype.h>
 
 #include "global.h"
 #include "world.h"
@@ -30,6 +31,10 @@
 #include "line.h"
 #include "panic.h"
 #include "network.h"
+
+
+
+#define EASTEREGG_TRIGGER " vraagt aan je, \"Welke Mooproxy versie draai je?\""
 
 
 
@@ -131,6 +136,7 @@ extern World *world_create( char *wldname )
 	wld->history_lines = linequeue_create();
 	wld->dropped_inactive_lines = 0;
 	wld->dropped_buffered_lines = 0;
+	wld->easteregg_last = 0;
 
 	/* Timer stuff */
 	wld->timer_prev_sec = -1;
@@ -937,4 +943,45 @@ extern void world_disable_ace( World *wld )
 	wld->ace_poststr = NULL;
 
 	wld->ace_enabled = 0;
+}
+
+
+
+/* A little easter egg. If someone asks us (in Dutch, in a specific format)
+ * what Mooproxy version we're running, we respond. */
+extern void world_easteregg_server( World *wld, Line *line )
+{
+	const static char *verbs[] =
+		{"an", "bl", "fl", "gie", "gl", "gn", "gr", "gri",
+		"grm", "ju", "ko", "mo", "mu", "pe", "sn", "ve", "zu", "zwi"};
+	char *name, *response, *p;
+
+	/* Only once per minute, please. */
+	if( wld->easteregg_last > current_time() - 60 )
+		return;
+
+	/* If the line is too short, it can't be the trigger. */
+	if( line->len < sizeof( EASTEREGG_TRIGGER ) - 1 + 1 )
+		return;
+
+	/* Trigger? */
+	if( strcmp( line->str + line->len - sizeof( EASTEREGG_TRIGGER ) + 1,
+			EASTEREGG_TRIGGER ) )
+		return;
+
+	/* Isolate the name of the player triggering the easter egg. */
+	name = xmalloc( line->len + 1 );
+	strcpy_noansi( name, line->str );
+	for( p = name; *p; p++ )
+		if( isspace( *p ) )
+			break;
+	*p = '\0';
+
+	/* Construct and send the response. */
+	xasprintf( &response, "%s -%s Ik draai Mooproxy %s",
+			verbs[rand() % ( sizeof( verbs ) / sizeof( char * ) )],
+			name, VERSIONSTR );
+	linequeue_append( wld->server_toqueue, line_create( response, -1 ) );
+	wld->easteregg_last = current_time();
+	free( name );
 }
