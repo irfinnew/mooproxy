@@ -138,11 +138,11 @@ extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
 		int *errnum );
 
 /* Return a copy of str (which must be freed manually) in which all occurrences
- * of colortags (like %R) are replaced by their corresponding ANSI sequence
+ * of color tags (like %R) are replaced by their corresponding ANSI sequence
  * (like ^[[1,31m). */
 extern char *parse_ansi_tags( char *str );
 
-/* Attempts to create dirname (but not parent dirs).
+/* Attempt to create dirname (but not parent dirs).
  * On success, return 0.
  * On failure, return non-zero, and put error in err (err should be freed).
  * Err will contain just a brief error message (often strerror output),

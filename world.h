@@ -216,7 +216,7 @@ struct World
 
 
 
-/* Create a world struct, and initialise it with default values. The worlds
+/* Create a world struct, and initialise it with default values. The world's
  * name will be set to wldname */
 extern World *world_create( char *wldname );
 
