@@ -54,6 +54,8 @@
 #define NET_MAX_PRIVADDRS 8
 /* Maximum number of authenticating connections */
 #define NET_MAXAUTHCONN 8
+/* Number of authentication slots reserved for privileged addresses. */
+#define NET_AUTH_PRIVRES 2
 /* Maximum number of characters accepted from an authenticating client.
  * This effectively also limits the authentication string length */
 #define NET_MAXAUTHLEN 128

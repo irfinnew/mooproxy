@@ -628,9 +628,29 @@ static void handle_listen_fd( World *wld, int which )
 	/* FIXME: Should this be logged somewhere? */
 	/* printf( "Accepted connection from %s.\n", hostbuf ); */
 
-	/* If all auth slots are full, kick oldest */
+	/* If all auth slots are full, we need to kick one out. */
 	if( wld->auth_connections == NET_MAXAUTHCONN )
-		remove_auth_connection( wld, 0, 0 );
+	{
+		int privcount = 0, remove = 0;
+
+		for( i = 0; i < NET_MAXAUTHCONN; i++ )
+			privcount += wld->auth_ispriv[i];
+
+		/* If there are many privconns, just select the oldest conn. */
+		if( privcount > NET_AUTH_PRIVRES )
+			remove = 0;
+		/* If there are few privconns, select the oldest non-priv. */
+		else
+			for( i = 0 ; i < NET_MAXAUTHCONN; i++ )
+				if( !wld->auth_ispriv[i] )
+				{
+					remove = i;
+					break;
+				}
+
+		/* Remove the selected connection. */
+		remove_auth_connection( wld, remove, 0 );
+	}
 
 	/* Use the next available slot */
 	i = wld->auth_connections++;
