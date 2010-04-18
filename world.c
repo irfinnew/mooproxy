@@ -34,7 +34,7 @@
 
 
 
-#define EASTEREGG_TRIGGER " vraagt aan je, \"Welke Mooproxy versie draai je?\""
+#define EASTEREGG_TRIGGER " vraagt aan je, \"Welke mooproxy versie draai je?\""
 
 
 
@@ -990,11 +990,11 @@ extern void world_easteregg_server( World *wld, Line *line )
 
 	if( name[0] == '>' && name[1] == '>' )
 		/* Response to a page. */
-		xasprintf( &response, "> %s Ik draai Mooproxy %s",
+		xasprintf( &response, "> %s Ik draai mooproxy %s",
 				verb, VERSIONSTR );
 	else
 		/* Response to a local player. */
-		xasprintf( &response, "%s -%s Ik draai Mooproxy %s",
+		xasprintf( &response, "%s -%s Ik draai mooproxy %s",
 				verb, name, VERSIONSTR );
 
 	/* Send the message and clean up. */
