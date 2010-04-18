@@ -22,7 +22,7 @@
 
 
 /* Mooproxy version */
-#define VERSIONSTR "0.1.4-pre1"
+#define VERSIONSTR "0.1.4-pre2"
 #define RELEASEDATE "....-..-.."
 #define COPYYEARS "2001-2008"
 
