@@ -954,7 +954,8 @@ extern void world_easteregg_server( World *wld, Line *line )
 	const static char *verbs[] =
 		{"an", "bl", "fl", "gie", "gl", "gn", "gr", "gri",
 		"grm", "ju", "ko", "mo", "mu", "pe", "sn", "ve", "zu", "zwi"};
-	char *name, *response, *p, *verb;
+	const char *verb;
+	char *name, *response, *p;
 
 	/* Only once per minute, please. */
 	if( wld->easteregg_last > current_time() - 60 )
