@@ -954,7 +954,7 @@ extern void world_easteregg_server( World *wld, Line *line )
 	const static char *verbs[] =
 		{"an", "bl", "fl", "gie", "gl", "gn", "gr", "gri",
 		"grm", "ju", "ko", "mo", "mu", "pe", "sn", "ve", "zu", "zwi"};
-	char *name, *response, *p;
+	char *name, *response, *p, *verb;
 
 	/* Only once per minute, please. */
 	if( wld->easteregg_last > current_time() - 60 )
@@ -977,10 +977,26 @@ extern void world_easteregg_server( World *wld, Line *line )
 			break;
 	*p = '\0';
 
-	/* Construct and send the response. */
-	xasprintf( &response, "%s -%s Ik draai Mooproxy %s",
-			verbs[rand() % ( sizeof( verbs ) / sizeof( char * ) )],
-			name, VERSIONSTR );
+	if( name[0] == '[' || name[0] == '<' || name[0] == '{' )
+	{
+		/* Looks like a channel, let's ignore it. */
+		free( name );
+		return;
+	}
+
+	/* Pick a random verb. */
+	verb = verbs[rand() % ( sizeof( verbs ) / sizeof( char * ) )];
+
+	if( name[0] == '>' && name[1] == '>' )
+		/* Response to a page. */
+		xasprintf( &response, "> %s Ik draai Mooproxy %s",
+				verb, VERSIONSTR );
+	else
+		/* Response to a local player. */
+		xasprintf( &response, "%s -%s Ik draai Mooproxy %s",
+				verb, name, VERSIONSTR );
+
+	/* Send the message and clean up. */
 	linequeue_append( wld->server_toqueue, line_create( response, -1 ) );
 	wld->easteregg_last = current_time();
 	free( name );
