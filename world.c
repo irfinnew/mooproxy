@@ -223,6 +223,9 @@ extern void world_destroy( World *wld )
 	free( wld->dest_host );
 
 	/* Listening connection */
+	if( wld->listen_fds )
+		for( i = 0; wld->listen_fds[i] > -1; i++ )
+			close( wld->listen_fds[i] );
 	free( wld->listen_fds );
 	world_bindresult_free( wld->bindresult );
 	free( wld->bindresult );
@@ -372,8 +375,8 @@ extern void world_bindresult_free( BindResult *bindresult )
 	for( i = 0; i < bindresult->af_count; i++ )
 		free( bindresult->af_msg[i] );
 	free( bindresult->af_msg );
-	if( bindresult->listen_fds != NULL )
-		for( i = 0; bindresult->listen_fds[i] != -1; i++ )
+	if( bindresult->listen_fds )
+		for( i = 0; bindresult->listen_fds[i] > -1; i++ )
 			close( bindresult->listen_fds[i] );
 	free( bindresult->listen_fds );
 	free( bindresult->conclusion );
