@@ -1065,7 +1065,9 @@ static void command_authinfo( World *wld, char *cmd, char *args )
 		world_msg_client( wld, "    - %s", line->str );
 	world_msg_client( wld, "" );
 
-	/* Authentication token bucket. */
+	/* Authentication slots/bucket. */
+	world_msg_client( wld, "  Authentication slots: %i/%i used.",
+			wld->auth_connections, NET_MAXAUTHCONN );
 	world_msg_client( wld, "  Authentication token bucket is %i/%i full. "
 			"Refill rate: %i/sec.", wld->auth_tokenbucket,
 			NET_AUTH_BUCKETSIZE, NET_AUTH_TOKENSPERSEC );
