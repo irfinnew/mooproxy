@@ -32,6 +32,7 @@ struct Config
 	int action;
 	char *worldname;
 	int no_daemon;
+	int upgrade;
 
 	char *error;
 };

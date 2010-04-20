@@ -35,6 +35,7 @@
 #include "resolve.h"
 #include "crypt.h"
 #include "line.h"
+#include "upgrade.h"
 
 
 
@@ -112,13 +113,22 @@ int main( int argc, char **argv )
 		free( warn );
 	}
 
-	/* Make sure this world isn't open yet. */
-	if( world_acquire_lock_file( world, &err ) )
-		die( world, err );
-
 	/* Load the world's configuration. */
 	printf( "Opening world %s.\n", config.worldname );
 	if( world_load_config( world, &err ) != 0 )
+		die( world, err );
+
+	if( config.upgrade )
+	{
+		if( upgrade_server_start( world, &err ) != 0 )
+			die( world, err );
+
+		printf( "Upgrade success!\n" );
+		exit( 0 );
+	}
+
+	/* Make sure this world isn't open yet. */
+	if( world_acquire_lock_file( world, &err ) )
 		die( world, err );
 
 	/* Refuse to start if the authentication string is absent. */

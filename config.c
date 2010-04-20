@@ -192,6 +192,7 @@ static const struct option long_opts[] = {
 	{ "world", 1, NULL, 'w' },
 	{ "md5crypt", 0, NULL, 'm' },
 	{ "no-daemon", 0, NULL, 'd' },
+	{ "upgrade", 0, NULL, 'u' },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -204,6 +205,7 @@ extern void parse_command_line_options( int argc, char **argv, Config *config )
 	config->action = 0;
 	config->worldname = NULL;
 	config->no_daemon = 0;
+	config->upgrade = 0;
 	config->error = NULL;
 
 	opterr = 0;
@@ -242,6 +244,11 @@ extern void parse_command_line_options( int argc, char **argv, Config *config )
 		/* -d, --no-daemon */
 		case 'd':
 		config->no_daemon = 1;
+		break;
+
+		/* -u, --upgrade */
+		case 'u':
+		config->upgrade = 1;
 		break;
 
 		/* Unrecognised */
