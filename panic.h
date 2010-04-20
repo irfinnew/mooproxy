@@ -25,9 +25,10 @@
 #define PANIC_MALLOC 2 
 #define PANIC_REALLOC 3
 #define PANIC_STRDUP 4
-#define PANIC_VASPRINTF 5
-#define PANIC_SELECT 6
-#define PANIC_ACCEPT 7
+#define PANIC_STRNDUP 5
+#define PANIC_VASPRINTF 6
+#define PANIC_SELECT 7
+#define PANIC_ACCEPT 8
 
 
 

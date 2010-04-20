@@ -131,6 +131,32 @@ extern char *xstrdup( const char *s )
 
 
 
+extern char *xstrndup( const char *s, size_t n )
+{
+	char *str;
+	int i;
+
+	str = strdup( s, n );
+
+	if( str != NULL )
+		return str;
+
+	/* Strdup failed. Retry a few times. */
+	for( i = 0; i < XMALLOC_OOM_RETRIES; i++ )
+	{
+		sleep( 1 );
+		str = strdup( s, n );
+		if( str != NULL )
+			return str;
+	}
+
+	/* Still failed, give up. */
+	panic( PANIC_STRDUP, 0, (unsigned long) n );
+	return NULL;
+}
+
+
+
 extern int xasprintf( char **strp, const char *fmt, ... )
 {
 	va_list argp;

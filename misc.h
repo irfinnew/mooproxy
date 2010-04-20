@@ -43,6 +43,7 @@
 extern void *xmalloc( size_t size );
 extern void *xrealloc( void *ptr, size_t size );
 extern char *xstrdup( const char *s );
+extern char *xstrndup( const char *s, size_t n );
 extern int xasprintf( char **strp, const char *fmt, ... );
 extern int xvasprintf( char **strp, const char *fmt, va_list argp );
 

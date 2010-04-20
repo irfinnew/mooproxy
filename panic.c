@@ -114,7 +114,7 @@ extern void panic( int reason, long extra, unsigned long uextra)
 
 
 	/* Bail out */
-	_exit( 0 );
+	_exit( EXIT_FAILURE );
 }
 
 
@@ -163,6 +163,10 @@ static void panicreason_to_string( char *str, int reason, long extra,
 
 		case PANIC_STRDUP:
 		sprintf( str, "Failed to strdup() %lu bytes", uextra );
+		break;
+
+		case PANIC_STRDUP:
+		sprintf( str, "Failed to strndup() %lu bytes", uextra );
 		break;
 
 		case PANIC_VASPRINTF:
