@@ -99,7 +99,7 @@ cmd_db[] =
 	NULL },
 
 	{ "settings", command_settings, "",
-	"Lists the avaliable settings.",
+	"Lists the available settings.",
 	"Lists all available settings, and their current values." },
 
 	{ "recall", command_recall, "<...>",
