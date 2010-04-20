@@ -165,7 +165,7 @@ static void panicreason_to_string( char *str, int reason, long extra,
 		sprintf( str, "Failed to strdup() %lu bytes", uextra );
 		break;
 
-		case PANIC_STRDUP:
+		case PANIC_STRNDUP:
 		sprintf( str, "Failed to strndup() %lu bytes", uextra );
 		break;
 
