@@ -136,7 +136,7 @@ extern char *xstrndup( const char *s, size_t n )
 	char *str;
 	int i;
 
-	str = strdup( s, n );
+	str = strndup( s, n );
 
 	if( str != NULL )
 		return str;
@@ -145,7 +145,7 @@ extern char *xstrndup( const char *s, size_t n )
 	for( i = 0; i < XMALLOC_OOM_RETRIES; i++ )
 	{
 		sleep( 1 );
-		str = strdup( s, n );
+		str = strndup( s, n );
 		if( str != NULL )
 			return str;
 	}
