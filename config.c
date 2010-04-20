@@ -141,9 +141,9 @@ key_db[] =
 	"make it easier to spot these messages.\n"
 	"\n"
 	"This string accepts the same colour sequences as infostring.\n"
-	"If this string is set to \"\", mooproxy will use the regular\n"
-	"infostring for these messages." },
-	
+	"If this string is set to the empty string (\"\"), mooproxy will\n"
+	"use the regular infostring for these messages." },
+
 	{ 0, "context_lines", aset_context_lines, aget_context_lines,
 	"Context lines to provide when you connect.",
 	"When a client connects, mooproxy can reproduce lines from\n"
