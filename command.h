@@ -21,11 +21,10 @@
 
 
 
-/* Execute a command.
- * If the lined is recognised as a command, it's executed, the line is
- * consumed, and the return value is 1.
- * If it was not recognised, the line is not consumed (and should be processed
- * further), and the return value is 0. */
+/* Try to execute a command.
+ * If the line is recognised as a command, execute it and return 1.
+ * If the line is not recognised and should be processed further, return 0.
+ * line will not be modified or consumed. */
 extern int world_do_command( World *wld, char *line );
 
 

@@ -252,7 +252,7 @@ static void mainloop( World *wld )
 		{
 			/* Command (those are activating). */
 			wld->flags |= WLD_ACTIVATED;
-			free( line );
+			line_destroy( line );
 		}
 		else if( world_is_mcp( line->str ) )
 		{

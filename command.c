@@ -163,70 +163,61 @@ cmd_db[] =
 
 extern int world_do_command( World *wld, char *line )
 {
-	char backup, *backuppos, *args, *cmd = line, *cstr = wld->commandstring;
+	char *args, *cmd = line, *cstr = wld->commandstring;
 
-	/* Ignore the equal parts of commandstr and the line */
+	/* Ignore the equal parts of commandstr and the line. */
 	while( *cstr && *cstr == *cmd )
 	{
 		cstr++;
 		cmd++;
 	}
 
-	/* If there's still something left in cstr, it's not a command */
+	/* If there's still something left in cstr, it's not a command. */
 	if( *cstr )
 		return 0;
 
-	/* Now separate the command from the args */
+	/* Now separate the command from the args. */
 	args = cmd;
 	while( *args && !isspace( *args ) )
 		args++;
 
-	/* Mark the end of the command */
-	backup = *args;
-	backuppos = args;
-	*args = '\0';
-
-	/* Advance args to the actual start of the arguments. */
-	if( backup )
-		args++;
-	/* Remove enclosing whitespace, too. */
-	args = trim_whitespace( args );
+	/* Extract the command and the arguments. */
+	cmd = xstrndup( cmd, args - cmd );
+	args = trim_whitespace( xstrdup( args ) );
+	if( ! *args )
+	{
+		free( args );
+		args = NULL;
+	}
 
 	/* Try parsing cmd + args as a command, an option query, and an
 	 * option update, in that order.
 	 * The try_* functions may modify cmd and args _only_ if they
-	 * successfully parse the command. They may never free them. */
-	if( try_command( wld, cmd, args ) )
+	 * successfully parse the command. They may never free them.
+	 * args will be NULL if there were no arguments. */
+	if( try_command( wld, cmd, args ) 
+			|| try_getoption( wld, cmd, args )
+			|| try_setoption( wld, cmd, args ) )
 	{
-		free( line );
-		return 1;
-	}
-
-	if( try_getoption( wld, cmd, args ) )
-	{
-		free( line );
-		return 1;
-	}
-
-	if( try_setoption( wld, cmd, args ) )
-	{
-		free( line );
+		free( cmd );
+		free( args );
 		return 1;
 	}
 
 	/* Ok, it's not something we understand. */
 
+	/* If strictcmd is off, the line should be processed as regular. */
 	if( !wld->strict_commands )
 	{
-		/* Strictcmd is off, the line should now be
-		 * processed as a regular one. */
-		*backuppos = backup;
+		free( cmd );
+		free( args );
 		return 0;
 	}
 
 	/* Invalid command, complain */
 	world_msg_client( wld, "No such command or option: %s.", cmd );
-	free( line );
+	free( cmd );
+	free( args );
 	return 1;
 }
 
@@ -258,7 +249,7 @@ static int try_getoption( World *wld, char *key, char *args )
 	char *val, *kend;
 
 	/* If we have arguments, the option is not being queried. */
-	if( *args )
+	if( args )
 		return 0;
 
 	/* Make kend point to the last char of key, or \0 if key is empty. */
@@ -295,7 +286,7 @@ static int try_setoption( World *wld, char *key, char *args )
 	char *val, *tmp, *err;
 
 	/* If we have no arguments, the option is not being set. */
-	if( !*args )
+	if( !args )
 		return 0;
 
 	/* Remove any enclosing quotes.
@@ -363,14 +354,11 @@ static int command_index( char *cmd )
  * client and return 1. Otherwise, NOP and return 0. */
 static int refuse_arguments( World *wld, char *cmd, char *args )
 {
-	/* Search for \0 or first non-whitespace char */
-	while( *args != '\0' && isspace( *args ) )
-		args++;
-
-	/* If that char is \0, it's not non-whitespace */
-	if( *args == '\0' )
+	/* If args is NULL, we're ok. */
+	if( !args )
 		return 0;
 
+	/* Otherwise, we complain. */
 	world_msg_client( wld, "The command %s does not take arguments.", cmd );
 	return 1;
 }
@@ -516,7 +504,7 @@ static int show_setting_help( World *wld, char *key )
 static void command_help( World *wld, char *cmd, char *args )
 {
 	/* Generic help. */
-	if( !*args )
+	if( !args )
 	{
 		show_help( wld );
 		return;
@@ -561,10 +549,12 @@ static void command_quit( World *wld, char *cmd, char *args )
 /* Shut mooproxy down (forcibly on -f). Arguments: [-f] */
 static void command_shutdown( World *wld, char *cmd, char *args )
 {
-	char *tmp;
+	char *tmp = NULL;
 	Line *line;
 
-	tmp = get_one_word( &args );
+	/* FIXME */
+	if( args )
+		tmp = get_one_word( &args );
 
 	/* Garbage arguments? */
 	if( tmp != NULL && strcmp( tmp, "-f" ) )
@@ -659,11 +649,11 @@ static void command_connect( World *wld, char *cmd, char *args )
 	wld->server_port = NULL;
 
 	/* If there is an argument, use the first word as hostname */
-	if( ( tmp = get_one_word( &args ) ) != NULL )
+	if( args && ( tmp = get_one_word( &args ) ) != NULL )
 		wld->server_host = xstrdup( tmp );
 
 	/* If there's another argument, use that as the port */
-	if( ( tmp = get_one_word( &args ) ) != NULL )
+	if( args && ( tmp = get_one_word( &args ) ) != NULL )
 	{
 		port = strtol( tmp, NULL, 0 );
 		/* See that the argument port is valid. */
@@ -794,7 +784,7 @@ static void command_recall( World *wld, char *cmd, char *args )
 	char *str;
 
 	/* If there are no arguments, print terse usage. */
-	if( args[0] == '\0' )
+	if( !args )
 	{
 		world_msg_client( wld, "Use: recall [from <when>] [to <when>]"
 				" [search <text>]" );
@@ -856,14 +846,14 @@ static void command_ace( World *wld, char *cmd, char *args )
 	int cols, rows;
 
 	/* If /ace off, and ACE wasn't enabled, complain and be done. */
-	if( !strcmp( args, "off" ) && !wld->ace_enabled )
+	if( args && !strcmp( args, "off" ) && !wld->ace_enabled )
 	{
 		world_msg_client( wld, "ACE is not enabled." );
 		return;
 	}
 
 	/* If /ace off, and ACE was enabled, disable it and be done. */
-	if( !strcmp( args, "off" ) && wld->ace_enabled )
+	if( args && !strcmp( args, "off" ) && wld->ace_enabled )
 	{
 		world_msg_client( wld, "Disabled ACE." );
 		world_disable_ace( wld );
@@ -871,7 +861,7 @@ static void command_ace( World *wld, char *cmd, char *args )
 	}
 
 	/* If we have arguments, parse them. */
-	if( *args )
+	if( args )
 	{
 		if( sscanf( args, "%ix%i", &cols, &rows ) != 2 )
 		{
@@ -883,7 +873,7 @@ static void command_ace( World *wld, char *cmd, char *args )
 	}
 
 	/* No arguments. */
-	if( !*args )
+	if( !args )
 	{
 		if( !wld->ace_enabled )
 		{
