@@ -13,6 +13,12 @@ mooproxy: $(OBJS)
 	$(CC) $(LFLAGS) $(OBJS) -o mooproxy
 #	strip mooproxy
 
+# If a header file changed, maybe some data formats changed, and all object
+# files using it must be recompiled.
+# Rather than mapping the actual header-usage relations, we just recompile
+# all object files when any header file changed.
+*.o: *.h
+
 clean:
 	rm -f *.o core *.core mooproxy
 
