@@ -2,6 +2,9 @@ Items considered for next release:
  * Catch SIGTERM/QUIT and act on it.
  * Fix the remaining command descriptions.
  * Add ACE to README?
+ * Update email address?
+ * Change all function definitions to have variable names?
+ * Live upgrades...?
 
 
 
@@ -29,7 +32,6 @@ Maybe's:
  * Make mooproxy send MCP to the server setting the linelength to 80 if the connecting client is not MCP capable [from: bram]
  * Have ACE send MCP client-size messages?
  * Improve the timer code, so mooproxy doesn't tick every second. [ugh, maybe... lots of hassle for little gain]
- * Live upgrades...?
  * Fix /recall to -10 lines [completely forgot what's wrong with it...]
  * A command to send non-activating input to the MOO server.
  * Rewrite "about" section of README.
