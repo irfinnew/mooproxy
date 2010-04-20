@@ -101,8 +101,8 @@
 --------------------
  * From now on, mooproxy is licensed under GPL 2, instead of "GPL 2 or later"
  * The README has gotten a major upgrade and now contains much more useful info
- * Server side now supports IPv6 (actually AF independant)
- * Client side now supports IPv6 (actually AF independant)
+ * Server side now supports IPv6 (actually AF independent)
+ * Client side now supports IPv6 (actually AF independent)
  * The authentication string is now MD5-hashed in the config file
  * Mooproxy accepts the --md5crypt option to generate a MD5 hash
  * /getopt and /setopt have been renamed to /get and /set
