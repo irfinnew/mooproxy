@@ -561,8 +561,6 @@ static void command_quit( World *wld, char *cmd, char *args )
 /* Shut mooproxy down (forcibly on -f). Arguments: [-f] */
 static void command_shutdown( World *wld, char *cmd, char *args )
 {
-	long unlogged_lines;
-	float unlogged_kib;
 	char *tmp;
 	Line *line;
 
@@ -594,12 +592,12 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 	if( wld->log_queue->size + wld->log_current->size +
 			wld->log_bfull > 0 )
 	{
-		unlogged_lines = wld->log_queue->count +
+		long unlogged_lines = 1 + wld->log_queue->count +
 				wld->log_current->count + wld->log_bfull / 80;
-		unlogged_kib = ( wld->log_bfull + wld->log_queue->size +
-				wld->log_current->size ) / 1024.0;
+		long unlogged_kib = ( wld->log_bfull + wld->log_queue->size +
+				wld->log_current->size + 512 ) / 1024;
 		world_msg_client( wld, "There are approximately %li lines "
-				"(%.1fKiB) not yet logged to disk. ",
+				"(%liKiB) not yet logged to disk. ",
 				unlogged_lines, unlogged_kib );
 		world_msg_client( wld, "Refusing to shut down. "
 				"Use /shutdown -f to override." );

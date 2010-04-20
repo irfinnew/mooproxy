@@ -441,8 +441,8 @@ static void nag_client_error( World *wld, char *msg, char *file, char *err )
 	/* Next, inform the user that logging failed and how much logbuffer
 	 * space is left. */
 	line = world_msg_client( wld, "LOGGING FAILED! Approximately %lu lines"
-		" not yet logged (%.1f%% of logbuffer).", wld->log_bfull / 100 +
-		wld->log_queue->count + wld->log_current->count, 
+		" not yet logged (%.1f%% of logbuffer).", wld->log_bfull / 80 +
+		wld->log_queue->count + wld->log_current->count + 1, 
 		( wld->log_queue->size + wld->log_current->size )
 		/ 10.24 / wld->logbuffer_size );
 	line->flags |= buffer_line;
