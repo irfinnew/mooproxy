@@ -55,6 +55,8 @@ int main( int argc, char **argv )
 	pid_t pid;
 	int i;
 
+	setlinebuf( stdout );
+
 	/* Parse commandline options */
 	parse_command_line_options( argc, argv, &config );
 
