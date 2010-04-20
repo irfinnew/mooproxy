@@ -578,7 +578,7 @@ extern int flush_buffer( int fd, char *buffer, long *bffl, Linequeue *queue,
 			*bffl = bfull;
 			if( errnum != NULL )
 				*errnum = errno;
-			if( wr == -1 )
+			if( wr == -1 && errno != EAGAIN )
 				return 2;
 			else
 				return 1;

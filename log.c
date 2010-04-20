@@ -393,7 +393,7 @@ static void log_write( World *wld )
 
 	if( ret == 1 )
 		nag_client_error( wld, "Could not write to logfile", NULL,
-				"nothing was written" );
+				"file descriptor is congested" );
 	if( ret == 2 )
 		nag_client_error( wld, "Could not write to logfile", NULL,
 				strerror( errnum ) );
