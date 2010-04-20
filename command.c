@@ -546,40 +546,25 @@ static void command_quit( World *wld, char *cmd, char *args )
 
 
 
-/* Shut mooproxy down (forcibly on -f). Arguments: [-f] */
+/* Shut down or restart mooproxy (forcibly on -f). Arguments: [-f] */
 static void command_shutdown( World *wld, char *cmd, char *args )
 {
-	char *tmp = NULL;
+	int force = 0;
 	Line *line;
 
-	/* FIXME */
-	if( args )
-		tmp = get_one_word( &args );
+	/* Are we being forced? */
+	if( args && !strcmp( args, "-f" ) )
+		force = 1;
 
-	/* Garbage arguments? */
-	if( tmp != NULL && strcmp( tmp, "-f" ) )
+	/* We don't recognize any other arguments. */
+	if( args && strcmp( args, "-f" ) )
 	{
-		world_msg_client( wld, "Unrecognised argument: `%s'", tmp );
+		world_msg_client( wld, "Unrecognised argument: `%s'", args );
 		return;
 	}
 
-	/* Forced shutdown. */
-	if( tmp != NULL && !strcmp( tmp, "-f" ) )
-	{
-		/* We try to leave their terminal in a nice state. */
-		if( wld->ace_enabled )
-			world_disable_ace( wld );
-
-		line = world_msg_client( wld, "Shutting down forcibly." );
-		line->flags = LINE_CHECKPOINT;
-		wld->flags |= WLD_SHUTDOWN;
-		return;
-	}
-
-	/* If we got here, there were no arguments. */
-
-	/* Unlogged data? Refuse. */
-	if( wld->log_queue->size + wld->log_current->size +
+	/* Unlogged data? Refuse if not forced. */
+	if( !force && wld->log_queue->size + wld->log_current->size +
 			wld->log_bfull > 0 )
 	{
 		long unlogged_lines = 1 + wld->log_queue->count +
@@ -590,7 +575,7 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 				"(%liKiB) not yet logged to disk. ",
 				unlogged_lines, unlogged_kib );
 		world_msg_client( wld, "Refusing to shut down. "
-				"Use /shutdown -f to override." );
+				"Use shutdown -f to override." );
 		return;
 	}
 
@@ -599,7 +584,7 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 		world_disable_ace( wld );
 
 	/* We're good, proceed. */
-	line = world_msg_client( wld, "Shutting down." );
+	line = world_msg_client( wld, "Shutting down%s.", force ? " forcibly" : "" );
 	line->flags = LINE_CHECKPOINT;
 	wld->flags |= WLD_SHUTDOWN;
 }
