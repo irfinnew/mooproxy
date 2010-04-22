@@ -120,6 +120,7 @@ int main( int argc, char **argv )
 
 	if( config.upgrade )
 	{
+		printf( "Waiting for upgrade connection...\n" );
 		if( upgrade_server_start( world, &err ) != 0 )
 			die( world, err );
 
@@ -411,6 +412,7 @@ static void print_help_text( void )
 	"  -w, --world       world to load\n"
 	"  -d, --no-daemon   forces mooproxy to stay in the foreground\n"
 	"  -m, --md5crypt    prompts for a string to create an md5 hash of\n"
+	"  -u, --upgrade     FIXME\n"
 	"\n"
 	"Released under the GPL v2, report bugs to <marcelm@luon.net>\n"
 	"Mooproxy comes with ABSOLUTELY NO WARRANTY; "

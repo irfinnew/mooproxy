@@ -184,7 +184,7 @@ key_db[] =
 };
 
 /* Command line options. */
-static const char short_opts[] = ":hVLw:md";
+static const char short_opts[] = ":hVLw:mdu";
 static const struct option long_opts[] = {
 	{ "help", 0, NULL, 'h' },
 	{ "version", 0, NULL, 'V' },

@@ -28,6 +28,9 @@
 /* FIXME */
 extern int upgrade_server_start( World *wld, char **err );
 
+/* FIXME */
+extern int upgrade_client_start( World *wld );
+
 
 
 #endif  /* ifndef MOOPROXY__HEADER__UPGRADE */
