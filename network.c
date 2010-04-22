@@ -1079,6 +1079,7 @@ extern void world_auth_add_bucket( World *wld )
 
 
 
+/* FIXME */
 static void privileged_add( World *wld, char *addr )
 {
 	/* If the address is already in the list, remove it.
@@ -1097,6 +1098,7 @@ static void privileged_add( World *wld, char *addr )
 
 
 
+/* FIXME */
 static void privileged_del( World *wld, char *addr )
 {
 	Line *line;
@@ -1112,6 +1114,7 @@ static void privileged_del( World *wld, char *addr )
 
 
 
+/* FIXME */
 static int is_privileged( World *wld, char *addr )
 {
 	Line *line;
