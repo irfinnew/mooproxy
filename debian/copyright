@@ -1,38 +1,22 @@
-Program:
+This package was debianized by Marcel Moreaux <marcelm@luon.net> on
+Wed, 16 Jun 2010 14:53:55 +0200
 
-   Mooproxy
+It was downloaded from:
+ http://qvdr.net/software/#mooproxy
 
-Original version available at:
+Upstream Authors:
+ Marcel Moreaux <marcelm@luon.net>
 
-   http://gemini.luon.net#mooproxy
+Files: *
+Copyright:
+  Copyright (C) 2001-2007 Marcel Moreaux <marcelm@luon.net>
+License: GPL-2
+ On Debian systems, the complete text of the GPL-2 can be found in
+ /usr/share/common-licenses/GPL-2.
 
-Copyright holder:
-
-   Marcel Moreaux <marcelm@luon.net>
-
-This Debian package created by:
-
-   Marcel Moreaux <marcelm@luon.net>
-
-Date of initial packaging:
-
-   Thu, 16 Feb 2006 22:22:22 +0100
-
-License:
-
-   This package is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; version 2 dated June, 1991.
-
-   This package is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this package; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-
-On Debian systems, the complete text of the GNU General Public License
-version 2 can be found in `/usr/share/common-licenses/GPL-2'.
-
+Files: debian/*
+Copyright:
+  Copyright (C) 2001-2007 Marcel Moreaux <marcelm@luon.net>
+License: GPL-2
+ On Debian systems, the complete text of the GPL-2 can be found in
+ /usr/share/common-licenses/GPL-2.

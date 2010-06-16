@@ -1,24 +1,5 @@
-mooproxy (0.1.3-1) stable; urgency=low
+mooproxy (0.1.3-1) unstable; urgency=low
 
-  * New upstream version.
+  * Initial release, closes: #586108.
 
- -- Marcel Moreaux <marcelm@luon.net>  Sat,  1 Sep 2007 14:37:41 +0200
-
-mooproxy (0.1.2-1) stable; urgency=low
-
-  * New upstream version.
-
- -- Marcel Moreaux <marcelm@luon.net>  Mon, 05 Mar 2007 22:39:52 +0100
-
-mooproxy (0.1.1-1) stable; urgency=low
-
-  * New upstream version.
-
- -- Marcel Moreaux <marcelm@luon.net>  Fri,  4 Aug 2006 22:28:30 +0200
-
-mooproxy (0.1.0-1) stable; urgency=low
-
-  * Initial release.
-
- -- Marcel Moreaux <marcelm@luon.net>  Thu, 16 Feb 2006 22:22:22 +0100
-
+ -- Marcel Moreaux <marcelm@luon.net>  Wed, 16 Jun 2010 16:08:04 +0200

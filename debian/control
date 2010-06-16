@@ -2,13 +2,13 @@ Source: mooproxy
 Section: net
 Priority: extra
 Maintainer: Marcel Moreaux <marcelm@luon.net>
-Build-Depends: debhelper (>= 4.0.0)
-Standards-Version: 3.6.2
+Build-Depends: debhelper (>= 5.0.0)
+Standards-Version: 3.8.4
 
 Package: mooproxy
 Architecture: any
-Depends: ${shlibs:Depends}
-Description: a buffering proxy for moo-connections
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: A buffering proxy for moo-connections
  Mooproxy is a buffering proxy for MOOs (a class of text-based RPGs,
  descending from MUDs). The MOO client connects to mooproxy, and mooproxy
  connects to the MOO server.
