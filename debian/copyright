@@ -2,21 +2,21 @@ This package was debianized by Marcel Moreaux <marcelm@luon.net> on
 Wed, 16 Jun 2010 14:53:55 +0200
 
 It was downloaded from:
- http://qvdr.net/software/#mooproxy
+  http://qvdr.net/software/#mooproxy
 
 Upstream Authors:
- Marcel Moreaux <marcelm@luon.net>
+  Marcel Moreaux <marcelm@luon.net>
 
 Files: *
 Copyright:
   Copyright (C) 2001-2007 Marcel Moreaux <marcelm@luon.net>
 License: GPL-2
- On Debian systems, the complete text of the GPL-2 can be found in
- /usr/share/common-licenses/GPL-2.
+  On Debian systems, the complete text of the GPL-2 can be found in
+  /usr/share/common-licenses/GPL-2.
 
 Files: debian/*
 Copyright:
   Copyright (C) 2001-2007 Marcel Moreaux <marcelm@luon.net>
 License: GPL-2
- On Debian systems, the complete text of the GPL-2 can be found in
- /usr/share/common-licenses/GPL-2.
+  On Debian systems, the complete text of the GPL-2 can be found in
+  /usr/share/common-licenses/GPL-2.
