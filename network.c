@@ -73,7 +73,7 @@ extern void wait_for_network( World *wld )
 {
 	struct timeval tv;
 	fd_set rset, wset;
-	int high, i;
+	int high, i, r;
 
 	/* Check the auth connections for ones that need to be promoted to
 	 * client, and for ones that need verification. */
@@ -107,10 +107,16 @@ extern void wait_for_network( World *wld )
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 
-	if( select( high + 1, &rset, &wset, NULL, &tv ) < 0 )
-		/* None of select()s errors should occur. */
-		panic( PANIC_SELECT, errno, 0 );
-
+	r = select( high + 1, &rset, &wset, NULL, &tv );
+	if( r < 0 )
+	{
+		/* EINTR is ok, other errors are not. */
+		if( errno == EINTR )
+			return;
+		else
+			panic( PANIC_SELECT, errno, 0 );
+	}
+	
 	/* Check all of the monitored FD's, and handle them appropriately. */
 
 	if( wld->server_resolver_fd != -1 &&

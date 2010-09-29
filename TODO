@@ -41,6 +41,7 @@ Maybe's:
  * Option for verbose MCP, to ease MCP debugging?
  * Provide more and better documentation.
  * Make mooproxy not remember authstring if autologin is off. ?
+ * errno=EINTR is probably ok for most/all system calls, but is handled as an error in most places. Gotta fix...?
 
 
 
