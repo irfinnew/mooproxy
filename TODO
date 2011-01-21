@@ -1,10 +1,6 @@
 Items considered for next release:
  * Catch SIGTERM/QUIT and act on it.
- * Fix the remaining command descriptions.
- * Add ACE to README?
  * Update email address?
- * Change all function definitions to have variable names?
- * Live upgrades...?
 
 
 
@@ -42,6 +38,7 @@ Maybe's:
  * Provide more and better documentation.
  * Make mooproxy not remember authstring if autologin is off. ?
  * errno=EINTR is probably ok for most/all system calls, but is handled as an error in most places. Gotta fix...?
+ * Live upgrades...?
 
 
 

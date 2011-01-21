@@ -104,7 +104,34 @@ cmd_db[] =
 
 	{ "recall", command_recall, "<...>",
 	"Recalls some lines from history.",
-	"FIXME" },
+	"  recall <number>\n"
+	"\n"
+	"Will recall the last <number> lines.\n"
+	"\n"
+	"  recall [from <timespec>] [to <timespec>] [search <text>]\n"
+	"\n"
+	"Will recall the lines from <timespec> to <timespec> that match the\n"
+	"search <text>, where <text> is a case-insensitive primitive regexp\n"
+	"(supporting . and .*), and <timespec> is one or more of:\n"
+	"\n"
+	"  now\n"
+	"  today\n"
+	"  yesterday\n"
+	"  last/next mon[day]/tue[sday]/...\n"
+	"  [YY/]MM/DD\n"
+	"  HH:MM[:SS]\n"
+	"  -/+ <number> s[econds]/m[inutes]/h[ours]/d[ays]\n"
+	"  -/+ <number> l[ines] (only for the to timespec, and only alone)\n"
+	"\n"
+	"Examples:\n"
+	"\n"
+	"  recall from 10:00 to 11:00 search gandalf.*morning\n"
+	"  recall from yesterday 16:00 to +20 lines\n"
+	"  recall from -30m search joke\n"
+	"  recall from last monday to next wednesday search weather\n"
+	"  recall from 04/22 next wed 11:35 to +1 hour\n"
+	"\n"
+	"For more details, see the README file.\n" },
 
 	{ "ace", command_ace, "[<C>x<R> | off]",
 	"En/disables ANSI client emulation.",
