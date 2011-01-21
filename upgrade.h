@@ -26,10 +26,13 @@
 
 
 /* FIXME */
-extern int upgrade_server_start( World *wld, char **err );
+extern int upgrade_do_server( World *wld, char **err );
 
 /* FIXME */
-extern int upgrade_client_start( World *wld );
+extern void upgrade_do_client_init( World *wld );
+
+/* FIXME */
+extern void upgrade_do_client_transfer( World *wld );
 
 
 

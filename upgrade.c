@@ -18,6 +18,7 @@
 
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
@@ -28,7 +29,50 @@
 
 
 
-extern int upgrade_server_start( World *wld, char **err )
+#define UPGRADE_HELO 0x4d505859
+#define UPGRADE_ERROR 0x00000001
+#define UPGRADE_OK 0x00000002
+#define UPGRADE_OPTION 0x00000003
+
+
+
+static int server_start( World *wld, char **err );
+static int server_wait( World *wld, char **err );
+static int client_start( World *wld );
+static void client_handshake( World *wld, int fd );
+
+
+
+extern int upgrade_do_server( World *wld, char **err )
+{
+	int fd;
+
+	fd = server_start( wld, err );
+	if( fd == -1 )
+		return 1;
+
+	return server_wait( wld, err );
+}
+
+
+
+extern void upgrade_do_client_init( World *wld )
+{
+	int fd;
+
+	fd = client_start( wld );
+	client_handshake( wld, fd );
+}
+
+
+
+extern void upgrade_do_client_transfer( World *wld )
+{
+}
+
+
+
+static int server_start( World *wld, char **err )
 {
 	int listen_fd, master_fd;
 	struct sockaddr_un sock_addr;
@@ -38,8 +82,8 @@ extern int upgrade_server_start( World *wld, char **err )
 			"%s/%s/%s", get_homedir(), CONFIGDIR, "upgrade" )
 			>= sizeof( sock_addr.sun_path ) )
 	{
-		xasprintf( err, "Socket pathname too long." );
-		return 1;
+		xasprintf( err, "Error: upgrade socket pathname too long." );
+		return -1;
 	}
 
 	listen_fd = socket( AF_UNIX, SOCK_STREAM, 0 );
@@ -47,7 +91,7 @@ extern int upgrade_server_start( World *wld, char **err )
 	{
 		xasprintf( err, "Creating socket failed: %s",
 			strerror( errno ) );
-		return 1;
+		return -1;
 	}
 
 	if( bind( listen_fd, (struct sockaddr *) &sock_addr,
@@ -60,14 +104,16 @@ extern int upgrade_server_start( World *wld, char **err )
 		else
 			xasprintf( err, "Binding to socket failed: %s",
 				strerror( errno ) );
-		return 1;
+		close( listen_fd );
+		return -1;
 	}
 
 	if( listen( listen_fd, 1 ) < 0 )
 	{
 		xasprintf( err, "Listening on socket failed: %s",
 			strerror( errno ) );
-		return 1;
+		close( listen_fd );
+		return -1;
 	}
 
 	master_fd = accept( listen_fd, NULL, NULL );
@@ -75,17 +121,26 @@ extern int upgrade_server_start( World *wld, char **err )
 	{
 		xasprintf( err, "Accepting new connection failed: %s",
 			strerror( errno ) );
-		return 1;
+		close( listen_fd );
+		return -1;
 	}
 
-	printf( "Woo, got connection!\n" );
+	close( listen_fd );
+	return master_fd;
+}
+
+
+
+static int server_wait( World *wld, char **err )
+{
+
 
 	return 0;
 }
 
 
 
-extern int upgrade_client_start( World *wld )
+static int client_start( World *wld )
 {
 	int slave_fd;
 	struct sockaddr_un sock_addr;
@@ -97,7 +152,7 @@ extern int upgrade_client_start( World *wld )
 	{
 		world_msg_client( wld, "Error: upgrade socket pathname too "
 			"long." );
-		return 1;
+		return -1;
 	}
 
 	slave_fd = socket( AF_UNIX, SOCK_STREAM, 0 );
@@ -105,7 +160,8 @@ extern int upgrade_client_start( World *wld )
 	{
 		world_msg_client( wld, "Creating socket failed: %s",
 			strerror( errno ) );
-		return 1;
+		close( slave_fd );
+		return -1;
 	}
 
 	if( connect( slave_fd, (struct sockaddr *) &sock_addr,
@@ -113,11 +169,18 @@ extern int upgrade_client_start( World *wld )
 	{
 		world_msg_client( wld, "Couldn't connect to upgrade socket: %s",
 			strerror( errno ) );
-		world_msg_client( wld, "Make sure a mooproxy is ready by "
+		world_msg_client( wld, "Make sure an upgrade is ready by "
 			"running: mooproxy -uw %s", wld->name );
-		return 1;
+		close( slave_fd );
+		return -1;
 	}
-	
-	world_msg_client( wld, "Woo!" );
-	return 0;
+
+	return slave_fd;
+}
+
+
+
+static void client_handshake( World *wld, int fd )
+{
+
 }

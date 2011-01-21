@@ -121,9 +121,10 @@ int main( int argc, char **argv )
 	if( config.upgrade )
 	{
 		printf( "Waiting for upgrade connection...\n" );
-		if( upgrade_server_start( world, &err ) != 0 )
+		if( upgrade_do_server( world, &err ) != 0 )
 			die( world, err );
 
+		/* FIXME */
 		printf( "Upgrade success!\n" );
 		exit( 0 );
 	}

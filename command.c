@@ -1060,8 +1060,5 @@ static void command_upgrade( World *wld, char *cmd, char *args )
 	if( refuse_arguments( wld, cmd, args ) )
 		return;
 
-	if( upgrade_client_start( wld ) )
-		return;
-
-	world_msg_client( wld, "upgrade success!" );
+	upgrade_do_client_init( wld );
 }
