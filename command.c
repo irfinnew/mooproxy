@@ -788,7 +788,7 @@ static void command_settings( World *wld, char *cmd, char *args )
 
 
 
-/* Recalls lines. FIXME: better description. */
+/* Recalls lines. */
 static void command_recall( World *wld, char *cmd, char *args )
 {
 	Linequeue *queue;
