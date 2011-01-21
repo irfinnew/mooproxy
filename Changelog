@@ -12,6 +12,7 @@
 - ACE!
 - Tweaked autoreconnect delay.
 - Fixed empty line between reconnection attempts.
+- Rate-limited connection attempts, privileged addresses, /authinfo.
 
 
 

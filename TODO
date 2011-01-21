@@ -1,6 +1,5 @@
 Items considered for next release:
  * Catch SIGTERM/QUIT and act on it.
- * Update email address?
 
 
 

@@ -1085,7 +1085,8 @@ extern void world_auth_add_bucket( World *wld )
 
 
 
-/* FIXME */
+/* Add addr to the list of privileged addresses. Make room if needed.
+ * Ensure that the new addr is at the bottom, so the list is LRU-ordered. */
 static void privileged_add( World *wld, char *addr )
 {
 	/* If the address is already in the list, remove it.
@@ -1104,7 +1105,7 @@ static void privileged_add( World *wld, char *addr )
 
 
 
-/* FIXME */
+/* Remove addr from the privileged addresses list, if present. */
 static void privileged_del( World *wld, char *addr )
 {
 	Line *line;
@@ -1120,7 +1121,7 @@ static void privileged_del( World *wld, char *addr )
 
 
 
-/* FIXME */
+/* Check if addr is in the privileged address list. Returns 1 if so, else 0. */
 static int is_privileged( World *wld, char *addr )
 {
 	Line *line;
