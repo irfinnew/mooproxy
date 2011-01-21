@@ -35,7 +35,6 @@
 #include "resolve.h"
 #include "crypt.h"
 #include "line.h"
-#include "upgrade.h"
 
 
 
@@ -113,24 +112,13 @@ int main( int argc, char **argv )
 		free( warn );
 	}
 
+	/* Make sure this world isn't open yet. */
+	if( world_acquire_lock_file( world, &err ) )
+		die( world, err );
+
 	/* Load the world's configuration. */
 	printf( "Opening world %s.\n", config.worldname );
 	if( world_load_config( world, &err ) != 0 )
-		die( world, err );
-
-	if( config.upgrade )
-	{
-		printf( "Waiting for upgrade connection...\n" );
-		if( upgrade_do_server( world, &err ) != 0 )
-			die( world, err );
-
-		/* FIXME */
-		printf( "Upgrade success!\n" );
-		exit( 0 );
-	}
-
-	/* Make sure this world isn't open yet. */
-	if( world_acquire_lock_file( world, &err ) )
 		die( world, err );
 
 	/* Refuse to start if the authentication string is absent. */
@@ -413,7 +401,6 @@ static void print_help_text( void )
 	"  -w, --world       world to load\n"
 	"  -d, --no-daemon   forces mooproxy to stay in the foreground\n"
 	"  -m, --md5crypt    prompts for a string to create an md5 hash of\n"
-	"  -u, --upgrade     FIXME\n"
 	"\n"
 	"Released under the GPL v2, report bugs to <marcelm@luon.net>\n"
 	"Mooproxy comes with ABSOLUTELY NO WARRANTY; "

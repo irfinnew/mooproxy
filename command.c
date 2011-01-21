@@ -31,7 +31,6 @@
 #include "daemon.h"
 #include "resolve.h"
 #include "recall.h"
-#include "upgrade.h"
 
 
 
@@ -59,7 +58,6 @@ static void command_uptime( World *wld, char *cmd, char *args );
 static void command_world( World *wld, char *cmd, char *args );
 static void command_forget( World *wld, char *cmd, char *args );
 static void command_authinfo( World *wld, char *cmd, char *args );
-static void command_upgrade( World *wld, char *cmd, char *args );
 
 
 
@@ -157,10 +155,6 @@ cmd_db[] =
 	{ "authinfo", command_authinfo, "",
 	"Shows some authentication information.",
 	NULL },
-
-	{ "upgrade", command_upgrade, "",
-	"FIXME",
-	"FIXME" },
 
 	{ NULL, NULL, NULL, NULL, NULL }
 };
@@ -1050,15 +1044,4 @@ static void command_authinfo( World *wld, char *cmd, char *args )
 	world_msg_client( wld, "  Authentication token bucket is %i/%i full. "
 			"Refill rate: %i/sec.", wld->auth_tokenbucket,
 			NET_AUTH_BUCKETSIZE, NET_AUTH_TOKENSPERSEC );
-}
-
-
-
-/* FIXME */
-static void command_upgrade( World *wld, char *cmd, char *args )
-{
-	if( refuse_arguments( wld, cmd, args ) )
-		return;
-
-	upgrade_do_client_init( wld );
 }

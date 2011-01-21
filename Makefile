@@ -5,7 +5,7 @@ MANDIR = /usr/local/share/man/man1
 
 OBJS = mooproxy.o misc.o config.o daemon.o world.o network.o command.o \
 	mcp.o log.o accessor.o timer.o resolve.o crypt.o line.o panic.o \
-	recall.o upgrade.o
+	recall.o
 
 all: mooproxy
 
