@@ -213,6 +213,7 @@ struct World
 	long logbuffer_size;
 	int logging;
 	int log_timestamps;
+	int easteregg_version;
 };
 
 

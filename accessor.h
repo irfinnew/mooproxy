@@ -64,6 +64,7 @@ extern int aset_buffer_size( World *, char *, char *, int, char ** );
 extern int aset_logbuffer_size( World *, char *, char *, int, char ** );
 extern int aset_logging( World *, char *, char *, int, char ** );
 extern int aset_log_timestamps( World *, char *, char *, int, char ** );
+extern int aset_easteregg_version( World *, char *, char *, int, char ** );
 
 
 
@@ -99,6 +100,7 @@ extern int aget_buffer_size( World *, char *, char **, int );
 extern int aget_logbuffer_size( World *, char *, char **, int );
 extern int aget_logging( World *, char *, char **, int );
 extern int aget_log_timestamps( World *, char *, char **, int );
+extern int aget_easteregg_version( World *, char *, char **, int );
 
 
 

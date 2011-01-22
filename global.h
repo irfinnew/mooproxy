@@ -44,6 +44,7 @@
 #define DEFAULT_LOGBUFFERSIZE 4096
 #define DEFAULT_STRICTCMDS 1
 #define DEFAULT_LOGTIMESTAMPS 1
+#define DEFAULT_EASTEREGGS 1
 
 /* Parameters for the token bucket controlling authentication attempts. */
 #define NET_AUTH_BUCKETSIZE 5

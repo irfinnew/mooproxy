@@ -180,6 +180,9 @@ key_db[] =
 	"If true, all logged lines are prefixed with a [HH:MM:SS]\n"
 	"timestamp." },
 
+	{ 1, "easteregg_version", aset_easteregg_version,
+	aget_easteregg_version, NULL, NULL },
+
 	{ 0, NULL, NULL, NULL, NULL, NULL }
 };
 

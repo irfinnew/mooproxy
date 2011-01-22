@@ -259,6 +259,14 @@ extern int aset_log_timestamps( World *wld, char *key, char *value,
 
 
 
+extern int aset_easteregg_version( World *wld, char *key, char *value,
+		int src, char **err )
+{
+	return set_bool( value, &wld->easteregg_version, err );
+}
+
+
+
 /* ----------------------------- getters -------------------------------- */
 
 
@@ -371,6 +379,13 @@ extern int aget_logging( World *wld, char *key, char **value, int src )
 extern int aget_log_timestamps( World *wld, char *key, char **value, int src )
 {
 	return get_bool( wld->log_timestamps, value );
+}
+
+
+
+extern int aget_easteregg_version( World *wld, char *key, char **value, int src )
+{
+	return get_bool( wld->easteregg_version, value );
 }
 
 

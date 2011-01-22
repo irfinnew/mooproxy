@@ -243,7 +243,8 @@ static void mainloop( World *wld )
 			/* Regular */
 			linequeue_append( wld->client_toqueue, line );
 
-			world_easteregg_server( wld, line );
+			if( wld->easteregg_version )
+				world_easteregg_server( wld, line );
 		}
 	}
 

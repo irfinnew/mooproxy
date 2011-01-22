@@ -183,6 +183,7 @@ extern World *world_create( char *wldname )
 	wld->logbuffer_size = DEFAULT_LOGBUFFERSIZE;
 	wld->logging = DEFAULT_LOGGING;
 	wld->log_timestamps = DEFAULT_LOGTIMESTAMPS;
+	wld->easteregg_version = DEFAULT_EASTEREGGS;
 
 	/* Add to the list of worlds */
 	register_world( wld );
