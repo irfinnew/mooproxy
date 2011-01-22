@@ -31,7 +31,8 @@
 /* Set up the signal handlers. Duh :) */
 extern void set_up_signal_handlers( void );
 
-/* Set the time at which mooproxy started, to determine the uptime. */
+/* Set the time at which mooproxy started, to determine the uptime.
+ * This function also seeds the PRNG using the useconds from gettimeofday(). */
 extern void uptime_started_now( void );
 
 /* Get the time at which mooproxy started. */

@@ -66,6 +66,7 @@ extern void prompt_to_md5hash( void )
 		return;
 	}
 
+	/* FIXME: I should really use /dev/random or something for this. */
 	/* Construct the salt.
 	 * Bits 47..36: lowest 12 bits of mooproxy's PID. */
 	salt[ 3] = seedchars[( getpid() / 64 ) % 64];

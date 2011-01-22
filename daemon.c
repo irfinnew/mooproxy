@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <sys/file.h>
 #include <ctype.h>
+#include <sys/time.h>
 
 #include "daemon.h"
 #include "misc.h"
@@ -81,7 +82,12 @@ extern void set_up_signal_handlers( void )
 
 extern void uptime_started_now( void )
 {
+	struct timeval tv;
+
 	program_start_time = time( NULL );
+
+	gettimeofday( &tv, NULL );
+	srand( tv.tv_usec );
 }
 
 
