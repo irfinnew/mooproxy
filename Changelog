@@ -8,6 +8,12 @@
 - mooproxy.crashed gerenamed naar mooproxy.panic
 - /help flink opgepimpt, setting beschrijvingen verbeterd
 - veel settings gerenamed
+     auth_md5hash -> auth_hash
+     context_on_connect -> context_lines
+     logging_enabled -> logging
+     timestamped_logs -> log_timestamps
+     max_buffer_size -> buffer_size
+     max_logbuffer_size -> logbuffer_size
 - Weg met "authentication succesful", lang leve "this is mooproxy".
 - Ook geeftie nu /help, wat ook handig is voor mensen die hun commandstring vergeten zijn. [from: christian]
 - ACE!
