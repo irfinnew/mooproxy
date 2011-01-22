@@ -86,7 +86,8 @@ cmd_db[] =
 	"Shuts down mooproxy.\n\n"
 	"Under some circumstances, mooproxy may refuse to shut down\n"
 	"(for example if not all loggable lines have been written to\n"
-	"disk). -f may be used to force shutdown." },
+	"disk). -f may be used to force shutdown. Sending mooproxy SIGTERM\n"
+	"is equivalent to /shutdown, SIGQUIT to /shutdown -f." },
 
 	{ "connect", command_connect, "[<host> [<port>]]",
 	"Connects to the server.",
