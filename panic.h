@@ -33,7 +33,7 @@
 
 
 /* Signal handler. Basically calls panic(). */
-extern void panic_sighandler( int sig );
+extern void sighandler_panic( int sig );
 
 /* Panic. Try to write a helpful message to stderr, crash-file, and any
  * connected client. After that, terminate.

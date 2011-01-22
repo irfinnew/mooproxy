@@ -39,7 +39,7 @@ static void worldlist_to_string( char *str, int wldcount, World **worlds );
 
 
 
-extern void panic_sighandler( int sig )
+extern void sighandler_panic( int sig )
 {
 	panic( PANIC_SIGNAL, sig, 0 );
 }

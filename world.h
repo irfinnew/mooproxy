@@ -298,6 +298,11 @@ extern void world_disable_ace( World *wld );
 /* Check for, and respond to, easter eggs. */
 extern void world_easteregg_server( World *wld, Line *line );
 
+/* Signal shutdown if there are no unlogged lines (or force = 1).
+ * Returns 0 if shutdown is refused, 1 otherwise.
+ * This function messages the client.
+ * fromsig should be one when called from SIGTERM/QUIT, 0 otherwise. */
+extern int world_start_shutdown( World *wld, int force, int fromsig );
 
 
 #endif  /* ifndef MOOPROXY__HEADER__WORLD */

@@ -1,5 +1,5 @@
 Items considered for next release:
- * Catch SIGTERM/QUIT and act on it.
+ * Update copyright years, email?, and release.
 
 
 
@@ -12,6 +12,7 @@ Probably's:
  * /lock command to disallow changing options / connecting to strange servers?
  * Improve setting of auth_hash.
  * Change authstring to just mean the password instead of the entire connection string. May require additional options...
+ * Allow specific options to be overrided from commandline (mooproxy -o listenport=1111)
 
 
 Maybe's:

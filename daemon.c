@@ -44,6 +44,7 @@ static time_t program_start_time = 0;
 
 
 static char *pid_from_pidfile( int fd );
+extern void sighandler_sigterm( int sig );
 
 
 
@@ -66,10 +67,14 @@ extern void set_up_signal_handlers( void )
 	signal( SIGUSR2, SIG_IGN );
 
 	/* 'Bad' signals, indicating a mooproxy bug. Panic. */
-	signal( SIGSEGV, &panic_sighandler );
-	signal( SIGILL, &panic_sighandler );
-	signal( SIGFPE, &panic_sighandler );
-	signal( SIGBUS, &panic_sighandler );
+	signal( SIGSEGV, &sighandler_panic );
+	signal( SIGILL, &sighandler_panic );
+	signal( SIGFPE, &sighandler_panic );
+	signal( SIGBUS, &sighandler_panic );
+
+	/* Handle SIGTERM (shutdown) and SIGQUIT (shutdown -f). */
+	signal( SIGTERM, &sighandler_sigterm );
+	signal( SIGQUIT, &sighandler_sigterm );
 }
 
 
@@ -250,4 +255,15 @@ extern void world_remove_lockfile( World *wld )
 	unlink( wld->lockfile );
 	free( wld->lockfile );
 	wld->lockfile = NULL;
+}
+
+
+
+extern void sighandler_sigterm( int signum )
+{
+	World **wldlist;
+	int wldcount;
+
+	world_get_list( &wldcount, &wldlist );
+	world_start_shutdown( wldlist[0], signum == SIGQUIT, 1 );
 }

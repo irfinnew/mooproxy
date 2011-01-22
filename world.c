@@ -1005,3 +1005,40 @@ extern void world_easteregg_server( World *wld, Line *line )
 	wld->easteregg_last = current_time();
 	free( name );
 }
+
+
+
+extern int world_start_shutdown( World *wld, int force, int fromsig )
+{
+	Line *line;
+
+	/* Unlogged data? Refuse if not forced. */
+	if( !force && wld->log_queue->size + wld->log_current->size +
+			wld->log_bfull > 0 )
+	{
+		long unlogged_lines = 1 + wld->log_queue->count +
+				wld->log_current->count + wld->log_bfull / 80;
+		long unlogged_kib = ( wld->log_bfull + wld->log_queue->size +
+				wld->log_current->size + 512 ) / 1024;
+		world_msg_client( wld, "There are approximately %li lines "
+				"(%liKiB) not yet logged to disk. ",
+				unlogged_lines, unlogged_kib );
+		world_msg_client( wld, "Refusing to shut down. "
+				"Use %s to override.",
+				fromsig ? "SIGQUIT" : "shutdown -f" );
+		return 0;
+	}
+
+	/* We try to leave their terminal in a nice state. */
+	if( wld->ace_enabled )
+		world_disable_ace( wld );
+
+	/* We're good, proceed. */
+	line = world_msg_client( wld, "Shutting down%s (reason: %s).",
+			force ? " forcibly" : "",
+			fromsig ? "signal" : "client request" );
+	line->flags = LINE_CHECKPOINT;
+	wld->flags |= WLD_SHUTDOWN;
+
+	return 1;
+}

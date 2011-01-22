@@ -577,7 +577,6 @@ static void command_quit( World *wld, char *cmd, char *args )
 static void command_shutdown( World *wld, char *cmd, char *args )
 {
 	int force = 0;
-	Line *line;
 
 	/* Are we being forced? */
 	if( args && !strcmp( args, "-f" ) )
@@ -590,30 +589,7 @@ static void command_shutdown( World *wld, char *cmd, char *args )
 		return;
 	}
 
-	/* Unlogged data? Refuse if not forced. */
-	if( !force && wld->log_queue->size + wld->log_current->size +
-			wld->log_bfull > 0 )
-	{
-		long unlogged_lines = 1 + wld->log_queue->count +
-				wld->log_current->count + wld->log_bfull / 80;
-		long unlogged_kib = ( wld->log_bfull + wld->log_queue->size +
-				wld->log_current->size + 512 ) / 1024;
-		world_msg_client( wld, "There are approximately %li lines "
-				"(%liKiB) not yet logged to disk. ",
-				unlogged_lines, unlogged_kib );
-		world_msg_client( wld, "Refusing to shut down. "
-				"Use shutdown -f to override." );
-		return;
-	}
-
-	/* We try to leave their terminal in a nice state. */
-	if( wld->ace_enabled )
-		world_disable_ace( wld );
-
-	/* We're good, proceed. */
-	line = world_msg_client( wld, "Shutting down%s.", force ? " forcibly" : "" );
-	line->flags = LINE_CHECKPOINT;
-	wld->flags |= WLD_SHUTDOWN;
+	world_start_shutdown( wld, force, 0 );
 }
 
 
