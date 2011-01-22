@@ -49,7 +49,7 @@ static int get_key_internal( World *wld, char *key, char **value, int src );
 
 
 /* The list of settable/gettable options. The hidden flag indicates if the
- * option is accessible to the user. The setters and getters are functions
+ * option is visible to the user. The setters and getters are functions
  * that actually set or query the option, and are located in accessor.c. */
 static const struct
 {
@@ -528,12 +528,7 @@ static int set_key_internal( World *wld, char *key, char *value, int src,
 
 	for( i = 0; key_db[i].keyname; i++ )
 		if( !strcmp_under( key, key_db[i].keyname ) )
-		{
-			if( key_db[i].hidden && src == ASRC_USER )
-				return SET_KEY_NF;
-
 			return (*key_db[i].setter)( wld, key, value, src, err );
-		}
 
 	return SET_KEY_NF;
 }
@@ -550,12 +545,7 @@ static int get_key_internal( World *wld, char *key, char **value, int src )
 
 	for( i = 0; key_db[i].keyname; i++ )
 		if( !strcmp_under( key, key_db[i].keyname ) )
-		{
-			if( key_db[i].hidden )
-				return GET_KEY_NF;
-
 			return (*key_db[i].getter)( wld, key, value, src );
-		}
 
 	return GET_KEY_NF;
 }
