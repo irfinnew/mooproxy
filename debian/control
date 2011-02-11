@@ -1,7 +1,7 @@
 Source: mooproxy
 Section: net
 Priority: extra
-Maintainer: Marcel Moreaux <marcelm@luon.net>
+Maintainer: Marcel Moreaux <marcelm@qvdr.net>
 Build-Depends: debhelper (>= 5.0.0)
 Standards-Version: 3.9.1
 

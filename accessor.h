@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for MOO connections
- *  Copyright (C) 2001-2011 Marcel L. Moreaux <marcelm@luon.net>
+ *  Copyright (C) 2001-2011 Marcel L. Moreaux <marcelm@qvdr.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
