@@ -8,7 +8,7 @@ Standards-Version: 3.9.1
 Package: mooproxy
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: A buffering proxy for moo-connections
+Description: A buffering proxy for MOO connections
  Mooproxy is a buffering proxy for MOOs (a class of text-based RPGs,
  descending from MUDs). The MOO client connects to mooproxy, and mooproxy
  connects to the MOO server.
