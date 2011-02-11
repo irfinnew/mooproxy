@@ -1,8 +1,3 @@
-Items considered for next release:
- * Update copyright years, email?, and release.
-
-
-
 Probably's:
  * Tune Latency with TCP_NODELAY ?
  * Implement some MCP userlist in mooproxy?

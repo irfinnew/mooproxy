@@ -1,25 +1,26 @@
-- Shutdown on SIGTERM/QUIT (QUIT forces).
-- added /forget
-- zsh-style underscore equivalence in setting names
-- "Now connected to" en "Connection lost" worden nu gebufferd en gelogd. Ook zo voor client connecties, startup, en shutdown.
-- autoreconnect setten vanuit user heeft nu onmiddelijk effect
-- /get en /set weg, gebruik /option
-- /listopts geeft nu ook values terug en is gerenamed naar /settings
-- mooproxy.crashed gerenamed naar mooproxy.panic
-- /help flink opgepimpt, setting beschrijvingen verbeterd
-- veel settings gerenamed
-     auth_md5hash -> auth_hash
-     context_on_connect -> context_lines
-     logging_enabled -> logging
-     timestamped_logs -> log_timestamps
-     max_buffer_size -> buffer_size
-     max_logbuffer_size -> logbuffer_size
-- Weg met "authentication succesful", lang leve "this is mooproxy".
-- Ook geeftie nu /help, wat ook handig is voor mensen die hun commandstring vergeten zijn. [from: christian]
-- ACE!
-- Tweaked autoreconnect delay.
-- Fixed empty line between reconnection attempts.
-- Rate-limited connection attempts, privileged addresses, /authinfo.
+11-02-2011  -  1.0.0
+--------------------
+ * Greatly improved online /help.
+ * Renamed a bunch of settings (yeah, again)
+     auth_md5hash        -> auth_hash
+     context_on_connect  -> context_lines
+     logging_enabled     -> logging
+     timestamped_logs    -> log_timestamps
+     max_buffer_size     -> buffer_size
+     max_logbuffer_size  -> logbuffer_size
+ * /get and /set have been removed, and replaced by /<setting>
+ * Setting names are now "underscore equivalent", so you can use arbitrary
+   underscores in setting names (authhash is equivalent to auth_hash).
+ * /listopts has been renamed to /settings, and now prints values as well.
+ * Added Ansi Client Emulation (ACE), to make life bearable when using telnet.
+ * Authentication attemts are now rate-limited at 1 attempt/sec/IP, except for
+   "known" IP addresses, and added the /authinfo command.
+ * Several messages (such as "now connected to", "connection lost", client
+   connect, mooproxy startup, mooproxy shutdown) are now logged too.
+ * Perform a clean shutdown on SIGTERM, and a forced shutdown on SIGQUIT.
+ * Changing the autoreconnect setting now takes effect immediately (it used to
+   take effect after the next connect).
+ * Added /forget command to clear all history lines.
 
 
 
