@@ -3,7 +3,7 @@ Section: net
 Priority: extra
 Maintainer: Marcel Moreaux <marcelm@luon.net>
 Build-Depends: debhelper (>= 5.0.0)
-Standards-Version: 3.8.4
+Standards-Version: 3.9.1
 
 Package: mooproxy
 Architecture: any
