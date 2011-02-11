@@ -1,6 +1,6 @@
 /*
  *
- *  mooproxy - a buffering proxy for moo-connections
+ *  mooproxy - a buffering proxy for MOO connections
  *  Copyright (C) 2001-2011 Marcel L. Moreaux <marcelm@luon.net>
  *
  *  This program is free software; you can redistribute it and/or modify
