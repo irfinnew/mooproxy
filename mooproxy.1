@@ -16,18 +16,18 @@
 .\" .sp <n>    insert n+1 empty lines
 .\" for manpage-specific macros, see man(7)
 .SH NAME
-mooproxy \- a buffering proxy for MOO connections
+mooproxy \- a smart proxy for MUD/MOO connections
 .SH SYNOPSIS
 .B mooproxy
 .RI [ options ]
 .SH DESCRIPTION
 .PP
 .B mooproxy
-is a buffering proxy for MOOs (a class of text-based RPGs, descending from
-MUDs). The MOO client connects to mooproxy, and mooproxy connects to the MOO
+is a smart proxy for MOOs/MUDs, a class of text-based RPGs.
+The MOO client connects to mooproxy, and mooproxy connects to the MUD/MOO
 server.
 .PP
-Mooproxy keeps you connected to the MOO server if the client disconnects
+Mooproxy keeps you connected to the MUD/MOO server if the client disconnects
 (voluntarily, because of network problems, because the client crashes,
 because of a power outage, etc).
 .PP

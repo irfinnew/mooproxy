@@ -1,6 +1,6 @@
 /*
  *
- *  mooproxy - a buffering proxy for MOO connections
+ *  mooproxy - a smart proxy for MUD/MOO connections
  *  Copyright 2001-2011 Marcel Moreaux
  *
  *  This program is free software; you can redistribute it and/or modify

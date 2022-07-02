@@ -1,6 +1,6 @@
 /*
  *
- *  mooproxy - a buffering proxy for MOO connections
+ *  mooproxy - a smart proxy for MUD/MOO connections
  *  Copyright 2001-2011 Marcel Moreaux
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -391,7 +391,7 @@ static void handle_flags( World *wld )
 /* Print the help output (-h, --help) */
 static void print_help_text( void )
 {
-	printf( "Mooproxy - a buffering proxy for MOO connections\n"
+	printf( "Mooproxy - a smart proxy for MUD/MOO connections\n"
 	"\n"
 	"Usage: mooproxy [options]\n"
 	"\n"
@@ -423,7 +423,7 @@ static void print_version_text( void )
 /* Print the license output (-L, --license) */
 static void print_license_text( void )
 {
-	printf( "Mooproxy - a buffering proxy for MOO connections\n"
+	printf( "Mooproxy - a smart proxy for MUD/MOO connections\n"
 	"Copyright %s Marcel Moreaux\n"
 	"\n"
 	"This program is free software; you can redistribute it and/or modify\n"

@@ -1,6 +1,6 @@
 /*
  *
- *  mooproxy - a buffering proxy for MOO connections
+ *  mooproxy - a smart proxy for MUD/MOO connections
  *  Copyright 2001-2011 Marcel Moreaux
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -140,9 +140,9 @@ cmd_db[] =
 	"\n"
 	"ACE is intended to be used when the client is a text terminal\n"
 	"(such as telnet or netcat running in a terminal window) rather\n"
-	"than a proper MOO client.\n"
+	"than a proper MUD/MOO client.\n"
 	"ACE makes mooproxy send ANSI escape sequences that will emulate\n"
-	"the behaviour of a primitive MOO client on a text terminal.\n"
+	"the behaviour of a primitive MUD/MOO client on a text terminal.\n"
 	"\n"
 	"Because mooproxy cannot know the size of your terminal, you have\n"
 	"to supply the size of your terminal to the ace command as COLxROW,\n"

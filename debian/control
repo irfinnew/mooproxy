@@ -8,14 +8,14 @@ Standards-Version: 3.9.1
 Package: mooproxy
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: A buffering proxy for MOO connections
- Mooproxy is a buffering proxy for MOOs (a class of text-based RPGs,
- descending from MUDs). The MOO client connects to mooproxy, and mooproxy
- connects to the MOO server.
+Description: A smart proxy for MUD/MOO connections
+ Mooproxy is a smart proxy for MUDs/MOOs, a class of text-based RPGs.
+ The MUD/MOO client connects to mooproxy, and mooproxy connects to the
+ MUD/MOO server.
  .
- Mooproxy keeps you connected to the MOO server if the client disconnects
- (voluntarily, because of network problems, because the client crashes,
- because of a power outage, etc).
+ Mooproxy keeps you connected to the MUD/MOO server if the client
+ disconnects (voluntarily, because of network problems, because the client
+ crashes, because of a power outage, etc).
  .
  Mooproxy also provides centralised logging, buffers text when the client
  isn't connected, and provides context when the client does connect.
