@@ -10,7 +10,7 @@ OBJS = mooproxy.o misc.o config.o daemon.o world.o network.o command.o \
 all: mooproxy
 
 mooproxy: $(OBJS)
-	$(CC) $(LFLAGS) $(OBJS) -o mooproxy
+	$(CC) $(OBJS) $(LFLAGS) -o mooproxy
 #	strip mooproxy
 
 # If a header file changed, maybe some data formats changed, and all object

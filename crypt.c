@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <termios.h>
+#include <crypt.h>
 
 #include "crypt.h"
 #include "misc.h"
