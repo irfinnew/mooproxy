@@ -1,7 +1,7 @@
 
 
                Mooproxy - a buffering proxy for MOO connections
-         Copyright (C) 2001-2011 Marcel L. Moreaux <marcelm@qvdr.net>
+         Copyright 2001-2011 Marcel Moreaux
 
 
 
@@ -430,15 +430,15 @@ Portability pitfalls:
 
 The author of mooproxy is:
 
-  Marcel L. Moreaux <marcelm@qvdr.net>
+  Marcel Moreaux
 
-Thanks (for testing, reporting bugs, and giving suggestions) to:
+Thanks (for testing, reporting bugs, and suggestions) to:
 
-  Paul van Tilburg <paul@luon.net>
-  Wouter Lueks <wouter@telox.net>
-  Admar Schoonen <admar@luon.net>
-  Bram Senders <bram@luon.net>
-  Christian Luijten <christian@luon.net>
+  Paul van Tilburg
+  Wouter Lueks
+  Admar Schoonen
+  Bram Senders
+  Christian Luijten
 
 
 

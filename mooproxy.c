@@ -1,7 +1,7 @@
 /*
  *
  *  mooproxy - a buffering proxy for MOO connections
- *  Copyright (C) 2001-2011 Marcel L. Moreaux <marcelm@qvdr.net>
+ *  Copyright 2001-2011 Marcel Moreaux
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -392,7 +392,6 @@ static void handle_flags( World *wld )
 static void print_help_text( void )
 {
 	printf( "Mooproxy - a buffering proxy for MOO connections\n"
-	"Copyright (C) %s Marcel L. Moreaux <marcelm@qvdr.net>\n"
 	"\n"
 	"Usage: mooproxy [options]\n"
 	"\n"
@@ -403,7 +402,7 @@ static void print_help_text( void )
 	"  -d, --no-daemon   forces mooproxy to stay in the foreground\n"
 	"  -m, --md5crypt    prompts for a string to create an md5 hash of\n"
 	"\n"
-	"Released under the GPL v2, report bugs to <marcelm@qvdr.net>\n"
+	"Copyright %s Marcel Moreaux, licensed under the GPL v2\n"
 	"Mooproxy comes with ABSOLUTELY NO WARRANTY; "
 	"for details run mooproxy --license\n",
 	COPYYEARS );
@@ -425,7 +424,7 @@ static void print_version_text( void )
 static void print_license_text( void )
 {
 	printf( "Mooproxy - a buffering proxy for MOO connections\n"
-	"Copyright (C) %s Marcel L. Moreaux <marcelm@qvdr.net>\n"
+	"Copyright %s Marcel Moreaux\n"
 	"\n"
 	"This program is free software; you can redistribute it and/or modify\n"
 	"it under the terms of the GNU General Public License as published by\n"
